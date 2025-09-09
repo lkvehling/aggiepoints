@@ -1,157 +1,96 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AggiePoints Check-in</title>
+  <title>Aggie Points Check-In</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      padding: 20px;
-    }
-    #status {
-      margin: 20px 0;
-      font-weight: bold;
-    }
-    #formContainer {
-      display: none;
-      margin-top: 20px;
-    }
-    iframe {
-      width: 100%;
-      height: 600px;
-      border: none;
-      border-radius: 8px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
-    }
+    body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
+    #formContainer { display: none; margin-top: 20px; }
+    iframe { width: 100%; height: 800px; border: none; }
   </style>
 </head>
 <body>
-  <h1>AggiePoints Check-in</h1>
-  <p id="status">Fetching event data...</p>
-
+  <h2>Aggie Points Check-In</h2>
+  <p id="status">Checking your location...</p>
   <div id="formContainer">
     <iframe id="jotformFrame"></iframe>
   </div>
 
   <script>
-    const CSV_URL = "events.csv"; // replace with your actual CSV path
+    const sheetUrl =
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKTWEbVoSyYdw6wVVbIuql9hb_NoAt7jcLoFfKI2PCz9UA3z8PJwkrWcFDjbEbGj9FVb_R_6r2Y2es/pub?output=csv";
 
-    async function fetchCSV() {
-      const response = await fetch(CSV_URL);
-      const text = await response.text();
-      return text.split("\n").map(row => row.split(","));
+    // --- Step 1: Check if redirected after submission ---
+    const urlParams = new URLSearchParams(window.location.search);
+    const submittedEvent = urlParams.get("submitted");
+    if (submittedEvent) {
+      localStorage.setItem("submitted_" + submittedEvent, "true");
+      document.getElementById("status").innerText =
+        `✅ You’ve already checked in for ${submittedEvent}`;
+      // hide form permanently for this event
+      document.getElementById("formContainer").style.display = "none";
     }
 
-    function parseEvent(row, headers) {
-      return {
-        name: row[0],
-        latMin: parseFloat(row[1]),
-        latMax: parseFloat(row[2]),
-        lngMin: parseFloat(row[3]),
-        lngMax: parseFloat(row[4]),
-        start: new Date(row[5]),
-        end: new Date(row[6])
-      };
+    // --- Step 2: Load event data from sheet ---
+    async function getEventData() {
+      const res = await fetch(sheetUrl);
+      const text = await res.text();
+      const rows = text.split("\n").map(r => r.split(","));
+      const headers = rows[0].map(h => h.trim());
+      const now = new Date();
+
+      return rows.slice(1).map(r => ({
+        name: r[headers.indexOf("Event Name")],
+        latMin: parseFloat(r[headers.indexOf("Lat Min")]),
+        latMax: parseFloat(r[headers.indexOf("Lat Max")]),
+        lngMin: parseFloat(r[headers.indexOf("Lng Min")]),
+        lngMax: parseFloat(r[headers.indexOf("Lng Max")]),
+        start: new Date(r[headers.indexOf("Start Time")]),
+        end: new Date(r[headers.indexOf("End Time")])
+      })).find(ev => now >= ev.start && now <= ev.end);
     }
 
-    function markSubmitted(eventName) {
-      localStorage.setItem("submitted_" + eventName, "true");
+    function inBox(lat, lng, ev) {
+      return (
+        lat >= ev.latMin &&
+        lat <= ev.latMax &&
+        lng >= ev.lngMin &&
+        lng <= ev.lngMax
+      );
     }
 
-    function alreadySubmitted(eventName) {
-      return localStorage.getItem("submitted_" + eventName) === "true";
-    }
+    // --- Step 3: GPS + Event check ---
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const event = await getEventData();
 
-    function loadForm(event) {
-      const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
-      const iframe = document.getElementById("jotformFrame");
-
-      iframe.src = jotformUrl;
-      document.getElementById("formContainer").style.display = "block";
-
-      // Watch for the JotForm thank-you page
-      iframe.onload = function () {
-        try {
-          if (iframe.contentWindow.location.href.includes("thankyou")) {
-            markSubmitted(event.name);
-            document.getElementById("status").innerText = `✅ Successfully checked in for ${event.name}`;
-          }
-        } catch (e) {
-          // fallback if cross-origin blocks
-          if (iframe.src.includes("thankyou")) {
-            markSubmitted(event.name);
-            document.getElementById("status").innerText = `✅ Successfully checked in for ${event.name}`;
-          }
-        }
-      };
-    }
-
-    async function checkIn() {
-      try {
-        const rows = await fetchCSV();
-        const headers = rows[0];
-        const dataRows = rows.slice(1);
-
-        const now = new Date();
-        const eventRow = dataRows.find(row => {
-          const event = parseEvent(row, headers);
-          return now >= event.start && now <= event.end;
-        });
-
-        if (!eventRow) {
-          document.getElementById("status").innerText = "❌ No scheduled event right now.";
-          return;
-        }
-
-        const event = parseEvent(eventRow, headers);
-
-        // Get GPS
-        if (!navigator.geolocation) {
-          document.getElementById("status").innerText = "❌ Geolocation not supported.";
-          return;
-        }
-
-        navigator.geolocation.getCurrentPosition(
-          position => {
-            const lat = position.coords.latitude;
-            const lng = position.coords.longitude;
-
-            const withinBounds =
-              lat >= event.latMin &&
-              lat <= event.latMax &&
-              lng >= event.lngMin &&
-              lng <= event.lngMax;
-
-            if (!withinBounds) {
-              document.getElementById("status").innerText =
-                "❌ You are not at the correct event location.";
-              return;
-            }
-
-            if (alreadySubmitted(event.name)) {
-              document.getElementById("status").innerText =
-                `✅ Already checked in for ${event.name}.`;
-              return;
-            }
-
-            document.getElementById("status").innerText =
-              `📍 Correct location detected for ${event.name}. Please complete the form.`;
-
-            loadForm(event);
-          },
-          () => {
-            document.getElementById("status").innerText =
-              "❌ Unable to get location. Please ensure GPS is enabled.";
-          }
-        );
-      } catch (err) {
-        document.getElementById("status").innerText = "❌ Error fetching event data.";
+      if (!event) {
+        document.getElementById("status").innerText = "❌ No event scheduled right now.";
+        return;
       }
-    }
 
-    checkIn();
+      // Prevent duplicate submissions
+      if (localStorage.getItem("submitted_" + event.name)) {
+        document.getElementById("status").innerText =
+          `✅ You’ve already checked in for ${event.name}`;
+        return;
+      }
+
+      if (inBox(lat, lng, event)) {
+        document.getElementById("status").innerText =
+          `Welcome! Checking you into ${event.name}`;
+        const jotformUrl =
+          `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}&eventStart=${event.start.toISOString()}&eventEnd=${event.end.toISOString()}`;
+        document.getElementById("jotformFrame").src = jotformUrl;
+        document.getElementById("formContainer").style.display = "block";
+      } else {
+        document.getElementById("status").innerText =
+          "❌ You are not at the correct location for this event.";
+      }
+    }, () => {
+      document.getElementById("status").innerText =
+        "Unable to get location. Please enable GPS.";
+    });
   </script>
 </body>
 </html>

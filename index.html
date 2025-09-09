@@ -25,7 +25,7 @@
   </style>
 </head>
 <body>
-  <h1>Event Check-In</h1>
+  <h1>Today's Events</h1>
   <div id="events"></div>
 
   <script>
@@ -44,16 +44,28 @@
       return events;
     }
 
+    function isToday(dateStr) {
+      const d = new Date(dateStr);
+      const today = new Date();
+      return (
+        d.getFullYear() === today.getFullYear() &&
+        d.getMonth() === today.getMonth() &&
+        d.getDate() === today.getDate()
+      );
+    }
+
     function renderEvents(events) {
       const container = document.getElementById("events");
       container.innerHTML = "";
 
-      if (events.length === 0) {
-        container.innerHTML = "<p>No events found.</p>";
+      const todaysEvents = events.filter(e => isToday(e["Start Time"]));
+
+      if (todaysEvents.length === 0) {
+        container.innerHTML = "<p>No events scheduled for today.</p>";
         return;
       }
 
-      events.forEach(event => {
+      todaysEvents.forEach(event => {
         const card = document.createElement("div");
         card.className = "event-card";
 
@@ -97,7 +109,7 @@
             now >= start && now <= end
           ) {
             alert(`✅ You are checked in for ${event["Event Name"]}!`);
-            // 👉 Here you could redirect to JotForm or log submission
+            // 👉 You could redirect here to JotForm if needed:
             // window.location.href = "https://form.jotform.com/yourFormID";
           } else {
             alert("❌ You are not at the correct location or time for this event.");
@@ -113,7 +125,7 @@
       );
     }
 
-    // Load events on page
+    // Load today's events
     fetchEvents().then(renderEvents);
   </script>
 </body>

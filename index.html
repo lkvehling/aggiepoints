@@ -64,21 +64,21 @@
     }
 
     async function checkIn() {
+      const event = await getEventData();
+      if (!event) {
+        document.getElementById("status").innerText = "No event scheduled right now.";
+        return;
+      }
+
       if (!navigator.geolocation) {
         document.getElementById("status").innerText = "Geolocation not supported by your browser.";
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(async pos => {
+      navigator.geolocation.getCurrentPosition(pos => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const now = new Date();
-
-        const event = await getEventData();
-        if (!event) {
-          document.getElementById("status").innerText = "No event scheduled right now.";
-          return;
-        }
 
         if (!inBox(lat, lng, event)) {
           document.getElementById("status").innerText = "You are not at the correct location.";

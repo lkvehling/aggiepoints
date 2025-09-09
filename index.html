@@ -25,11 +25,64 @@
         const rows = text.trim().split("\n").map(r => r.split(","));
         const headers = rows[0].map(h => h.trim());
 
-        // TEMP: pick first row for testing
-        const eventRow = rows[1];
-        console.log("Selected event row:", eventRow);
+        const now = new Date();
+        const eventRow = rows.slice(1).find(r => {
+          const start = new Date(r[headers.indexOf("Start Time")].trim());
+          const end = new Date(r[headers.indexOf("End Time")].trim());
+          return now >= start && now <= end;
+        });
+
+        if (!eventRow) return null;
 
         return {
           name: eventRow[headers.indexOf("Event Name")].trim(),
           latMin: parseFloat(eventRow[headers.indexOf("Lat Min")].trim()),
-          latMax: parseFloat(eventRow[headers.indexOf("Lat Max")].tri
+          latMax: parseFloat(eventRow[headers.indexOf("Lat Max")].trim()),
+          lngMin: parseFloat(eventRow[headers.indexOf("Lng Min")].trim()),
+          lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")].trim()),
+          start: eventRow[headers.indexOf("Start Time")].trim(),
+          end: eventRow[headers.indexOf("End Time")].trim()
+        };
+      } catch (err) {
+        console.error("Error fetching CSV:", err);
+        document.getElementById("status").innerText = "Failed to load event data.";
+        return null;
+      }
+    }
+
+    function inBox(lat, lng, ev) {
+      return lat >= ev.latMin && lat <= ev.latMax && lng >= ev.lngMin && lng <= ev.lngMax;
+    }
+
+    // ------------------------------
+    // SIMULATED GPS FOR TESTING
+    // ------------------------------
+    (async () => {
+      const lat = 34.169976;       // Your current latitude
+      const lng = -118.636764;     // Your current longitude
+      const now = new Date();
+
+      document.getElementById("status").innerText = "Simulating location check...";
+      console.log("Simulated GPS:", lat, lng);
+
+      const event = await getEventData();
+      console.log("Event data:", event);
+
+      if (!event) {
+        document.getElementById("status").innerText = "No event scheduled for now.";
+        return;
+      }
+
+      // TEMP: skip time check for testing location
+      if (inBox(lat, lng, event)) {
+        document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
+        const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}&eventStart=${event.start}&eventEnd=${event.end}`;
+        document.getElementById("jotformFrame").src = jotformUrl;
+        document.getElementById("formContainer").style.display = "block";
+      } else {
+        document.getElementById("status").innerText = "You are not at the correct location.";
+      }
+    })();
+  </script>
+</body>
+</html>

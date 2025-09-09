@@ -6,11 +6,13 @@
     body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
     #formContainer { display: none; margin-top: 20px; }
     iframe { width: 100%; height: 800px; border: none; }
+    #debug { margin-top: 20px; font-size: 14px; color: darkblue; }
   </style>
 </head>
 <body>
   <h2>Aggie Points Check-In</h2>
   <p id="status">Starting...</p>
+  <div id="debug"></div>
   <div id="formContainer">
     <iframe id="jotformFrame"></iframe>
   </div>
@@ -30,15 +32,12 @@
           .map(r => r.split(",").map(c => c.trim()))
           .filter(r => r.length > 1);
 
-        console.log("All rows:", rows);
-
         if (rows.length < 2) {
           console.error("No event rows found in CSV!");
           return null;
         }
 
         const headers = rows[0];
-        console.log("Headers:", headers);
 
         // Find first event whose start/end time includes now
         const now = new Date();
@@ -49,8 +48,6 @@
         });
 
         if (!eventRow) return null;
-
-        console.log("Selected event row:", eventRow);
 
         return {
           name: eventRow[headers.indexOf("Event Name")] || "Unnamed Event",
@@ -68,10 +65,6 @@
       }
     }
 
-    function inBox(lat, lng, ev) {
-      return lat >= ev.latMin && lat <= ev.latMax && lng >= ev.lngMin && lng <= ev.lngMax;
-    }
-
     function alreadySubmitted(eventName) {
       return localStorage.getItem("submitted_" + eventName) === "true";
     }
@@ -80,9 +73,21 @@
       localStorage.setItem("submitted_" + eventName, "true");
     }
 
-    // ------------------------------
-    // REAL GPS WITH RETRY
-    // ------------------------------
+    function inBox(lat, lng, ev) {
+      const inside = lat >= ev.latMin && lat <= ev.latMax && lng >= ev.lngMin && lng <= ev.lngMax;
+
+      // Debug info
+      const debugEl = document.getElementById("debug");
+      debugEl.innerHTML = `
+        Your GPS: ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
+        Event Lat: ${ev.latMin} → ${ev.latMax}<br>
+        Event Lng: ${ev.lngMin} → ${ev.lngMax}<br>
+        Inside event box? <b>${inside}</b>
+      `;
+
+      return inside;
+    }
+
     async function attemptCheckIn(retries = 10, delay = 1000) {
       for (let i = 0; i < retries; i++) {
         if (!navigator.geolocation) {
@@ -100,9 +105,6 @@
             document.getElementById("status").innerText = "No event scheduled right now.";
             return;
           }
-
-          console.log("GPS coords:", lat, lng);
-          console.log("Event data:", event);
 
           if (!inBox(lat, lng, event)) {
             document.getElementById("status").innerText = "You are not at the correct location.";
@@ -132,7 +134,6 @@
           console.warn("GPS not ready yet, retrying...", err);
         });
 
-        // wait before next retry
         await new Promise(res => setTimeout(res, delay));
       }
 

@@ -16,41 +16,49 @@
   </div>
 
   <script>
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKTWEbVoSyYdw6wVVbIuql9hb_NoAt7jcLoFfKI2PCz9UA3z8PJwkrWcFDjbEbGj9FVb_R_6r2Y2es/pub?output=csv"; // CSV link
+    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKTWEbVoSyYdw6wVVbIuql9hb_NoAt7jcLoFfKI2PCz9UA3z8PJwkrWcFDjbEbGj9FVb_R_6r2Y2es/pub?output=csv";
 
     async function getEventData() {
-      const res = await fetch(sheetUrl);
-      const text = await res.text();
-      const rows = text.trim().split("\n").map(r => r.split(","));
-      const headers = rows[0].map(h => h.trim());
-      const today = new Date().toISOString().split("T")[0];
+      try {
+        const res = await fetch(sheetUrl);
+        const text = await res.text();
+        const rows = text.trim().split("\n").map(r => r.split(","));
+        const headers = rows[0].map(h => h.trim());
+        const today = new Date().toISOString().split("T")[0];
 
-      // Temporary: pick first row for testing
-      const eventRow = rows[1];
-      console.log("Selected event row:", eventRow);
+        // TEMP: pick first row for testing
+        const eventRow = rows[1];
+        console.log("Selected event row:", eventRow);
 
-      return {
-        name: eventRow[headers.indexOf("Event Name")].trim(),
-        latMin: parseFloat(eventRow[headers.indexOf("Lat Min")].trim()),
-        latMax: parseFloat(eventRow[headers.indexOf("Lat Max")].trim()),
-        lngMin: parseFloat(eventRow[headers.indexOf("Lng Min")].trim()),
-        lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")].trim()),
-        start: eventRow[headers.indexOf("Start Time")].trim(),
-        end: eventRow[headers.indexOf("End Time")].trim()
-      };
+        return {
+          name: eventRow[headers.indexOf("Event Name")].trim(),
+          latMin: parseFloat(eventRow[headers.indexOf("Lat Min")].trim()),
+          latMax: parseFloat(eventRow[headers.indexOf("Lat Max")].trim()),
+          lngMin: parseFloat(eventRow[headers.indexOf("Lng Min")].trim()),
+          lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")].trim()),
+          start: eventRow[headers.indexOf("Start Time")].trim(),
+          end: eventRow[headers.indexOf("End Time")].trim()
+        };
+      } catch (err) {
+        console.error("Error fetching CSV:", err);
+        document.getElementById("status").innerText = "Failed to load event data.";
+        return null;
+      }
     }
 
     function inBox(lat, lng, ev) {
-      // Numeric comparison ensures strings from CSV don't break it
       return lat >= ev.latMin && lat <= ev.latMax && lng >= ev.lngMin && lng <= ev.lngMax;
     }
 
     navigator.geolocation.getCurrentPosition(async pos => {
+      console.log("Geolocation success!", pos.coords.latitude, pos.coords.longitude);
       const lat = pos.coords.latitude;
       const lng = pos.coords.longitude;
       const now = new Date();
 
       const event = await getEventData();
+      console.log("Event data:", event);
+
       if (!event) {
         document.getElementById("status").innerText = "No event scheduled today.";
         return;
@@ -59,7 +67,20 @@
       const start = new Date(event.start);
       const end = new Date(event.end);
 
-      // TEMPORARY: skip time check for testing location
+      // TEMP: skip time check for testing location
       if (inBox(lat, lng, event)) {
         document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
-        const jotf
+        const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}&eventStart=${event.start}&eventEnd=${event.end}`;
+        document.getElementById("jotformFrame").src = jotformUrl;
+        document.getElementById("formContainer").style.display = "block";
+      } else {
+        document.getElementById("status").innerText = "You are not at the correct location.";
+      }
+
+    }, error => {
+      console.error("Geolocation error:", error);
+      document.getElementById("status").innerText = `Location error: ${error.message}`;
+    });
+  </script>
+</body>
+</html>

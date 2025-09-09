@@ -72,7 +72,6 @@
       return lat >= ev.latMin && lat <= ev.latMax && lng >= ev.lngMin && lng <= ev.lngMax;
     }
 
-    // Check if user already submitted (one-time check using localStorage)
     function alreadySubmitted(eventName) {
       return localStorage.getItem("submitted_" + eventName) === "true";
     }
@@ -82,52 +81,65 @@
     }
 
     // ------------------------------
-    // REAL GPS
+    // REAL GPS WITH RETRY
     // ------------------------------
-    navigator.geolocation.getCurrentPosition(async pos => {
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
-      const now = new Date();
+    async function attemptCheckIn(retries = 10, delay = 1000) {
+      for (let i = 0; i < retries; i++) {
+        if (!navigator.geolocation) {
+          document.getElementById("status").innerText = "Geolocation not supported by your browser.";
+          return;
+        }
 
-      const event = await getEventData();
-      if (!event) {
-        document.getElementById("status").innerText = "No event scheduled right now.";
-        return;
+        navigator.geolocation.getCurrentPosition(async pos => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const now = new Date();
+
+          const event = await getEventData();
+          if (!event) {
+            document.getElementById("status").innerText = "No event scheduled right now.";
+            return;
+          }
+
+          console.log("GPS coords:", lat, lng);
+          console.log("Event data:", event);
+
+          if (!inBox(lat, lng, event)) {
+            document.getElementById("status").innerText = "You are not at the correct location.";
+            return;
+          }
+
+          const start = new Date(event.start);
+          const end = new Date(event.end);
+
+          if (now < start || now > end) {
+            document.getElementById("status").innerText = "You are not within the check-in time window.";
+            return;
+          }
+
+          if (alreadySubmitted(event.name)) {
+            document.getElementById("status").innerText = "You have already checked in for this event.";
+            return;
+          }
+
+          // All checks passed
+          document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
+          const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
+          document.getElementById("jotformFrame").src = jotformUrl;
+          document.getElementById("formContainer").style.display = "block";
+          markSubmitted(event.name);
+        }, err => {
+          console.warn("GPS not ready yet, retrying...", err);
+        });
+
+        // wait before next retry
+        await new Promise(res => setTimeout(res, delay));
       }
 
-      console.log("GPS coords:", lat, lng);
-      console.log("Event data:", event);
+      document.getElementById("status").innerText = "Unable to get your location. Please ensure GPS is enabled.";
+    }
 
-      if (!inBox(lat, lng, event)) {
-        document.getElementById("status").innerText = "You are not at the correct location.";
-        return;
-      }
-
-      const start = new Date(event.start);
-      const end = new Date(event.end);
-
-      if (now < start || now > end) {
-        document.getElementById("status").innerText = "You are not within the check-in time window.";
-        return;
-      }
-
-      if (alreadySubmitted(event.name)) {
-        document.getElementById("status").innerText = "You have already checked in for this event.";
-        return;
-      }
-
-      // Allow check-in
-      document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
-      const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
-      document.getElementById("jotformFrame").src = jotformUrl;
-      document.getElementById("formContainer").style.display = "block";
-
-      // Mark as submitted
-      markSubmitted(event.name);
-
-    }, () => {
-      document.getElementById("status").innerText = "Location access denied. Please enable GPS.";
-    });
+    attemptCheckIn();
   </script>
 </body>
 </html>

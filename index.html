@@ -6,13 +6,11 @@
     body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
     #formContainer { display: none; margin-top: 20px; }
     iframe { width: 100%; height: 800px; border: none; }
-    #debug { margin-top: 20px; font-size: 14px; color: darkblue; }
   </style>
 </head>
 <body>
   <h2>Aggie Points Check-In</h2>
-  <p id="status">Starting...</p>
-  <div id="debug"></div>
+  <p id="status">Checking your location...</p>
   <div id="formContainer">
     <iframe id="jotformFrame"></iframe>
   </div>
@@ -22,24 +20,12 @@
 
     async function getEventData() {
       try {
-        document.getElementById("status").innerText = "Fetching event data...";
         const res = await fetch(sheetUrl);
         const text = await res.text();
-
-        const rows = text
-          .trim()
-          .split("\n")
-          .map(r => r.split(",").map(c => c.trim()))
-          .filter(r => r.length > 1);
-
-        if (rows.length < 2) {
-          console.error("No event rows found in CSV!");
-          return null;
-        }
+        const rows = text.trim().split("\n").map(r => r.split(",").map(c => c.trim()));
+        if (rows.length < 2) return null;
 
         const headers = rows[0];
-
-        // Find first event whose start/end time includes now
         const now = new Date();
         const eventRow = rows.slice(1).find(r => {
           const start = new Date(r[headers.indexOf("Start Time")]);
@@ -51,10 +37,10 @@
 
         return {
           name: eventRow[headers.indexOf("Event Name")] || "Unnamed Event",
-          latMin: parseFloat(eventRow[headers.indexOf("Lat Min")] || 0),
-          latMax: parseFloat(eventRow[headers.indexOf("Lat Max")] || 0),
-          lngMin: parseFloat(eventRow[headers.indexOf("Lng Min")] || 0),
-          lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")] || 0),
+          latMin: parseFloat(eventRow[headers.indexOf("Lat Min")]),
+          latMax: parseFloat(eventRow[headers.indexOf("Lat Max")]),
+          lngMin: parseFloat(eventRow[headers.indexOf("Lng Min")]),
+          lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")]),
           start: eventRow[headers.indexOf("Start Time")],
           end: eventRow[headers.indexOf("End Time")]
         };
@@ -74,73 +60,58 @@
     }
 
     function inBox(lat, lng, ev) {
-      const inside = lat >= ev.latMin && lat <= ev.latMax && lng >= ev.lngMin && lng <= ev.lngMax;
-
-      // Debug info
-      const debugEl = document.getElementById("debug");
-      debugEl.innerHTML = `
-        Your GPS: ${lat.toFixed(6)}, ${lng.toFixed(6)}<br>
-        Event Lat: ${ev.latMin} → ${ev.latMax}<br>
-        Event Lng: ${ev.lngMin} → ${ev.lngMax}<br>
-        Inside event box? <b>${inside}</b>
-      `;
-
-      return inside;
+      return lat >= ev.latMin && lat <= ev.latMax && lng >= ev.lngMin && lng <= ev.lngMax;
     }
 
-    async function attemptCheckIn(retries = 10, delay = 1000) {
-      for (let i = 0; i < retries; i++) {
-        if (!navigator.geolocation) {
-          document.getElementById("status").innerText = "Geolocation not supported by your browser.";
+    async function checkIn() {
+      if (!navigator.geolocation) {
+        document.getElementById("status").innerText = "Geolocation not supported by your browser.";
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(async pos => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        const now = new Date();
+
+        const event = await getEventData();
+        if (!event) {
+          document.getElementById("status").innerText = "No event scheduled right now.";
           return;
         }
 
-        navigator.geolocation.getCurrentPosition(async pos => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          const now = new Date();
+        if (!inBox(lat, lng, event)) {
+          document.getElementById("status").innerText = "You are not at the correct location.";
+          return;
+        }
 
-          const event = await getEventData();
-          if (!event) {
-            document.getElementById("status").innerText = "No event scheduled right now.";
-            return;
-          }
+        const start = new Date(event.start);
+        const end = new Date(event.end);
 
-          if (!inBox(lat, lng, event)) {
-            document.getElementById("status").innerText = "You are not at the correct location.";
-            return;
-          }
+        if (now < start || now > end) {
+          document.getElementById("status").innerText = "You are not within the check-in time window.";
+          return;
+        }
 
-          const start = new Date(event.start);
-          const end = new Date(event.end);
+        if (alreadySubmitted(event.name)) {
+          document.getElementById("status").innerText = "You have already checked in for this event.";
+          return;
+        }
 
-          if (now < start || now > end) {
-            document.getElementById("status").innerText = "You are not within the check-in time window.";
-            return;
-          }
+        // All checks passed
+        document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
+        const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
+        document.getElementById("jotformFrame").src = jotformUrl;
+        document.getElementById("formContainer").style.display = "block";
+        markSubmitted(event.name);
 
-          if (alreadySubmitted(event.name)) {
-            document.getElementById("status").innerText = "You have already checked in for this event.";
-            return;
-          }
-
-          // All checks passed
-          document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
-          const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
-          document.getElementById("jotformFrame").src = jotformUrl;
-          document.getElementById("formContainer").style.display = "block";
-          markSubmitted(event.name);
-        }, err => {
-          console.warn("GPS not ready yet, retrying...", err);
-        });
-
-        await new Promise(res => setTimeout(res, delay));
-      }
-
-      document.getElementById("status").innerText = "Unable to get your location. Please ensure GPS is enabled.";
+      }, err => {
+        console.error("GPS error:", err);
+        document.getElementById("status").innerText = "Unable to get your location. Please ensure GPS is enabled.";
+      });
     }
 
-    attemptCheckIn();
+    checkIn();
   </script>
 </body>
 </html>

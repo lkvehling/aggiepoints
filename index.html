@@ -20,28 +20,42 @@
 
     async function getEventData() {
       try {
+        document.getElementById("status").innerText = "Fetching event data...";
         const res = await fetch(sheetUrl);
         const text = await res.text();
-        const rows = text.trim().split("\n").map(r => r.split(","));
-        const headers = rows[0].map(h => h.trim());
 
-        const now = new Date();
-        const eventRow = rows.slice(1).find(r => {
-          const start = new Date(r[headers.indexOf("Start Time")].trim());
-          const end = new Date(r[headers.indexOf("End Time")].trim());
-          return now >= start && now <= end;
-        });
+        // Split CSV into rows, trim cells, remove empty rows
+        const rows = text
+          .trim()
+          .split("\n")
+          .map(r => r.split(",").map(c => c.trim()))
+          .filter(r => r.length > 1);
 
-        if (!eventRow) return null;
+        console.log("All rows:", rows);
+
+        if (rows.length < 2) {
+          console.error("No event rows found in CSV!");
+          return null;
+        }
+
+        const headers = rows[0];
+        console.log("Headers:", headers);
+
+        // TEMP: pick the first data row for testing
+        const eventRow = rows[1];
+        if (!eventRow) {
+          console.error("No valid event row found!");
+          return null;
+        }
+
+        console.log("Selected event row:", eventRow);
 
         return {
-          name: eventRow[headers.indexOf("Event Name")].trim(),
-          latMin: parseFloat(eventRow[headers.indexOf("Lat Min")].trim()),
-          latMax: parseFloat(eventRow[headers.indexOf("Lat Max")].trim()),
-          lngMin: parseFloat(eventRow[headers.indexOf("Lng Min")].trim()),
-          lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")].trim()),
-          start: eventRow[headers.indexOf("Start Time")].trim(),
-          end: eventRow[headers.indexOf("End Time")].trim()
+          name: eventRow[headers.indexOf("Event Name")] || "Unnamed Event",
+          latMin: parseFloat(eventRow[headers.indexOf("Lat Min")] || 0),
+          latMax: parseFloat(eventRow[headers.indexOf("Lat Max")] || 0),
+          lngMin: parseFloat(eventRow[headers.indexOf("Lng Min")] || 0),
+          lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")] || 0)
         };
       } catch (err) {
         console.error("Error fetching CSV:", err);
@@ -58,25 +72,22 @@
     // SIMULATED GPS FOR TESTING
     // ------------------------------
     (async () => {
-      const lat = 34.169976;       // Your current latitude
-      const lng = -118.636764;     // Your current longitude
-      const now = new Date();
-
-      document.getElementById("status").innerText = "Simulating location check...";
-      console.log("Simulated GPS:", lat, lng);
+      const lat = 34.169976;       // Your simulated latitude
+      const lng = -118.636764;     // Your simulated longitude
 
       const event = await getEventData();
-      console.log("Event data:", event);
-
       if (!event) {
-        document.getElementById("status").innerText = "No event scheduled for now.";
+        document.getElementById("status").innerText = "No events found in CSV.";
         return;
       }
 
-      // TEMP: skip time check for testing location
+      document.getElementById("status").innerText = "Checking location against event...";
+      console.log("Simulated GPS:", lat, lng);
+      console.log("Event data:", event);
+
       if (inBox(lat, lng, event)) {
         document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
-        const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}&eventStart=${event.start}&eventEnd=${event.end}`;
+        const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
         document.getElementById("jotformFrame").src = jotformUrl;
         document.getElementById("formContainer").style.display = "block";
       } else {

@@ -26,17 +26,20 @@
       const today = new Date().toISOString().split("T")[0];
 
       // Find event that matches today's date
-      console.log("Headers:", headers);
-      console.log("Rows:", rows);
-      console.log("Looking for date:", today);
+      const event = rows[1]; // Just pick the first data row
+      console.log("Selected event row:", event);
 
-      const event = rows.find(r => r[headers.indexOf("Start Time")]?.startsWith(today));
+      //console.log("Headers:", headers);
+      //console.log("Rows:", rows);
+      //console.log("Looking for date:", today);
 
-      if (!event) {
-        console.log("No matching event found for today.");
-        return null;
-      }
+      //const event = rows.find(r => r[headers.indexOf("Start Time")]?.startsWith(today));
 
+      //if (!event) {
+        //console.log("No matching event found for today.");
+        //return null;
+      //}
+      
 
       return {
         name: event[headers.indexOf("Event Name")],

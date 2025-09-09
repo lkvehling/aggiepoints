@@ -108,9 +108,9 @@
             lng >= lngMin && lng <= lngMax &&
             now >= start && now <= end
           ) {
-            alert(`✅ You are checked in for ${event["Event Name"]}!`);
-            // 👉 You could redirect here to JotForm if needed:
-            // window.location.href = "https://form.jotform.com/yourFormID";
+            // ✅ Redirect to Google Form after successful check
+            const formUrl = "https://docs.google.com/forms/d/e/1FAIpQLSfM1yIY8HxyGFlYkL2dkg7ZavWU6BghR5bgEH2g6L6DNUHe1g/viewform";
+            window.location.href = formUrl;
           } else {
             alert("❌ You are not at the correct location or time for this event.");
             button.disabled = false;

@@ -24,7 +24,6 @@
         const res = await fetch(sheetUrl);
         const text = await res.text();
 
-        // Split CSV into rows, trim cells, remove empty rows
         const rows = text
           .trim()
           .split("\n")
@@ -41,12 +40,15 @@
         const headers = rows[0];
         console.log("Headers:", headers);
 
-        // TEMP: pick the first data row for testing
-        const eventRow = rows[1];
-        if (!eventRow) {
-          console.error("No valid event row found!");
-          return null;
-        }
+        // Find first event whose start/end time includes now
+        const now = new Date();
+        const eventRow = rows.slice(1).find(r => {
+          const start = new Date(r[headers.indexOf("Start Time")]);
+          const end = new Date(r[headers.indexOf("End Time")]);
+          return now >= start && now <= end;
+        });
+
+        if (!eventRow) return null;
 
         console.log("Selected event row:", eventRow);
 
@@ -55,7 +57,9 @@
           latMin: parseFloat(eventRow[headers.indexOf("Lat Min")] || 0),
           latMax: parseFloat(eventRow[headers.indexOf("Lat Max")] || 0),
           lngMin: parseFloat(eventRow[headers.indexOf("Lng Min")] || 0),
-          lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")] || 0)
+          lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")] || 0),
+          start: eventRow[headers.indexOf("Start Time")],
+          end: eventRow[headers.indexOf("End Time")]
         };
       } catch (err) {
         console.error("Error fetching CSV:", err);
@@ -68,32 +72,62 @@
       return lat >= ev.latMin && lat <= ev.latMax && lng >= ev.lngMin && lng <= ev.lngMax;
     }
 
+    // Check if user already submitted (one-time check using localStorage)
+    function alreadySubmitted(eventName) {
+      return localStorage.getItem("submitted_" + eventName) === "true";
+    }
+
+    function markSubmitted(eventName) {
+      localStorage.setItem("submitted_" + eventName, "true");
+    }
+
     // ------------------------------
-    // SIMULATED GPS FOR TESTING
+    // REAL GPS
     // ------------------------------
-    (async () => {
-      const lat = 34.169976;       // Your simulated latitude
-      const lng = -118.636764;     // Your simulated longitude
+    navigator.geolocation.getCurrentPosition(async pos => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+      const now = new Date();
 
       const event = await getEventData();
       if (!event) {
-        document.getElementById("status").innerText = "No events found in CSV.";
+        document.getElementById("status").innerText = "No event scheduled right now.";
         return;
       }
 
-      document.getElementById("status").innerText = "Checking location against event...";
-      console.log("Simulated GPS:", lat, lng);
+      console.log("GPS coords:", lat, lng);
       console.log("Event data:", event);
 
-      if (inBox(lat, lng, event)) {
-        document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
-        const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
-        document.getElementById("jotformFrame").src = jotformUrl;
-        document.getElementById("formContainer").style.display = "block";
-      } else {
+      if (!inBox(lat, lng, event)) {
         document.getElementById("status").innerText = "You are not at the correct location.";
+        return;
       }
-    })();
+
+      const start = new Date(event.start);
+      const end = new Date(event.end);
+
+      if (now < start || now > end) {
+        document.getElementById("status").innerText = "You are not within the check-in time window.";
+        return;
+      }
+
+      if (alreadySubmitted(event.name)) {
+        document.getElementById("status").innerText = "You have already checked in for this event.";
+        return;
+      }
+
+      // Allow check-in
+      document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
+      const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
+      document.getElementById("jotformFrame").src = jotformUrl;
+      document.getElementById("formContainer").style.display = "block";
+
+      // Mark as submitted
+      markSubmitted(event.name);
+
+    }, () => {
+      document.getElementById("status").innerText = "Location access denied. Please enable GPS.";
+    });
   </script>
 </body>
 </html>

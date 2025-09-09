@@ -21,47 +21,28 @@
     async function getEventData() {
       const res = await fetch(sheetUrl);
       const text = await res.text();
-      const rows = text.split("\n").map(r => r.split(","));
-      const headers = rows[0];
+      const rows = text.trim().split("\n").map(r => r.split(","));
+      const headers = rows[0].map(h => h.trim());
       const today = new Date().toISOString().split("T")[0];
 
-      // Find event that matches today's date
-      const event = rows[1]; // Just pick the first data row
-      console.log("Selected event row:", event);
-
-      //console.log("Headers:", headers);
-      //console.log("Rows:", rows);
-      //console.log("Looking for date:", today);
-
-      //const event = rows.find(r => r[headers.indexOf("Start Time")]?.startsWith(today));
-
-      //if (!event) {
-        //console.log("No matching event found for today.");
-        //return null;
-      //}
-      
+      // Temporary: pick first row for testing
+      const eventRow = rows[1];
+      console.log("Selected event row:", eventRow);
 
       return {
-        name: event[headers.indexOf("Event Name")],
-        latMin: parseFloat(event[headers.indexOf("Lat Min")].trim()),
-        latMax: parseFloat(event[headers.indexOf("Lat Max")].trim()),
-        lngMin: parseFloat(event[headers.indexOf("Lng Min")].trim()),
-        lngMax: parseFloat(event[headers.indexOf("Lng Max")].trim()),
-        start: event[headers.indexOf("Start Time")],
-        end: event[headers.indexOf("End Time")]
+        name: eventRow[headers.indexOf("Event Name")].trim(),
+        latMin: parseFloat(eventRow[headers.indexOf("Lat Min")].trim()),
+        latMax: parseFloat(eventRow[headers.indexOf("Lat Max")].trim()),
+        lngMin: parseFloat(eventRow[headers.indexOf("Lng Min")].trim()),
+        lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")].trim()),
+        start: eventRow[headers.indexOf("Start Time")].trim(),
+        end: eventRow[headers.indexOf("End Time")].trim()
       };
     }
 
     function inBox(lat, lng, ev) {
-      function inBox(lat, lng, ev) {
-        return (
-          lat >= parseFloat(ev.latMin) &&
-          lat <= parseFloat(ev.latMax) &&
-          lng >= parseFloat(ev.lngMin) &&
-          lng <= parseFloat(ev.lngMax)
-        );
-      }
-
+      // Numeric comparison ensures strings from CSV don't break it
+      return lat >= ev.latMin && lat <= ev.latMax && lng >= ev.lngMin && lng <= ev.lngMax;
     }
 
     navigator.geolocation.getCurrentPosition(async pos => {
@@ -78,17 +59,7 @@
       const start = new Date(event.start);
       const end = new Date(event.end);
 
-      if (now >= start && now <= end && inBox(lat, lng, event)) {
+      // TEMPORARY: skip time check for testing location
+      if (inBox(lat, lng, event)) {
         document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
-        const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}&eventStart=${event.start}&eventEnd=${event.end}`;
-        document.getElementById("jotformFrame").src = jotformUrl;
-        document.getElementById("formContainer").style.display = "block";
-      } else {
-        document.getElementById("status").innerText = "You are not at the correct location or time.";
-      }
-    }, () => {
-      document.getElementById("status").innerText = "Location access denied. Please enable GPS.";
-    });
-  </script>
-</body>
-</html>
+        const jotf

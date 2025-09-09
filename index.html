@@ -43,10 +43,10 @@
 
       return {
         name: event[headers.indexOf("Event Name")],
-        latMin: parseFloat(event[headers.indexOf("Lat Min")]),
-        latMax: parseFloat(event[headers.indexOf("Lat Max")]),
-        lngMin: parseFloat(event[headers.indexOf("Lng Min")]),
-        lngMax: parseFloat(event[headers.indexOf("Lng Max")]),
+        latMin: parseFloat(event[headers.indexOf("Lat Min")].trim()),
+        latMax: parseFloat(event[headers.indexOf("Lat Max")].trim()),
+        lngMin: parseFloat(event[headers.indexOf("Lng Min")].trim()),
+        lngMax: parseFloat(event[headers.indexOf("Lng Max")].trim()),
         start: event[headers.indexOf("Start Time")],
         end: event[headers.indexOf("End Time")]
       };

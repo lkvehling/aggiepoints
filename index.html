@@ -1,114 +1,154 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <title>Aggie Points Check-In</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AggiePoints Check-in</title>
   <style>
-    body { font-family: Arial, sans-serif; text-align: center; margin-top: 40px; }
-    #formContainer { display: none; margin-top: 20px; }
-    iframe { width: 100%; height: 800px; border: none; }
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      padding: 20px;
+    }
+    #status {
+      margin: 20px 0;
+      font-weight: bold;
+    }
+    #formContainer {
+      display: none;
+      margin-top: 20px;
+    }
+    iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+      border-radius: 8px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+    }
   </style>
 </head>
 <body>
-  <h2>Aggie Points Check-In</h2>
-  <p id="status">Checking your location...</p>
+  <h1>AggiePoints Check-in</h1>
+  <p id="status">Fetching event data...</p>
+
   <div id="formContainer">
     <iframe id="jotformFrame"></iframe>
   </div>
 
   <script>
-    const sheetUrl = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKTWEbVoSyYdw6wVVbIuql9hb_NoAt7jcLoFfKI2PCz9UA3z8PJwkrWcFDjbEbGj9FVb_R_6r2Y2es/pub?output=csv";
+    const CSV_URL = "events.csv"; // replace with your actual CSV path
 
-    async function getEventData() {
-      try {
-        const res = await fetch(sheetUrl);
-        const text = await res.text();
-        const rows = text.trim().split("\n").map(r => r.split(",").map(c => c.trim()));
-        if (rows.length < 2) return null;
-
-        const headers = rows[0];
-        const now = new Date();
-        const eventRow = rows.slice(1).find(r => {
-          const start = new Date(r[headers.indexOf("Start Time")]);
-          const end = new Date(r[headers.indexOf("End Time")]);
-          return now >= start && now <= end;
-        });
-
-        if (!eventRow) return null;
-
-        return {
-          name: eventRow[headers.indexOf("Event Name")] || "Unnamed Event",
-          latMin: parseFloat(eventRow[headers.indexOf("Lat Min")]),
-          latMax: parseFloat(eventRow[headers.indexOf("Lat Max")]),
-          lngMin: parseFloat(eventRow[headers.indexOf("Lng Min")]),
-          lngMax: parseFloat(eventRow[headers.indexOf("Lng Max")]),
-          start: eventRow[headers.indexOf("Start Time")],
-          end: eventRow[headers.indexOf("End Time")]
-        };
-      } catch (err) {
-        console.error("Error fetching CSV:", err);
-        document.getElementById("status").innerText = "Failed to load event data.";
-        return null;
-      }
+    async function fetchCSV() {
+      const response = await fetch(CSV_URL);
+      const text = await response.text();
+      return text.split("\n").map(row => row.split(","));
     }
 
-    function alreadySubmitted(eventName) {
-      return localStorage.getItem("submitted_" + eventName) === "true";
+    function parseEvent(row, headers) {
+      return {
+        name: row[0],
+        latMin: parseFloat(row[1]),
+        latMax: parseFloat(row[2]),
+        lngMin: parseFloat(row[3]),
+        lngMax: parseFloat(row[4]),
+        start: new Date(row[5]),
+        end: new Date(row[6])
+      };
     }
 
     function markSubmitted(eventName) {
       localStorage.setItem("submitted_" + eventName, "true");
     }
 
-    function inBox(lat, lng, ev) {
-      return lat >= ev.latMin && lat <= ev.latMax && lng >= ev.lngMin && lng <= ev.lngMax;
+    function alreadySubmitted(eventName) {
+      return localStorage.getItem("submitted_" + eventName) === "true";
+    }
+
+    function loadForm(event) {
+      const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
+      const iframe = document.getElementById("jotformFrame");
+
+      iframe.src = jotformUrl;
+      document.getElementById("formContainer").style.display = "block";
+
+      // Watch for the JotForm thank-you page
+      iframe.onload = function () {
+        try {
+          if (iframe.contentWindow.location.href.includes("thankyou")) {
+            markSubmitted(event.name);
+            document.getElementById("status").innerText = `✅ Successfully checked in for ${event.name}`;
+          }
+        } catch (e) {
+          // fallback if cross-origin blocks
+          if (iframe.src.includes("thankyou")) {
+            markSubmitted(event.name);
+            document.getElementById("status").innerText = `✅ Successfully checked in for ${event.name}`;
+          }
+        }
+      };
     }
 
     async function checkIn() {
-      const event = await getEventData();
-      if (!event) {
-        document.getElementById("status").innerText = "No event scheduled right now.";
-        return;
-      }
+      try {
+        const rows = await fetchCSV();
+        const headers = rows[0];
+        const dataRows = rows.slice(1);
 
-      if (!navigator.geolocation) {
-        document.getElementById("status").innerText = "Geolocation not supported by your browser.";
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
         const now = new Date();
+        const eventRow = dataRows.find(row => {
+          const event = parseEvent(row, headers);
+          return now >= event.start && now <= event.end;
+        });
 
-        if (!inBox(lat, lng, event)) {
-          document.getElementById("status").innerText = "You are not at the correct location.";
+        if (!eventRow) {
+          document.getElementById("status").innerText = "❌ No scheduled event right now.";
           return;
         }
 
-        const start = new Date(event.start);
-        const end = new Date(event.end);
+        const event = parseEvent(eventRow, headers);
 
-        if (now < start || now > end) {
-          document.getElementById("status").innerText = "You are not within the check-in time window.";
+        // Get GPS
+        if (!navigator.geolocation) {
+          document.getElementById("status").innerText = "❌ Geolocation not supported.";
           return;
         }
 
-        if (alreadySubmitted(event.name)) {
-          document.getElementById("status").innerText = "You have already checked in for this event.";
-          return;
-        }
+        navigator.geolocation.getCurrentPosition(
+          position => {
+            const lat = position.coords.latitude;
+            const lng = position.coords.longitude;
 
-        // All checks passed
-        document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
-        const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
-        document.getElementById("jotformFrame").src = jotformUrl;
-        document.getElementById("formContainer").style.display = "block";
-        markSubmitted(event.name);
+            const withinBounds =
+              lat >= event.latMin &&
+              lat <= event.latMax &&
+              lng >= event.lngMin &&
+              lng <= event.lngMax;
 
-      }, err => {
-        console.error("GPS error:", err);
-        document.getElementById("status").innerText = "Unable to get your location. Please ensure GPS is enabled.";
-      });
+            if (!withinBounds) {
+              document.getElementById("status").innerText =
+                "❌ You are not at the correct event location.";
+              return;
+            }
+
+            if (alreadySubmitted(event.name)) {
+              document.getElementById("status").innerText =
+                `✅ Already checked in for ${event.name}.`;
+              return;
+            }
+
+            document.getElementById("status").innerText =
+              `📍 Correct location detected for ${event.name}. Please complete the form.`;
+
+            loadForm(event);
+          },
+          () => {
+            document.getElementById("status").innerText =
+              "❌ Unable to get location. Please ensure GPS is enabled.";
+          }
+        );
+      } catch (err) {
+        document.getElementById("status").innerText = "❌ Error fetching event data.";
+      }
     }
 
     checkIn();

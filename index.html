@@ -64,21 +64,21 @@
     }
 
     async function checkIn() {
-      const event = await getEventData();
-      if (!event) {
-        document.getElementById("status").innerText = "No event scheduled right now.";
-        return;
-      }
-
       if (!navigator.geolocation) {
         document.getElementById("status").innerText = "Geolocation not supported by your browser.";
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(pos => {
+      navigator.geolocation.getCurrentPosition(async pos => {
         const lat = pos.coords.latitude;
         const lng = pos.coords.longitude;
         const now = new Date();
+
+        const event = await getEventData();
+        if (!event) {
+          document.getElementById("status").innerText = "No event scheduled right now.";
+          return;
+        }
 
         if (!inBox(lat, lng, event)) {
           document.getElementById("status").innerText = "You are not at the correct location.";
@@ -100,7 +100,8 @@
 
         // All checks passed
         document.getElementById("status").innerText = `Welcome! Checking you into ${event.name}`;
-        document.getElementById("jotformFrame").src = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
+        const jotformUrl = `https://form.jotform.com/252508114551046?eventName=${encodeURIComponent(event.name)}`;
+        document.getElementById("jotformFrame").src = jotformUrl;
         document.getElementById("formContainer").style.display = "block";
         markSubmitted(event.name);
 

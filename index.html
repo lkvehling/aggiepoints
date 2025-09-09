@@ -71,8 +71,8 @@
         card.innerHTML = `
           <div class="event-title">${event["Event Name"]}</div>
           <div><strong>Time:</strong> ${event["Start Time"]} → ${event["End Time"]}</div>
-          <div><strong>Lat Range:</strong> ${event["Lat Min"]} - ${event["Lat Max"]}</div>
-          <div><strong>Lng Range:</strong> ${event["Lng Min"]} - ${event["Lng Max"]}</div>
+          ${event["Location"] ? `<div><strong>Location:</strong> ${event["Location"]}</div>` : ""}
+          ${event["Points"] ? `<div><strong>Points:</strong> ${event["Points"]}</div>` : ""}
         `;
 
         const btn = document.createElement("button");

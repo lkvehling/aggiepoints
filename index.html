@@ -53,8 +53,15 @@
     }
 
     function inBox(lat, lng, ev) {
-      return (lat >= ev.latMin && lat <= ev.latMax &&
-              lng >= ev.lngMin && lng <= ev.lngMax);
+      function inBox(lat, lng, ev) {
+        return (
+          lat >= parseFloat(ev.latMin) &&
+          lat <= parseFloat(ev.latMax) &&
+          lng >= parseFloat(ev.lngMin) &&
+          lng <= parseFloat(ev.lngMax)
+        );
+      }
+
     }
 
     navigator.geolocation.getCurrentPosition(async pos => {

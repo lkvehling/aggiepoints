@@ -1,112 +1,120 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AggiePoints Check-In</title>
+  <meta charset="UTF-8">
+  <title>Aggie Points Check-In</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .event-card { 
+      border: 1px solid #ccc; 
+      border-radius: 8px; 
+      padding: 15px; 
+      margin-bottom: 15px; 
     }
-    .event-card {
-      border: 1px solid #ccc;
-      border-radius: 8px;
-      padding: 15px;
-      margin-bottom: 15px;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-    .event-title {
-      font-size: 1.2em;
-      font-weight: bold;
-    }
+    .event-card h3 { margin: 0 0 10px 0; }
+    .event-info { margin: 5px 0; }
     button {
-      margin-top: 10px;
-      padding: 8px 12px;
-      border: none;
-      border-radius: 6px;
-      background-color: #0066cc;
+      padding: 8px 14px;
+      background: #0066cc;
       color: white;
+      border: none;
+      border-radius: 5px;
       cursor: pointer;
     }
-    button:disabled {
-      background-color: #aaa;
-      cursor: not-allowed;
-    }
+    button:disabled { background: #aaa; cursor: not-allowed; }
   </style>
 </head>
 <body>
-  <h1>Today's Events</h1>
+  <h1>Event Check-In</h1>
   <div id="events"></div>
 
   <script>
-    const CSV_URL = "YOUR_CSV_FILE_URL_HERE"; // replace with your CSV file link
-    const formURL = "https://form.jotform.com/YOUR_FORM_ID"; // replace with your Jotform
+    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKTWEbVoSyYdw6wVVbIuql9hb_NoAt7jcLoFfKI2PCz9UA3z8PJwkrWcFDjbEbGj9FVb_R_6r2Y2es/pub?gid=0&single=true&output=csv";
 
-    async function loadEvents() {
+    async function fetchEvents() {
       const res = await fetch(CSV_URL);
       const text = await res.text();
       const rows = text.trim().split("\n").map(r => r.split(","));
-
       const headers = rows[0].map(h => h.trim());
-      const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-      const eventsToday = rows.slice(1).map(r => {
-        const obj = {};
-        headers.forEach((h, i) => obj[h] = r[i].trim());
+      const events = rows.slice(1).map(r => {
+        let obj = {};
+        r.forEach((val, i) => { obj[headers[i]] = val.trim(); });
         return obj;
-      }).filter(e => e["Start Time"].startsWith(today));
+      });
+      return events;
+    }
 
+    function renderEvents(events) {
       const container = document.getElementById("events");
       container.innerHTML = "";
 
-      if (eventsToday.length === 0) {
-        container.innerHTML = "<p>No events scheduled for today.</p>";
+      if (events.length === 0) {
+        container.innerHTML = "<p>No events found.</p>";
         return;
       }
 
-      eventsToday.forEach((event, idx) => {
+      events.forEach(event => {
         const card = document.createElement("div");
         card.className = "event-card";
 
         card.innerHTML = `
-          <div class="event-title">${event["Event Name"]}</div>
-          <div><strong>Time:</strong> ${event["Start Time"]} → ${event["End Time"]}</div>
-          ${event["Location"] ? `<div><strong>Location:</strong> ${event["Location"]}</div>` : ""}
-          ${event["Points"] ? `<div><strong>Points:</strong> ${event["Points"]}</div>` : ""}
+          <h3>${event["Event Name"]}</h3>
+          <div class="event-info"><b>Location:</b> ${event["Location"] || "N/A"}</div>
+          <div class="event-info"><b>Points:</b> ${event["Points"] || "0"}</div>
+          <div class="event-info"><b>Start:</b> ${new Date(event["Start Time"]).toLocaleString()}</div>
+          <div class="event-info"><b>End:</b> ${new Date(event["End Time"]).toLocaleString()}</div>
+          <button>Check In</button>
         `;
 
-        const btn = document.createElement("button");
-        btn.textContent = "Check In";
-        btn.onclick = () => checkIn(event);
-        card.appendChild(btn);
+        const button = card.querySelector("button");
+        button.addEventListener("click", () => attemptCheckIn(event, button));
 
         container.appendChild(card);
       });
     }
 
-    function checkIn(event) {
-      navigator.geolocation.getCurrentPosition(pos => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
+    function attemptCheckIn(event, button) {
+      button.disabled = true;
+      button.textContent = "Checking...";
 
-        const latMin = parseFloat(event["Lat Min"]);
-        const latMax = parseFloat(event["Lat Max"]);
-        const lngMin = parseFloat(event["Lng Min"]);
-        const lngMax = parseFloat(event["Lng Max"]);
+      navigator.geolocation.getCurrentPosition(
+        pos => {
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
 
-        if (lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax) {
-          // ✅ Open Jotform prefilled with event name
-          const url = `${formURL}?event=${encodeURIComponent(event["Event Name"])}`;
-          window.open(url, "_blank");
-        } else {
-          alert("❌ You are not at the correct event location.");
+          const latMin = parseFloat(event["Lat Min"]);
+          const latMax = parseFloat(event["Lat Max"]);
+          const lngMin = parseFloat(event["Lng Min"]);
+          const lngMax = parseFloat(event["Lng Max"]);
+
+          const now = new Date();
+          const start = new Date(event["Start Time"]);
+          const end = new Date(event["End Time"]);
+
+          if (
+            lat >= latMin && lat <= latMax &&
+            lng >= lngMin && lng <= lngMax &&
+            now >= start && now <= end
+          ) {
+            alert(`✅ You are checked in for ${event["Event Name"]}!`);
+            // 👉 Here you could redirect to JotForm or log submission
+            // window.location.href = "https://form.jotform.com/yourFormID";
+          } else {
+            alert("❌ You are not at the correct location or time for this event.");
+            button.disabled = false;
+            button.textContent = "Check In";
+          }
+        },
+        err => {
+          alert("⚠️ Unable to get location. Please enable GPS.");
+          button.disabled = false;
+          button.textContent = "Check In";
         }
-      }, () => {
-        alert("Unable to get your location. Please enable GPS.");
-      });
+      );
     }
 
-    loadEvents();
+    // Load events on page
+    fetchEvents().then(renderEvents);
   </script>
 </body>
 </html>

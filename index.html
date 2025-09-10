@@ -9,6 +9,7 @@
     header, footer { margin-bottom: 20px; }
     .event { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
     .msg { color: green; margin-top: 5px; }
+    button { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -28,14 +29,18 @@
   </footer>
 
   <script>
-    // Supabase credentials
+    // -------------------------------
+    // Initialize Supabase
+    // -------------------------------
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
     const SUPABASE_KEY = "YOUR_ANON_KEY_HERE"; // replace with your anon key
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentUser = null;
 
-    // Load logged-in user
+    // -------------------------------
+    // Get logged-in user
+    // -------------------------------
     async function getUser() {
       const { data: { user }, error } = await supabase.auth.getUser();
       if (error || !user) {
@@ -47,20 +52,23 @@
       return user;
     }
 
+    // -------------------------------
     // Load today’s events
+    // -------------------------------
     async function loadEvents() {
       const user = await getUser();
       if (!user) return;
 
-      const today = new Date();
-      const start = new Date(today.setHours(0,0,0,0)).toISOString();
-      const end = new Date(today.setHours(23,59,59,999)).toISOString();
+      const todayStart = new Date();
+      todayStart.setHours(0,0,0,0);
+      const todayEnd = new Date();
+      todayEnd.setHours(23,59,59,999);
 
       const { data: events, error } = await supabase
         .from("events")
         .select("*")
-        .gte("start_time", start)
-        .lte("end_time", end)
+        .gte("start_time", todayStart.toISOString())
+        .lte("end_time", todayEnd.toISOString())
         .order("start_time", { ascending: true });
 
       const container = document.getElementById("events");
@@ -92,7 +100,9 @@
       });
     }
 
-    // Check in function
+    // -------------------------------
+    // Check-in logic
+    // -------------------------------
     async function checkIn(eventId) {
       if (!currentUser) {
         alert("You must be logged in to check in!");
@@ -116,7 +126,9 @@
       }
     }
 
+    // -------------------------------
     // Initialize page
+    // -------------------------------
     loadEvents();
   </script>
 

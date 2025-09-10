@@ -20,13 +20,20 @@
     <input type="password" id="password" placeholder="Password" required><br>
     <button onclick="login()">Log In</button>
     <p id="message" class="msg"></p>
+    <p>Don't have an account? <a href="register.html">Register here</a></p>
   </div>
 
   <script>
+    // -------------------------------
+    // 1️⃣ Initialize Supabase
+    // -------------------------------
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "YOUR_ANON_KEY_HERE"; // replace with your anon key
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
+    // -------------------------------
+    // 2️⃣ Login function
+    // -------------------------------
     async function login() {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
@@ -38,15 +45,22 @@
         return;
       }
 
-      const { data, error } = await supabaseClient.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
+      });
 
       if (error) {
         msgEl.textContent = "❌ " + error.message;
       } else {
-        window.location.href = "index.html"; // redirect back to main page
+        // Redirect to main Aggie Points page after successful login
+        window.location.href = "index.html";
       }
     }
 
+    // -------------------------------
+    // 3️⃣ Auto-redirect if already logged in
+    // -------------------------------
     supabaseClient.auth.getUser().then(({ data: { user } }) => {
       if (user) {
         window.location.href = "index.html";

@@ -1,117 +1,115 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
   <meta charset="UTF-8">
   <title>Aggie Points Register</title>
-  <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 50px; text-align: center; }
-    input, select { padding: 10px; margin: 5px; width: 250px; }
-    button { padding: 10px 20px; cursor: pointer; }
-    .msg { margin-top: 10px; color: red; }
+    body { font-family: Arial, sans-serif; margin: 40px; max-width: 500px; }
+    input, select { width: 100%; padding: 8px; margin: 8px 0; }
+    button { padding: 10px 15px; margin-top: 10px; cursor: pointer; }
   </style>
 </head>
 <body>
+  <h1>Register for Aggie Points</h1>
 
-  <h1>Aggie Points Registration</h1>
+  <label for="name">Full Name</label>
+  <input type="text" id="name" placeholder="Your name" required>
 
-  <div>
-    <input type="text" id="name" placeholder="Full Name" required><br>
-    <input type="text" id="studentId" placeholder="Student ID" required><br>
+  <label for="email">Email</label>
+  <input type="email" id="email" placeholder="Your email" required>
 
-    <!-- Team dropdown -->
-    <select id="team" required>
-      <option value="" disabled selected>Select your team</option>
-      <option value="Baseball">Baseball</option>
-      <option value="Men’s Basketball">Men’s Basketball</option>
-      <option value="Women’s Basketball">Women’s Basketball</option>
-      <option value="Beach Volleyball">Beach Volleyball</option>
-      <option value="Men’s Cross Country">Men’s Cross Country</option>
-      <option value="Women’s Cross Country">Women’s Cross Country</option>
-      <option value="Equestrian">Equestrian</option>
-      <option value="Field Hockey">Field Hockey</option>
-      <option value="Football">Football</option>
-      <option value="Men’s Golf">Men’s Golf</option>
-      <option value="Women’s Golf">Women’s Golf</option>
-      <option value="Gymnastics">Gymnastics</option>
-      <option value="Lacrosse">Lacrosse</option>
-      <option value="Men’s Soccer">Men’s Soccer</option>
-      <option value="Women’s Soccer">Women’s Soccer</option>
-      <option value="Softball">Softball</option>
-      <option value="Swim & Dive">Swim & Dive</option>
-      <option value="Men’s Tennis">Men’s Tennis</option>
-      <option value="Women’s Tennis">Women’s Tennis</option>
-      <option value="Men’s Track & Field">Men’s Track & Field</option>
-      <option value="Women’s Track & Field">Women’s Track & Field</option>
-      <option value="Volleyball">Volleyball</option>
-      <option value="Men’s Water Polo">Men’s Water Polo</option>
-      <option value="Women’s Water Polo">Women’s Water Polo</option>
-    </select><br>
+  <label for="password">Password</label>
+  <input type="password" id="password" placeholder="Password" required>
 
-    <!-- Graduation Year dropdown -->
-    <select id="year" required>
-      <option value="" disabled selected>Select your graduation year</option>
-      <option value="2025">2025</option>
-      <option value="2026">2026</option>
-      <option value="2027">2027</option>
-      <option value="2028">2028</option>
-      <option value="2029">2029</option>
-      <option value="2030">2030</option>
-    </select><br>
+  <label for="studentId">Student ID</label>
+  <input type="text" id="studentId" placeholder="Student ID" required>
 
-    <input type="email" id="email" placeholder="Email" required><br>
-    <input type="password" id="password" placeholder="Password" required><br>
+  <label for="team">Team</label>
+  <select id="team" required>
+    <option value="">Select your team</option>
+    <option>Baseball</option>
+    <option>Men’s Basketball</option>
+    <option>Women’s Basketball</option>
+    <option>Beach Volleyball</option>
+    <option>Men’s Cross Country</option>
+    <option>Women’s Cross Country</option>
+    <option>Equestrian</option>
+    <option>Field Hockey</option>
+    <option>Football</option>
+    <option>Men’s Golf</option>
+    <option>Women’s Golf</option>
+    <option>Gymnastics</option>
+    <option>Lacrosse</option>
+    <option>Men’s Soccer</option>
+    <option>Women’s Soccer</option>
+    <option>Softball</option>
+    <option>Swim & Dive</option>
+    <option>Men’s Tennis</option>
+    <option>Women’s Tennis</option>
+    <option>Men’s Track & Field</option>
+    <option>Women’s Track & Field</option>
+    <option>Volleyball</option>
+    <option>Men’s Water Polo</option>
+    <option>Women’s Water Polo</option>
+  </select>
 
-    <button onclick="register()">Register</button>
-    <p id="message" class="msg"></p>
-    <p>Already have an account? <a href="login.html">Login here</a></p>
-  </div>
+  <label for="year">Graduation Year</label>
+  <select id="year" required>
+    <option value="">Select year</option>
+    <option>2025</option>
+    <option>2026</option>
+    <option>2027</option>
+    <option>2028</option>
+    <option>2029</option>
+    <option>2030</option>
+  </select>
 
+  <button onclick="register()">Register</button>
+
+  <!-- Supabase JS -->
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <script>
+    // Initialize Supabase (load before using)
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     async function register() {
       const name = document.getElementById("name").value;
-      const studentId = document.getElementById("studentId").value;
-      const team = document.getElementById("team").value;
-      const year = parseInt(document.getElementById("year").value);
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
-      const msgEl = document.getElementById("message");
-      msgEl.style.color = "red";
-      msgEl.textContent = "";
+      const studentId = document.getElementById("studentId").value;
+      const team = document.getElementById("team").value;
+      const year = document.getElementById("year").value;
 
-      if (!name || !studentId || !team || !year || !email || !password) {
-        msgEl.textContent = "Please fill out all fields.";
-        return;
+      if (!name || !email || !password || !studentId || !team || !year) {
+        return alert("Please fill in all fields.");
       }
 
-      const { data: authData, error: authError } = await supabase.auth.signUp({
-        email, password
+      // 1️⃣ Sign up the user in Supabase Auth
+      const { data, error } = await supabase.auth.signUp({
+        email: email,
+        password: password
       });
 
-      if (authError) {
-        msgEl.textContent = "❌ " + authError.message;
-        return;
-      }
+      if (error) return alert("Signup error: " + error.message);
 
-      const userId = authData.user.id;
-
+      // 2️⃣ Insert user info into your 'users' table
       const { error: insertError } = await supabase
-        .from('users')
-        .insert([{ id: userId, email, name, student_id: studentId, team, year }]);
+        .from("users")
+        .insert([{
+          id: data.user.id,
+          name,
+          student_id: studentId,
+          team,
+          year
+        }]);
 
-      if (insertError) {
-        msgEl.textContent = "❌ " + insertError.message;
-        return;
-      }
+      if (insertError) return alert("Database error: " + insertError.message);
 
-      msgEl.style.color = "green";
-      msgEl.textContent = "✅ Registration successful! Please check your email to confirm and then login.";
+      alert("✅ Registration successful! Please check your email to confirm.");
+      window.location.href = "login.html";
     }
   </script>
-
 </body>
 </html>

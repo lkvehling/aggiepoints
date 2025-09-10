@@ -30,19 +30,19 @@
 
   <script>
     // -------------------------------
-    // Initialize Supabase
+    // 1️⃣ Initialize Supabase first
     // -------------------------------
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
     const SUPABASE_KEY = "YOUR_ANON_KEY_HERE"; // replace with your anon key
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     let currentUser = null;
 
     // -------------------------------
-    // Get logged-in user
+    // 2️⃣ Get logged-in user
     // -------------------------------
     async function getUser() {
-      const { data: { user }, error } = await supabase.auth.getUser();
+      const { data: { user }, error } = await supabaseClient.auth.getUser();
       if (error || !user) {
         document.getElementById("userStatus").textContent = "Not logged in.";
         return null;
@@ -53,7 +53,7 @@
     }
 
     // -------------------------------
-    // Load today’s events
+    // 3️⃣ Load today’s events
     // -------------------------------
     async function loadEvents() {
       const user = await getUser();
@@ -64,7 +64,7 @@
       const todayEnd = new Date();
       todayEnd.setHours(23,59,59,999);
 
-      const { data: events, error } = await supabase
+      const { data: events, error } = await supabaseClient
         .from("events")
         .select("*")
         .gte("start_time", todayStart.toISOString())
@@ -101,7 +101,7 @@
     }
 
     // -------------------------------
-    // Check-in logic
+    // 4️⃣ Check-in logic
     // -------------------------------
     async function checkIn(eventId) {
       if (!currentUser) {
@@ -109,7 +109,7 @@
         return;
       }
 
-      const { error } = await supabase
+      const { error } = await supabaseClient
         .from("checkins")
         .insert([{ user_id: currentUser.id, event_id: eventId }]);
 
@@ -127,7 +127,7 @@
     }
 
     // -------------------------------
-    // Initialize page
+    // 5️⃣ Initialize page
     // -------------------------------
     loadEvents();
   </script>

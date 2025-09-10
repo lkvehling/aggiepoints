@@ -2,144 +2,69 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Aggie Points Check-In</title>
+  <title>Aggie Points Login</title>
   <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 20px; }
-    header, footer { margin-bottom: 20px; }
-    .event { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
-    .msg { color: green; margin-top: 5px; }
-    button { cursor: pointer; }
+    body { font-family: Arial, sans-serif; margin: 50px; text-align: center; }
+    input { padding: 10px; margin: 5px; width: 250px; }
+    button { padding: 10px 20px; cursor: pointer; }
+    .msg { margin-top: 10px; color: red; }
   </style>
 </head>
 <body>
 
-  <header>
-    <h1>Aggie Points Check-In</h1>
-    <div id="userStatus">Checking login...</div>
-  </header>
+  <h1>Aggie Points Login</h1>
 
-  <main>
-    <h2>Today's Events</h2>
-    <div id="events">Loading events...</div>
-  </main>
-
-  <footer>
-    <p>UC Davis Women's Water Polo Team</p>
-  </footer>
+  <div>
+    <input type="email" id="email" placeholder="Email" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button onclick="login()">Log In</button>
+    <p id="message" class="msg"></p>
+  </div>
 
   <script>
     // -------------------------------
-    // 1️⃣ Initialize Supabase first
+    // 1️⃣ Initialize Supabase
     // -------------------------------
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "YOUR_ANON_KEY_HERE"; // replace with your anon key
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let currentUser = null;
-
     // -------------------------------
-    // 2️⃣ Get logged-in user or redirect
+    // 2️⃣ Login function
     // -------------------------------
-    async function getUser() {
-      const { data: { user }, error } = await supabaseClient.auth.getUser();
-      if (error || !user) {
-        window.location.href = "login"; // redirect if not logged in
-        return null;
-      }
-      currentUser = user;
-      document.getElementById("userStatus").textContent = `Logged in as: ${user.email}`;
-      return user;
-    }
+    async function login() {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const msgEl = document.getElementById("message");
+      msgEl.textContent = "";
 
-    // -------------------------------
-    // 3️⃣ Load today’s events
-    // -------------------------------
-    async function loadEvents() {
-      const user = await getUser();
-      if (!user) return;
-
-      const todayStart = new Date();
-      todayStart.setHours(0,0,0,0);
-      const todayEnd = new Date();
-      todayEnd.setHours(23,59,59,999);
-
-      const { data: events, error } = await supabaseClient
-        .from("events")
-        .select("*")
-        .gte("start_time", todayStart.toISOString())
-        .lte("end_time", todayEnd.toISOString())
-        .order("start_time", { ascending: true });
-
-      const container = document.getElementById("events");
-      container.innerHTML = "";
-
-      if (error) {
-        console.error(error);
-        container.innerHTML = "<p>Failed to load events.</p>";
+      if (!email || !password) {
+        msgEl.textContent = "Please enter email and password.";
         return;
       }
 
-      if (!events || events.length === 0) {
-        container.innerHTML = "<p>No events scheduled for today.</p>";
-        return;
-      }
-
-      events.forEach(event => {
-        const div = document.createElement("div");
-        div.classList.add("event");
-        div.innerHTML = `
-          <h3>${event.name}</h3>
-          <p>${event.location || ""}</p>
-          <p>${new Date(event.start_time).toLocaleString()} - ${new Date(event.end_time).toLocaleString()}</p>
-          <p>Points: ${event.points || 0}</p>
-          <button onclick="checkIn('${event.id}')">Check In</button>
-          <p id="msg-${event.id}" class="msg"></p>
-        `;
-        container.appendChild(div);
+      const { data, error } = await supabaseClient.auth.signInWithPassword({
+        email: email,
+        password: password
       });
-    }
-
-    // -------------------------------
-    // 4️⃣ Check-in logic
-    // -------------------------------
-    async function checkIn(eventId) {
-      if (!currentUser) {
-        alert("You must be logged in to check in!");
-        return;
-      }
-
-      const { error } = await supabaseClient
-        .from("checkins")
-        .insert([{ user_id: currentUser.id, event_id: eventId }]);
-
-      const msg = document.getElementById(`msg-${eventId}`);
 
       if (error) {
-        if (error.message.includes("duplicate")) {
-          msg.textContent = "✅ Already checked in!";
-        } else {
-          msg.textContent = "❌ Error: " + error.message;
-        }
+        msgEl.textContent = "❌ " + error.message;
       } else {
-        msg.textContent = "🎉 Successfully checked in!";
+        // redirect to main Aggie Points page
+        window.location.href = "index.html";
       }
     }
 
     // -------------------------------
-    // 5️⃣ Log out user on page close/refresh
+    // 3️⃣ Auto-redirect if already logged in
     // -------------------------------
-    window.addEventListener("beforeunload", async () => {
-      if (currentUser) {
-        await supabaseClient.auth.signOut();
-        currentUser = null;
+    supabaseClient.auth.getUser().then(({ data: { user } }) => {
+      if (user) {
+        window.location.href = "index.html";
       }
     });
-
-    // -------------------------------
-    // 6️⃣ Initialize page
-    // -------------------------------
-    loadEvents();
   </script>
 
 </body>

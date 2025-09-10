@@ -2,178 +2,133 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Aggie Points Check-In</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Event Check-In</title>
   <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <style>
-    body { font-family: Arial, sans-serif; background: #f8f9fa; margin: 0; padding: 20px; }
-    h1, h2 { text-align: center; }
+    body { font-family: Arial, sans-serif; padding: 20px; }
     .hidden { display: none; }
-    .card {
-      background: white;
-      border-radius: 12px;
-      padding: 16px;
-      margin: 10px auto;
-      max-width: 500px;
-      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-    }
-    input, button {
-      display: block;
-      width: 100%;
-      margin: 8px 0;
-      padding: 10px;
-      border-radius: 6px;
-      border: 1px solid #ccc;
-    }
-    button {
-      background: #0077cc;
-      color: white;
-      border: none;
-      cursor: pointer;
-    }
-    button:disabled { background: #aaa; cursor: not-allowed; }
+    button { padding: 10px 15px; margin-top: 10px; cursor: pointer; }
+    .event-card { border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 8px; }
   </style>
 </head>
 <body>
-  <h1>Aggie Points</h1>
+  <h1>Event Check-In</h1>
 
-  <!-- Login form -->
-  <div id="auth-section">
+  <!-- Login Section -->
+  <div id="login-section">
     <h2>Login</h2>
-    <input type="email" id="email" placeholder="Email">
-    <input type="password" id="password" placeholder="Password">
-    <button onclick="signIn()">Sign In</button>
-    <button onclick="signUp()">Register</button>
-    <p id="auth-message"></p>
+    <input type="email" id="email" placeholder="Email" /><br>
+    <input type="password" id="password" placeholder="Password" /><br>
+    <button id="login-btn">Login</button>
+    <button id="signup-btn">Sign Up</button>
+    <p id="login-message"></p>
   </div>
 
-  <!-- Events list -->
+  <!-- Events Section -->
   <div id="events-section" class="hidden">
     <h2>Today's Events</h2>
-    <div id="events"></div>
-    <button onclick="signOut()">Log Out</button>
+    <div id="events-list"></div>
   </div>
 
   <script>
-    // ✅ Supabase setup
+    // ---- Supabase Client Setup ----
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "YOUR_ANON_KEY"; // replace with your anon key
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // ✅ Google Sheet CSV link
-    const CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vRKTWEbVoSyYdw6wVVbIuql9hb_NoAt7jcLoFfKI2PCz9UA3z8PJwkrWcFDjbEbGj9FVb_R_6r2Y2es/pub?gid=0&single=true&output=csv";
+    const loginSection = document.getElementById("login-section");
+    const eventsSection = document.getElementById("events-section");
+    const loginMessage = document.getElementById("login-message");
 
-    // --- AUTH FUNCTIONS ---
-    async function signIn() {
+    // ---- Auth: Login ----
+    document.getElementById("login-btn").addEventListener("click", async () => {
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
+
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
       if (error) {
-        document.getElementById("auth-message").innerText = "❌ " + error.message;
+        loginMessage.textContent = "❌ Login failed: " + error.message;
       } else {
-        showEvents();
-      }
-    }
-
-    async function signUp() {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const { data, error } = await supabase.auth.signUp({ email, password });
-      if (error) {
-        document.getElementById("auth-message").innerText = "❌ " + error.message;
-      } else {
-        document.getElementById("auth-message").innerText = "✅ Check your email to confirm your account.";
-      }
-    }
-
-    async function signOut() {
-      await supabase.auth.signOut();
-      document.getElementById("auth-section").classList.remove("hidden");
-      document.getElementById("events-section").classList.add("hidden");
-    }
-
-    supabase.auth.onAuthStateChange((event, session) => {
-      if (session) {
-        showEvents();
+        loginMessage.textContent = "✅ Login successful!";
+        loginSection.classList.add("hidden");
+        eventsSection.classList.remove("hidden");
+        loadEvents();
       }
     });
 
-    // --- EVENTS FUNCTIONS ---
-    async function loadEvents() {
-      const res = await fetch(CSV_URL);
-      const text = await res.text();
-      const rows = text.trim().split("\n").map(r => r.split(","));
-      const headers = rows[0].map(h => h.trim());
-      const events = rows.slice(1).map(r => {
-        let obj = {};
-        headers.forEach((h, i) => obj[h] = r[i].trim());
-        return obj;
-      });
+    // ---- Auth: Sign Up ----
+    document.getElementById("signup-btn").addEventListener("click", async () => {
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
 
-      const today = new Date().toISOString().split("T")[0];
-      return events.filter(ev => ev["Start Time"].startsWith(today));
-    }
-
-    async function checkIn(event) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        alert("Please log in first.");
-        return;
-      }
-
-      const eventId = event["Event Name"];
-
-      // Check if already checked in
-      const { data: existing } = await supabase
-        .from("checkins")
-        .select("*")
-        .eq("event_id", eventId)
-        .eq("user_id", user.id);
-
-      if (existing && existing.length > 0) {
-        alert("⚠️ You’ve already checked in for this event!");
-        return;
-      }
-
-      // Insert new check-in
-      const { error } = await supabase
-        .from("checkins")
-        .insert([{ event_id: eventId, user_id: user.id }]);
+      const { data, error } = await supabase.auth.signUp({ email, password });
 
       if (error) {
-        alert("❌ Error: " + error.message);
+        loginMessage.textContent = "❌ Sign-up failed: " + error.message;
       } else {
-        alert("✅ Successfully checked in!");
+        loginMessage.textContent = "✅ Sign-up successful! Please check your email.";
       }
-    }
+    });
 
-    async function showEvents() {
-      document.getElementById("auth-section").classList.add("hidden");
-      document.getElementById("events-section").classList.remove("hidden");
+    // ---- Load Today's Events ----
+    async function loadEvents() {
+      const today = new Date().toISOString().split("T")[0];
 
-      const events = await loadEvents();
-      const container = document.getElementById("events");
-      container.innerHTML = "";
+      let { data: events, error } = await supabase
+        .from("events")
+        .select("*")
+        .gte("start_time", today + "T00:00:00")
+        .lte("end_time", today + "T23:59:59");
 
-      if (events.length === 0) {
-        container.innerHTML = "<p>No events today.</p>";
+      if (error) {
+        document.getElementById("events-list").innerHTML = "❌ Error loading events.";
         return;
       }
 
-      events.forEach(ev => {
+      const eventsList = document.getElementById("events-list");
+      eventsList.innerHTML = "";
+
+      if (events.length === 0) {
+        eventsList.innerHTML = "<p>No events scheduled for today.</p>";
+        return;
+      }
+
+      events.forEach(event => {
         const div = document.createElement("div");
-        div.className = "card";
-
+        div.classList.add("event-card");
         div.innerHTML = `
-          <h3>${ev["Event Name"]}</h3>
-          <p><strong>Time:</strong> ${ev["Start Time"]} → ${ev["End Time"]}</p>
-          <p><strong>Location:</strong> ${ev.Location || "TBA"}</p>
-          <p><strong>Points:</strong> ${ev.Points || "N/A"}</p>
-          <button onclick='checkIn(${JSON.stringify(ev)})'>Check In</button>
+          <h3>${event.event_name}</h3>
+          <p><strong>Location:</strong> ${event.location || "TBA"}</p>
+          <p><strong>Points:</strong> ${event.points || 0}</p>
+          <button onclick="checkIn(${event.id})">Check In</button>
         `;
-
-        container.appendChild(div);
+        eventsList.appendChild(div);
       });
     }
+
+    // ---- Check-In ----
+    async function checkIn(eventId) {
+      const { data: { user } } = await supabase.auth.getUser();
+
+      if (!user) {
+        alert("❌ Please log in first.");
+        return;
+      }
+
+      const { error } = await supabase.from("checkins").insert([
+        { event_id: eventId, user_id: user.id }
+      ]);
+
+      if (error) {
+        alert("❌ Check-in failed: " + error.message);
+      } else {
+        alert("✅ You are checked in!");
+      }
+    }
+
+    window.checkIn = checkIn; // expose to HTML buttons
   </script>
 </body>
 </html>

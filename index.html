@@ -39,12 +39,12 @@
     let currentUser = null;
 
     // -------------------------------
-    // 2️⃣ Get logged-in user
+    // 2️⃣ Get logged-in user or redirect
     // -------------------------------
     async function getUser() {
       const { data: { user }, error } = await supabaseClient.auth.getUser();
       if (error || !user) {
-        document.getElementById("userStatus").textContent = "Not logged in.";
+        window.location.href = "login.html"; // redirect if not logged in
         return null;
       }
       currentUser = user;
@@ -129,7 +129,7 @@
     // -------------------------------
     // 5️⃣ Log out user on page close/refresh
     // -------------------------------
-    window.addEventListener("beforeunload", async (event) => {
+    window.addEventListener("beforeunload", async () => {
       if (currentUser) {
         await supabaseClient.auth.signOut();
         currentUser = null;

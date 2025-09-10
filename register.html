@@ -6,7 +6,7 @@
   <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 50px; text-align: center; }
-    input { padding: 10px; margin: 5px; width: 250px; }
+    input, select { padding: 10px; margin: 5px; width: 250px; }
     button { padding: 10px 20px; cursor: pointer; }
     .msg { margin-top: 10px; color: red; }
   </style>
@@ -18,10 +18,50 @@
   <div>
     <input type="text" id="name" placeholder="Full Name" required><br>
     <input type="text" id="studentId" placeholder="Student ID" required><br>
-    <input type="text" id="team" placeholder="Team" required><br>
-    <input type="number" id="year" placeholder="Year" required><br>
+
+    <!-- Team dropdown -->
+    <select id="team" required>
+      <option value="" disabled selected>Select your team</option>
+      <option value="Baseball">Baseball</option>
+      <option value="Men’s Basketball">Men’s Basketball</option>
+      <option value="Women’s Basketball">Women’s Basketball</option>
+      <option value="Beach Volleyball">Beach Volleyball</option>
+      <option value="Men’s Cross Country">Men’s Cross Country</option>
+      <option value="Women’s Cross Country">Women’s Cross Country</option>
+      <option value="Equestrian">Equestrian</option>
+      <option value="Field Hockey">Field Hockey</option>
+      <option value="Football">Football</option>
+      <option value="Men’s Golf">Men’s Golf</option>
+      <option value="Women’s Golf">Women’s Golf</option>
+      <option value="Gymnastics">Gymnastics</option>
+      <option value="Lacrosse">Lacrosse</option>
+      <option value="Men’s Soccer">Men’s Soccer</option>
+      <option value="Women’s Soccer">Women’s Soccer</option>
+      <option value="Softball">Softball</option>
+      <option value="Swim & Dive">Swim & Dive</option>
+      <option value="Men’s Tennis">Men’s Tennis</option>
+      <option value="Women’s Tennis">Women’s Tennis</option>
+      <option value="Men’s Track & Field">Men’s Track & Field</option>
+      <option value="Women’s Track & Field">Women’s Track & Field</option>
+      <option value="Volleyball">Volleyball</option>
+      <option value="Men’s Water Polo">Men’s Water Polo</option>
+      <option value="Women’s Water Polo">Women’s Water Polo</option>
+    </select><br>
+
+    <!-- Graduation Year dropdown -->
+    <select id="year" required>
+      <option value="" disabled selected>Select your graduation year</option>
+      <option value="2025">2025</option>
+      <option value="2026">2026</option>
+      <option value="2027">2027</option>
+      <option value="2028">2028</option>
+      <option value="2029">2029</option>
+      <option value="2030">2030</option>
+    </select><br>
+
     <input type="email" id="email" placeholder="Email" required><br>
     <input type="password" id="password" placeholder="Password" required><br>
+
     <button onclick="register()">Register</button>
     <p id="message" class="msg"></p>
     <p>Already have an account? <a href="login.html">Login here</a></p>
@@ -46,6 +86,7 @@
       const email = document.getElementById("email").value;
       const password = document.getElementById("password").value;
       const msgEl = document.getElementById("message");
+      msgEl.style.color = "red";
       msgEl.textContent = "";
 
       if (!name || !studentId || !team || !year || !email || !password) {

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <title>Aggie Points Register</title>
@@ -66,17 +66,17 @@
 
   <button id="registerBtn">Register</button>
 
-  <!-- Load Supabase JS -->
+  <!-- Load Supabase JS first -->
   <script src="https://unpkg.com/@supabase/supabase-js"></script>
 
-  <!-- Initialize Supabase before using it -->
+  <!-- Initialize Supabase client -->
   <script>
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
   </script>
 
-  <!-- Register function (after Supabase initialized) -->
+  <!-- Register function -->
   <script>
     async function register() {
       const name = document.getElementById("name").value;
@@ -91,14 +91,11 @@
       }
 
       try {
-        // 1️⃣ Sign up user in Supabase Auth
-        const { data: authData, error: authError } = await supabase.auth.signUp({
-          email,
-          password
-        });
+        // 1️⃣ Sign up with Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({ email, password });
         if (authError) throw authError;
 
-        // 2️⃣ Insert user info into 'users' table
+        // 2️⃣ Insert user into 'users' table
         const { error: insertError } = await supabase.from("users").insert([{
           id: authData.user.id,
           name,
@@ -116,7 +113,7 @@
       }
     }
 
-    // Bind register button
+    // Attach event listener AFTER Supabase is initialized
     document.getElementById("registerBtn").addEventListener("click", register);
   </script>
 </body>

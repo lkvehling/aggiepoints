@@ -2,133 +2,91 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Event Check-In</title>
+  <title>Events</title>
   <script src="https://unpkg.com/@supabase/supabase-js"></script>
-  <style>
-    body { font-family: Arial, sans-serif; padding: 20px; }
-    .hidden { display: none; }
-    button { padding: 10px 15px; margin-top: 10px; cursor: pointer; }
-    .event-card { border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 8px; }
-  </style>
 </head>
 <body>
-  <h1>Event Check-In</h1>
-
-  <!-- Login Section -->
-  <div id="login-section">
-    <h2>Login</h2>
-    <input type="email" id="email" placeholder="Email" /><br>
-    <input type="password" id="password" placeholder="Password" /><br>
-    <button id="login-btn">Login</button>
-    <button id="signup-btn">Sign Up</button>
-    <p id="login-message"></p>
-  </div>
-
-  <!-- Events Section -->
-  <div id="events-section" class="hidden">
-    <h2>Today's Events</h2>
-    <div id="events-list"></div>
-  </div>
+  <h1>Today's Events</h1>
+  <div id="events"></div>
 
   <script>
-    // ---- Supabase Client Setup ----
+    // 🔑 Your Supabase credentials
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_KEY = "YOUR_ANON_KEY_HERE";
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    const loginSection = document.getElementById("login-section");
-    const eventsSection = document.getElementById("events-section");
-    const loginMessage = document.getElementById("login-message");
-
-    // ---- Auth: Login ----
-    document.getElementById("login-btn").addEventListener("click", async () => {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-
-      if (error) {
-        loginMessage.textContent = "❌ Login failed: " + error.message;
-      } else {
-        loginMessage.textContent = "✅ Login successful!";
-        loginSection.classList.add("hidden");
-        eventsSection.classList.remove("hidden");
-        loadEvents();
+    // ✅ Load current user
+    async function getUser() {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error || !user) {
+        alert("You must log in first!");
+        return null;
       }
-    });
+      return user;
+    }
 
-    // ---- Auth: Sign Up ----
-    document.getElementById("signup-btn").addEventListener("click", async () => {
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-
-      const { data, error } = await supabase.auth.signUp({ email, password });
-
-      if (error) {
-        loginMessage.textContent = "❌ Sign-up failed: " + error.message;
-      } else {
-        loginMessage.textContent = "✅ Sign-up successful! Please check your email.";
-      }
-    });
-
-    // ---- Load Today's Events ----
+    // ✅ Fetch today’s events
     async function loadEvents() {
-      const today = new Date().toISOString().split("T")[0];
+      const today = new Date();
+      const start = new Date(today.setHours(0,0,0,0)).toISOString();
+      const end = new Date(today.setHours(23,59,59,999)).toISOString();
 
-      let { data: events, error } = await supabase
+      const { data: events, error } = await supabase
         .from("events")
         .select("*")
-        .gte("start_time", today + "T00:00:00")
-        .lte("end_time", today + "T23:59:59");
+        .gte("start_time", start)
+        .lte("end_time", end);
 
       if (error) {
-        document.getElementById("events-list").innerHTML = "❌ Error loading events.";
+        console.error(error);
         return;
       }
 
-      const eventsList = document.getElementById("events-list");
-      eventsList.innerHTML = "";
+      const container = document.getElementById("events");
+      container.innerHTML = "";
 
       if (events.length === 0) {
-        eventsList.innerHTML = "<p>No events scheduled for today.</p>";
+        container.innerHTML = "<p>No events scheduled for today.</p>";
         return;
       }
 
       events.forEach(event => {
         const div = document.createElement("div");
-        div.classList.add("event-card");
         div.innerHTML = `
-          <h3>${event.event_name}</h3>
-          <p><strong>Location:</strong> ${event.location || "TBA"}</p>
-          <p><strong>Points:</strong> ${event.points || 0}</p>
-          <button onclick="checkIn(${event.id})">Check In</button>
+          <h3>${event.name}</h3>
+          <p>${event.location}</p>
+          <p>${new Date(event.start_time).toLocaleString()} - ${new Date(event.end_time).toLocaleString()}</p>
+          <button onclick="checkIn('${event.id}')">Check In</button>
+          <p id="msg-${event.id}" style="color: green;"></p>
         `;
-        eventsList.appendChild(div);
+        container.appendChild(div);
       });
     }
 
-    // ---- Check-In ----
+    // ✅ Handle check-in
     async function checkIn(eventId) {
-      const { data: { user } } = await supabase.auth.getUser();
+      const user = await getUser();
+      if (!user) return;
 
-      if (!user) {
-        alert("❌ Please log in first.");
-        return;
-      }
+      const { error } = await supabase
+        .from("checkins")
+        .insert([{ user_id: user.id, event_id: eventId }]);
 
-      const { error } = await supabase.from("checkins").insert([
-        { event_id: eventId, user_id: user.id }
-      ]);
+      const msg = document.getElementById(`msg-${eventId}`);
 
       if (error) {
-        alert("❌ Check-in failed: " + error.message);
+        if (error.message.includes("duplicate")) {
+          msg.textContent = "✅ Already checked in!";
+        } else {
+          msg.textContent = "❌ Error: " + error.message;
+        }
       } else {
-        alert("✅ You are checked in!");
+        msg.textContent = "🎉 Successfully checked in!";
       }
     }
 
-    window.checkIn = checkIn; // expose to HTML buttons
+    // Load events on page load
+    loadEvents();
   </script>
 </body>
 </html>

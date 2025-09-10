@@ -2,31 +2,56 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Events</title>
+  <title>Aggie Points Check-In</title>
   <script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    header, footer { margin-bottom: 20px; }
+    .event { border: 1px solid #ccc; padding: 10px; margin-bottom: 10px; }
+    .msg { color: green; margin-top: 5px; }
+  </style>
 </head>
 <body>
-  <h1>Today's Events</h1>
-  <div id="events"></div>
+
+  <header>
+    <h1>Aggie Points Check-In</h1>
+    <div id="userStatus">Checking login...</div>
+  </header>
+
+  <main>
+    <h2>Today's Events</h2>
+    <div id="events">Loading events...</div>
+  </main>
+
+  <footer>
+    <p>UC Davis Women's Water Polo Team</p>
+  </footer>
 
   <script>
-    // 🔑 Your Supabase credentials
+    // Supabase credentials
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "YOUR_ANON_KEY_HERE";
+    const SUPABASE_KEY = "YOUR_ANON_KEY_HERE"; // replace with your anon key
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // ✅ Load current user
+    let currentUser = null;
+
+    // Load logged-in user
     async function getUser() {
       const { data: { user }, error } = await supabase.auth.getUser();
       if (error || !user) {
-        alert("You must log in first!");
+        document.getElementById("userStatus").textContent = "Not logged in.";
         return null;
       }
+      currentUser = user;
+      document.getElementById("userStatus").textContent = `Logged in as: ${user.email}`;
       return user;
     }
 
-    // ✅ Fetch today’s events
+    // Load today’s events
     async function loadEvents() {
+      const user = await getUser();
+      if (!user) return;
+
       const today = new Date();
       const start = new Date(today.setHours(0,0,0,0)).toISOString();
       const end = new Date(today.setHours(23,59,59,999)).toISOString();
@@ -35,42 +60,48 @@
         .from("events")
         .select("*")
         .gte("start_time", start)
-        .lte("end_time", end);
-
-      if (error) {
-        console.error(error);
-        return;
-      }
+        .lte("end_time", end)
+        .order("start_time", { ascending: true });
 
       const container = document.getElementById("events");
       container.innerHTML = "";
 
-      if (events.length === 0) {
+      if (error) {
+        console.error(error);
+        container.innerHTML = "<p>Failed to load events.</p>";
+        return;
+      }
+
+      if (!events || events.length === 0) {
         container.innerHTML = "<p>No events scheduled for today.</p>";
         return;
       }
 
       events.forEach(event => {
         const div = document.createElement("div");
+        div.classList.add("event");
         div.innerHTML = `
           <h3>${event.name}</h3>
-          <p>${event.location}</p>
+          <p>${event.location || ""}</p>
           <p>${new Date(event.start_time).toLocaleString()} - ${new Date(event.end_time).toLocaleString()}</p>
+          <p>Points: ${event.points || 0}</p>
           <button onclick="checkIn('${event.id}')">Check In</button>
-          <p id="msg-${event.id}" style="color: green;"></p>
+          <p id="msg-${event.id}" class="msg"></p>
         `;
         container.appendChild(div);
       });
     }
 
-    // ✅ Handle check-in
+    // Check in function
     async function checkIn(eventId) {
-      const user = await getUser();
-      if (!user) return;
+      if (!currentUser) {
+        alert("You must be logged in to check in!");
+        return;
+      }
 
       const { error } = await supabase
         .from("checkins")
-        .insert([{ user_id: user.id, event_id: eventId }]);
+        .insert([{ user_id: currentUser.id, event_id: eventId }]);
 
       const msg = document.getElementById(`msg-${eventId}`);
 
@@ -85,8 +116,9 @@
       }
     }
 
-    // Load events on page load
+    // Initialize page
     loadEvents();
   </script>
+
 </body>
 </html>

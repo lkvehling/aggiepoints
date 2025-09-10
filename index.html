@@ -127,7 +127,17 @@
     }
 
     // -------------------------------
-    // 5️⃣ Initialize page
+    // 5️⃣ Log out user on page close/refresh
+    // -------------------------------
+    window.addEventListener("beforeunload", async (event) => {
+      if (currentUser) {
+        await supabaseClient.auth.signOut();
+        currentUser = null;
+      }
+    });
+
+    // -------------------------------
+    // 6️⃣ Initialize page
     // -------------------------------
     loadEvents();
   </script>

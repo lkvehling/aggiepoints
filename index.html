@@ -2,135 +2,81 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Aggie Points Check-In</title>
+  <title>Aggie Points</title>
   <script src="https://unpkg.com/@supabase/supabase-js"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 50px; }
-    #usernameDisplay { margin-bottom: 20px; font-weight: bold; }
-    .event { border: 1px solid #ccc; padding: 15px; margin: 10px 0; }
-    button { padding: 8px 15px; cursor: pointer; }
-    .msg { color: green; margin-top: 5px; }
+    body { font-family: Arial, sans-serif; margin: 30px; text-align: center; }
+    button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+    .event { border: 1px solid #ccc; padding: 15px; margin: 10px; }
   </style>
 </head>
 <body>
 
-  <div id="usernameDisplay">Checking login...</div>
-  <button onclick="logout()">Logout</button>
-  <h2>Today's Events</h2>
+  <h1>Aggie Points Check-In</h1>
+  <p id="userInfo">Checking login...</p>
   <div id="eventsContainer">Loading events...</div>
 
   <script>
-    // -------------------------------
-    // 1️⃣ Initialize Supabase
-    // -------------------------------
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let currentUser = null;
+    async function main() {
+      const { data: { user }, error } = await supabase.auth.getUser();
 
-    // -------------------------------
-    // 2️⃣ Check login
-    // -------------------------------
-    async function checkLogin() {
-      const { data: { user } } = await supabase.auth.getUser();
       if (!user) {
         window.location.href = "login.html";
-      } else {
-        currentUser = user;
-        document.getElementById("usernameDisplay").textContent = "Logged in as: " + user.email;
-        loadEvents();
-      }
-    }
-
-    // -------------------------------
-    // 3️⃣ Load today's events
-    // -------------------------------
-    async function loadEvents() {
-      const todayStart = new Date();
-      todayStart.setHours(0,0,0,0);
-      const todayEnd = new Date();
-      todayEnd.setHours(23,59,59,999);
-
-      const { data: events, error } = await supabase
-        .from('events')
-        .select('*')
-        .gte('start_time', todayStart.toISOString())
-        .lte('end_time', todayEnd.toISOString());
-
-      const container = document.getElementById('eventsContainer');
-      container.innerHTML = '';
-
-      if (error) {
-        container.textContent = "Error loading events: " + error.message;
         return;
       }
+
+      document.getElementById("userInfo").textContent = `Logged in as: ${user.email}`;
+
+      const today = new Date().toISOString().split("T")[0];
+      const { data: events, error: eventsError } = await supabase
+        .from("events")
+        .select("*")
+        .gte("start_time", today + "T00:00:00")
+        .lte("end_time", today + "T23:59:59");
+
+      const container = document.getElementById("eventsContainer");
+      container.innerHTML = "";
 
       if (!events || events.length === 0) {
-        container.textContent = "No scheduled events for today.";
+        container.textContent = "No events scheduled today.";
         return;
       }
 
-      events.forEach(event => {
-        const div = document.createElement('div');
-        div.className = 'event';
+      events.forEach(ev => {
+        const div = document.createElement("div");
+        div.className = "event";
         div.innerHTML = `
-          <h3>${event.name}</h3>
-          <p>Location: ${event.location || 'N/A'}</p>
-          <p>Points: ${event.points || 0}</p>
-          <button onclick="checkIn('${event.id}')">Check In</button>
-          <div class="msg" id="msg-${event.id}"></div>
+          <h3>${ev.name}</h3>
+          <p>Location: ${ev.location || "N/A"}</p>
+          <p>Points: ${ev.points}</p>
+          <button onclick="checkIn('${ev.id}')">Check In</button>
         `;
         container.appendChild(div);
       });
     }
 
-    // -------------------------------
-    // 4️⃣ Check-in function
-    // -------------------------------
     async function checkIn(eventId) {
-      const msgEl = document.getElementById(`msg-${eventId}`);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return alert("Not logged in.");
 
-      // Check if user has already checked in
-      const { data: existing, error: checkError } = await supabase
-        .from('checkins')
-        .select('*')
-        .eq('user_id', currentUser.id)
-        .eq('event_id', eventId)
-        .single();
+      const { error } = await supabase
+        .from("checkins")
+        .insert([{ user_id: user.id, event_id: eventId }]);
 
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 = no rows
-        msgEl.textContent = "Error checking previous check-in: " + checkError.message;
+      if (error) {
+        alert("❌ Already checked in or error: " + error.message);
         return;
       }
 
-      if (existing) {
-        msgEl.textContent = "You have already checked in for this event.";
-        return;
-      }
-
-      // Insert new check-in
-      const { error: insertError } = await supabase
-        .from('checkins')
-        .insert([{ user_id: currentUser.id, event_id: eventId }]);
-
-      if (insertError) {
-        msgEl.textContent = "Error checking in: " + insertError.message;
-      } else {
-        msgEl.textContent = "✅ Checked in successfully!";
-      }
+      alert("✅ You are checked in!");
+      main(); // Refresh list or disable button if needed
     }
 
-    // -------------------------------
-    // 5️⃣ Logout function
-    // -------------------------------
-    async function logout() {
-      await supabase.auth.signOut();
-      window.location.href = "login.html";
-    }
-
-    // Run login check on page load
-    checkLogin();
+    main();
   </script>
 
 </body>

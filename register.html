@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Aggie Points Register</title>
+  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 50px; text-align: center; }
+    input { padding: 10px; margin: 5px; width: 250px; }
+    button { padding: 10px 20px; cursor: pointer; }
+    .msg { margin-top: 10px; color: red; }
+  </style>
+</head>
+<body>
+
+  <h1>Aggie Points Registration</h1>
+
+  <div>
+    <input type="text" id="name" placeholder="Full Name" required><br>
+    <input type="text" id="studentId" placeholder="Student ID" required><br>
+    <input type="text" id="team" placeholder="Team" required><br>
+    <input type="number" id="year" placeholder="Year" required><br>
+    <input type="email" id="email" placeholder="Email" required><br>
+    <input type="password" id="password" placeholder="Password" required><br>
+    <button onclick="register()">Register</button>
+    <p id="message" class="msg"></p>
+    <p>Already have an account? <a href="login.html">Login here</a></p>
+  </div>
+
+  <script>
+    // -------------------------------
+    // 1️⃣ Initialize Supabase
+    // -------------------------------
+    const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+    // -------------------------------
+    // 2️⃣ Registration function
+    // -------------------------------
+    async function register() {
+      const name = document.getElementById("name").value;
+      const studentId = document.getElementById("studentId").value;
+      const team = document.getElementById("team").value;
+      const year = parseInt(document.getElementById("year").value);
+      const email = document.getElementById("email").value;
+      const password = document.getElementById("password").value;
+      const msgEl = document.getElementById("message");
+      msgEl.textContent = "";
+
+      if (!name || !studentId || !team || !year || !email || !password) {
+        msgEl.textContent = "Please fill out all fields.";
+        return;
+      }
+
+      // 1️⃣ Create user in Supabase Auth
+      const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+        email: email,
+        password: password
+      });
+
+      if (authError) {
+        msgEl.textContent = "❌ " + authError.message;
+        return;
+      }
+
+      const userId = authData.user.id;
+
+      // 2️⃣ Insert user details into 'users' table
+      const { error: insertError } = await supabaseClient
+        .from('users')
+        .insert([{ id: userId, email, name, student_id: studentId, team, year }]);
+
+      if (insertError) {
+        msgEl.textContent = "❌ " + insertError.message;
+        return;
+      }
+
+      msgEl.style.color = "green";
+      msgEl.textContent = "✅ Registration successful! Please check your email to confirm and then login.";
+    }
+  </script>
+
+</body>
+</html>

@@ -68,16 +68,10 @@
   </div>
 
   <script>
-    // -------------------------------
-    // 1️⃣ Initialize Supabase
-    // -------------------------------
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
-    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    // -------------------------------
-    // 2️⃣ Registration function
-    // -------------------------------
     async function register() {
       const name = document.getElementById("name").value;
       const studentId = document.getElementById("studentId").value;
@@ -94,10 +88,8 @@
         return;
       }
 
-      // 1️⃣ Create user in Supabase Auth
-      const { data: authData, error: authError } = await supabaseClient.auth.signUp({
-        email: email,
-        password: password
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email, password
       });
 
       if (authError) {
@@ -107,8 +99,7 @@
 
       const userId = authData.user.id;
 
-      // 2️⃣ Insert user details into 'users' table
-      const { error: insertError } = await supabaseClient
+      const { error: insertError } = await supabase
         .from('users')
         .insert([{ id: userId, email, name, student_id: studentId, team, year }]);
 

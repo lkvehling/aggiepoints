@@ -2,82 +2,117 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Aggie Points</title>
-  <script src="https://unpkg.com/@supabase/supabase-js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aggie Points Check-In</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 30px; text-align: center; }
-    button { padding: 10px 15px; margin: 5px; cursor: pointer; }
-    .event { border: 1px solid #ccc; padding: 15px; margin: 10px; }
+    body { font-family: Arial, sans-serif; margin: 30px; text-align: center; max-width: 600px; }
+    .event { border: 1px solid #ccc; padding: 15px; margin: 10px; border-radius: 8px; }
+    button { padding: 8px 12px; margin-top: 5px; cursor: pointer; }
+    #message { color: red; margin-top: 10px; }
   </style>
 </head>
 <body>
-
   <h1>Aggie Points Check-In</h1>
   <p id="userInfo">Checking login...</p>
+  <div id="message"></div>
   <div id="eventsContainer">Loading events...</div>
 
   <script>
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
+    const SUPABASE_KEY = "YOUR_ANON_KEY"; // replace with your anon key
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    async function main() {
-      const { data: { user }, error } = await supabase.auth.getUser();
+    let currentUser = null;
 
-      if (!user) {
+    async function main() {
+      const messageEl = document.getElementById("message");
+      messageEl.textContent = "";
+
+      try {
+        // ✅ Get current session
+        const { data: { session } } = await supabase.auth.getSession();
+        if (!session || !session.user) {
+          window.location.href = "login.html";
+          return;
+        }
+        currentUser = session.user;
+        document.getElementById("userInfo").textContent = `Logged in as: ${currentUser.email}`;
+
+        // ✅ Load today's events
+        const today = new Date().toISOString().split("T")[0];
+        const { data: events, error } = await supabase
+          .from("events")
+          .select("*")
+          .gte("start_time", today + "T00:00:00")
+          .lte("end_time", today + "T23:59:59");
+
+        const container = document.getElementById("eventsContainer");
+        container.innerHTML = "";
+
+        if (!events || events.length === 0) {
+          container.textContent = "No events scheduled today.";
+          return;
+        }
+
+        // ✅ Load check-ins for current user
+        const { data: userCheckins } = await supabase
+          .from("checkins")
+          .select("event_id")
+          .eq("user_id", currentUser.id);
+
+        const checkedInEventIds = userCheckins ? userCheckins.map(c => c.event_id) : [];
+
+        // Render events
+        events.forEach(ev => {
+          const div = document.createElement("div");
+          div.className = "event";
+
+          let buttonText = checkedInEventIds.includes(ev.id) ? "✅ Checked In" : "Check In";
+          let disabled = checkedInEventIds.includes(ev.id) ? "disabled" : "";
+
+          div.innerHTML = `
+            <h3>${ev.name}</h3>
+            <p>Location: ${ev.location || "N/A"}</p>
+            <p>Points: ${ev.points}</p>
+            <button ${disabled} onclick="checkIn('${ev.id}', this)">${buttonText}</button>
+          `;
+          container.appendChild(div);
+        });
+
+      } catch (err) {
+        messageEl.textContent = "Error loading events: " + err.message;
+      }
+    }
+
+    async function checkIn(eventId, button) {
+      const messageEl = document.getElementById("message");
+      messageEl.textContent = "";
+
+      if (!currentUser) {
         window.location.href = "login.html";
         return;
       }
 
-      document.getElementById("userInfo").textContent = `Logged in as: ${user.email}`;
+      try {
+        const { error } = await supabase
+          .from("checkins")
+          .insert([{ user_id: currentUser.id, event_id: eventId }]);
 
-      const today = new Date().toISOString().split("T")[0];
-      const { data: events, error: eventsError } = await supabase
-        .from("events")
-        .select("*")
-        .gte("start_time", today + "T00:00:00")
-        .lte("end_time", today + "T23:59:59");
+        if (error) throw error;
 
-      const container = document.getElementById("eventsContainer");
-      container.innerHTML = "";
-
-      if (!events || events.length === 0) {
-        container.textContent = "No events scheduled today.";
-        return;
+        // Update button to show checked-in state
+        button.textContent = "✅ Checked In";
+        button.disabled = true;
+        messageEl.style.color = "green";
+        messageEl.textContent = "Successfully checked in!";
+      } catch (err) {
+        messageEl.style.color = "red";
+        messageEl.textContent = "Check-in failed: " + err.message;
       }
-
-      events.forEach(ev => {
-        const div = document.createElement("div");
-        div.className = "event";
-        div.innerHTML = `
-          <h3>${ev.name}</h3>
-          <p>Location: ${ev.location || "N/A"}</p>
-          <p>Points: ${ev.points}</p>
-          <button onclick="checkIn('${ev.id}')">Check In</button>
-        `;
-        container.appendChild(div);
-      });
-    }
-
-    async function checkIn(eventId) {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return alert("Not logged in.");
-
-      const { error } = await supabase
-        .from("checkins")
-        .insert([{ user_id: user.id, event_id: eventId }]);
-
-      if (error) {
-        alert("❌ Already checked in or error: " + error.message);
-        return;
-      }
-
-      alert("✅ You are checked in!");
-      main(); // Refresh list or disable button if needed
     }
 
     main();
   </script>
-
 </body>
 </html>

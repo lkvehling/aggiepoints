@@ -64,16 +64,20 @@
     <option>2030</option>
   </select>
 
-  <button onclick="register()">Register</button>
+  <button id="registerBtn">Register</button>
 
-  <!-- Supabase JS -->
+  <!-- Load Supabase JS -->
   <script src="https://unpkg.com/@supabase/supabase-js"></script>
+
+  <!-- Initialize Supabase before using it -->
   <script>
-    // Initialize Supabase (load before using)
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";
     const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  </script>
 
+  <!-- Register function (after Supabase initialized) -->
+  <script>
     async function register() {
       const name = document.getElementById("name").value;
       const email = document.getElementById("email").value;
@@ -86,30 +90,34 @@
         return alert("Please fill in all fields.");
       }
 
-      // 1️⃣ Sign up the user in Supabase Auth
-      const { data, error } = await supabase.auth.signUp({
-        email: email,
-        password: password
-      });
+      try {
+        // 1️⃣ Sign up user in Supabase Auth
+        const { data: authData, error: authError } = await supabase.auth.signUp({
+          email,
+          password
+        });
+        if (authError) throw authError;
 
-      if (error) return alert("Signup error: " + error.message);
-
-      // 2️⃣ Insert user info into your 'users' table
-      const { error: insertError } = await supabase
-        .from("users")
-        .insert([{
-          id: data.user.id,
+        // 2️⃣ Insert user info into 'users' table
+        const { error: insertError } = await supabase.from("users").insert([{
+          id: authData.user.id,
           name,
           student_id: studentId,
           team,
           year
         }]);
+        if (insertError) throw insertError;
 
-      if (insertError) return alert("Database error: " + insertError.message);
+        alert("✅ Registration successful! Check your email to confirm.");
+        window.location.href = "login.html";
 
-      alert("✅ Registration successful! Please check your email to confirm.");
-      window.location.href = "login.html";
+      } catch (error) {
+        alert("Error: " + error.message);
+      }
     }
+
+    // Bind register button
+    document.getElementById("registerBtn").addEventListener("click", register);
   </script>
 </body>
 </html>

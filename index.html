@@ -26,67 +26,54 @@
     let currentUser = null;
 
     async function main() {
-      const messageEl = document.getElementById("message");
-      messageEl.textContent = "";
+  const messageEl = document.getElementById("message");
 
-      try {
-        // ✅ Get current session
-        const { data: { session } } = await supabase.auth.getSession();
+  try {
+    // 1️⃣ Wait for session
+    const { data: { session } } = await supabase.auth.getSession();
 
-        console.log("Session on page load:", session); // Debug
-        
-        if (!session || !session.user) {
-          window.location.href = "login.html";
-          return;
-        }
-        currentUser = session.user;
-        document.getElementById("userInfo").textContent = `Logged in as: ${currentUser.email}`;
+    console.log("Session on page load:", session); // Debug
 
-        // ✅ Load today's events
-        const today = new Date().toISOString().split("T")[0];
-        const { data: events, error } = await supabase
-          .from("events")
-          .select("*")
-          .gte("start_time", today + "T00:00:00")
-          .lte("end_time", today + "T23:59:59");
-
-        const container = document.getElementById("eventsContainer");
-        container.innerHTML = "";
-
-        if (!events || events.length === 0) {
-          container.textContent = "No events scheduled today.";
-          return;
-        }
-
-        // ✅ Load check-ins for current user
-        const { data: userCheckins } = await supabase
-          .from("checkins")
-          .select("event_id")
-          .eq("user_id", currentUser.id);
-
-        const checkedInEventIds = userCheckins ? userCheckins.map(c => c.event_id) : [];
-
-        // Render events
-        events.forEach(ev => {
-          const div = document.createElement("div");
-          div.className = "event";
-
-          let buttonText = checkedInEventIds.includes(ev.id) ? "✅ Checked In" : "Check In";
-          let disabled = checkedInEventIds.includes(ev.id) ? "disabled" : "";
-
-          div.innerHTML = `
-            <h3>${ev.name}</h3>
-            <p>Location: ${ev.location || "N/A"}</p>
-            <p>Points: ${ev.points}</p>
-            <button ${disabled} onclick="checkIn('${ev.id}', this)">${buttonText}</button>
-          `;
-          container.appendChild(div);
-        });
-
-      } catch (err) {
-        messageEl.textContent = "Error loading events: " + err.message;
-      }
+    if (!session || !session.user) {
+      window.location.href = "login.html"; // redirect if not logged in
+      return;
     }
+
+    const user = session.user;
+    document.getElementById("userInfo").textContent = `Logged in as: ${user.email}`;
+
+    // 2️⃣ Load today's events
+    const today = new Date().toISOString().split("T")[0];
+    const { data: events, error } = await supabase
+      .from("events")
+      .select("*")
+      .gte("start_time", today + "T00:00:00")
+      .lte("end_time", today + "T23:59:59");
+
+    if (error) throw error;
+
+    const container = document.getElementById("eventsContainer");
+    container.innerHTML = "";
+
+    if (!events || events.length === 0) {
+      container.textContent = "No events scheduled today.";
+      return;
+    }
+
+    events.forEach(ev => {
+      const div = document.createElement("div");
+      div.className = "event";
+      div.innerHTML = `<h3>${ev.name}</h3>
+                       <p>Location: ${ev.location || "N/A"}</p>
+                       <p>Points: ${ev.points}</p>
+                       <button onclick="checkIn('${ev.id}', this)">Check In</button>`;
+      container.appendChild(div);
+    });
+
+  } catch (err) {
+    messageEl.textContent = "Error loading events: " + err.message;
+  }
+}
 
     async function checkIn(eventId, button) {
       const messageEl = document.getElementById("message");

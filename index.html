@@ -32,6 +32,9 @@
       try {
         // ✅ Get current session
         const { data: { session } } = await supabase.auth.getSession();
+
+        console.log("Session on page load:", session); // Debug
+        
         if (!session || !session.user) {
           window.location.href = "login.html";
           return;

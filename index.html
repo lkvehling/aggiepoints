@@ -7,11 +7,12 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 30px; }
-    .row { display:flex; gap:10px; align-items:center; }
-    .event { border:1px solid #ddd; padding:12px; margin:10px 0; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
+    .event { border:1px solid #ddd; padding:12px; margin:10px 0; border-radius:10px; }
     .muted { color:#666; }
     #message { font-weight:600; margin-top:10px; }
     #events { margin-top:20px; }
+    a { text-decoration: none; }
   </style>
 </head>
 <body>
@@ -32,46 +33,38 @@
   <script>
     let user = null;
 
+    // ---- Time helpers (Pacific display + day bounds) ----
+    function formatPacific(utcIso) {
+      // Pass UTC ISO (e.g., start_time_utc) and render in Pacific
+      return new Date(utcIso).toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        dateStyle: "medium",
+        timeStyle: "short"
+      });
+    }
+    function pacificDayBoundsUTC(d = new Date()) {
+      const tz = "America/Los_Angeles";
+      const base = new Date(d.toLocaleString("en-US", { timeZone: tz }));
+      base.setHours(0,0,0,0);
+      const end = new Date(base); end.setDate(end.getDate() + 1);
+      return { startUTC: base.toISOString(), endUTC: end.toISOString() };
+    }
+
     document.getElementById("logoutBtn").onclick = async () => {
-      await sb.auth.signOut(); window.location.href = "login.html";
+      await sb.auth.signOut();
+      window.location.href = "login.html";
     };
 
     (async function main() {
       user = await requireSessionOrRedirect();
-      // after: user = await requireSessionOrRedirect();
-      await ensureProfileRow(user);
-
-      async function ensureProfileRow(user) {
-        // Upsert is idempotent: creates if missing, no-op if exists
-        const { error } = await sb.from("users").upsert({
-          id: user.id,
-          email: user.email,
-          name: user.user_metadata?.name || "",
-          student_id: user.user_metadata?.student_id || "",
-          team: user.user_metadata?.team || null,
-          year: user.user_metadata?.year || null
-        }, { onConflict: "id" });
-
-        // optional: ignore error if it's a conflict
-        if (error && error.code !== "23505") {
-          console.warn("ensureProfileRow upsert error:", error);
-        }
-      }
-
-
       if (!user) return;
+
       document.getElementById("who").textContent = `Signed in as: ${user.email}`;
       document.getElementById("logoutBtn").style.display = "inline-block";
 
       await loadPoints();
       await loadTodayEvents();
     })();
-
-    function localMidnightRangeISO(d = new Date()) {
-      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
-      const end = new Date(start); end.setDate(end.getDate() + 1);
-      return { start: start.toISOString(), end: end.toISOString() };
-    }
 
     async function loadPoints() {
       // Sum of points for this user from checked-in events
@@ -80,36 +73,69 @@
         .select("event_id, events(points)")
         .eq("user_id", user.id)
         .order("created_at", { ascending:false });
-      if (error) return;
+
+      if (error) {
+        console.warn("loadPoints error", error);
+        return;
+      }
       const total = (data || []).reduce((sum, row) => sum + (row.events?.points ?? 0), 0);
       document.getElementById("points").textContent = total;
     }
 
     async function loadTodayEvents() {
-      const { start, end } = localMidnightRangeISO();
+      // If you applied Option A, filter on *_utc. Otherwise, keep start_time/end_time.
+      const { startUTC, endUTC } = pacificDayBoundsUTC();
+
+      // ---- Option A (recommended): use start_time_utc/end_time_utc ----
       const { data: events, error } = await sb
         .from("events")
         .select("*")
-        .gte("start_time", start)
-        .lt("end_time", end)
-        .order("start_time", { ascending:true });
+        .gte("start_time_utc", startUTC)
+        .lt("end_time_utc", endUTC)
+        .order("start_time_utc", { ascending:true });
 
-      const wrap = document.getElementById("events"); wrap.innerHTML = "";
-      if (error || !events || !events.length) { wrap.textContent = "No events scheduled today."; return; }
+      // ---- If you did NOT apply Option A, comment the block above and use this instead: ----
+      // const { start, end } = localMidnightRangeISO(); // your old helper
+      // const { data: events, error } = await sb
+      //   .from("events")
+      //   .select("*")
+      //   .gte("start_time", start)
+      //   .lt("end_time", end)
+      //   .order("start_time", { ascending:true });
+
+      const wrap = document.getElementById("events");
+      wrap.innerHTML = "";
+      if (error || !events || !events.length) {
+        wrap.textContent = "No events scheduled today.";
+        return;
+      }
 
       // fetch user's existing checkins to pre-disable
-      const { data: my } = await sb.from("checkins").select("event_id").eq("user_id", user.id);
-      const set = new Set((my || []).map(r => r.event_id));
+      const { data: my } = await sb
+        .from("checkins")
+        .select("event_id")
+        .eq("user_id", user.id);
+
+      const already = new Set((my || []).map(r => r.event_id));
 
       for (const ev of events) {
         const div = document.createElement("div");
-        const isChecked = set.has(ev.id);
+        const isChecked = already.has(ev.id);
         div.className = "event";
+
+        // render using UTC columns (Option A) with Pacific formatting
+        const when = ev.start_time_utc && ev.end_time_utc
+          ? `${formatPacific(ev.start_time_utc)} – ${formatPacific(ev.end_time_utc)}`
+          : `${new Date(ev.start_time).toLocaleString()} – ${new Date(ev.end_time).toLocaleString()}`; // fallback
+
         div.innerHTML = `
-          <div class="row"><strong>${ev.name}</strong><span class="muted">${new Date(ev.start_time).toLocaleString()} – ${new Date(ev.end_time).toLocaleString()}</span></div>
+          <div class="row">
+            <strong>${ev.name}</strong>
+            <span class="muted">${when}</span>
+          </div>
           <div class="muted">Location: ${ev.location || "N/A"}</div>
           <div>Points: <strong>${ev.points ?? 0}</strong></div>
-          <button ${isChecked?"disabled":""}>${isChecked?"✅ Checked In":"Check In"}</button>
+          <button ${isChecked ? "disabled" : ""}>${isChecked ? "✅ Checked In" : "Check In"}</button>
         `;
         const btn = div.querySelector("button");
         btn.onclick = () => checkIn(ev, btn);
@@ -125,71 +151,69 @@
       if (document.getElementById("requireGeo").checked && "geolocation" in navigator) {
         try {
           const pos = await new Promise((res, rej) =>
-          navigator.geolocation.getCurrentPosition(res, rej, {
-            enableHighAccuracy: true,
-            timeout: 20000,
-            maximumAge: 0
-        })
-      );
+            navigator.geolocation.getCurrentPosition(res, rej, {
+              enableHighAccuracy: true,
+              timeout: 20000,
+              maximumAge: 0
+            })
+          );
 
-      const lat = pos.coords.latitude;
-      const lng = pos.coords.longitude;
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
 
-      // --- safer bounding box check ---
-      const EPS = 0.0007; // ~75m buffer
-      const accDeg = (pos.coords.accuracy || 50) / 111111; // meters → degrees (lat approx)
+          // --- safer bounding box check ---
+          const EPS = 0.0007; // ~75m buffer
+          const accDeg = Math.min((pos.coords.accuracy || 50), 200) / 111111; // cap at ~200m
 
-      const latMin = Math.min(ev.lat_min, ev.lat_max) - EPS - accDeg;
-      const latMax = Math.max(ev.lat_min, ev.lat_max) + EPS + accDeg;
-      const lngMin = Math.min(ev.lng_min, ev.lng_max) - EPS - accDeg;
-      const lngMax = Math.max(ev.lng_min, ev.lng_max) + EPS + accDeg;
+          const latMin = Math.min(ev.lat_min, ev.lat_max) - EPS - accDeg;
+          const latMax = Math.max(ev.lat_min, ev.lat_max) + EPS + accDeg;
+          const lngMin = Math.min(ev.lng_min, ev.lng_max) - EPS - accDeg;
+          const lngMax = Math.max(ev.lng_min, ev.lng_max) + EPS + accDeg;
 
-      const inside = lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax;
+          const inside = lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax;
 
-      console.log("device lat/lng/acc:", lat, lng, pos.coords.accuracy, "m");
-      console.log("expanded box:", { latMin, latMax, lngMin, lngMax }, "inside?", inside);
+          console.log("device lat/lng/acc:", lat, lng, pos.coords.accuracy, "m");
+          console.log("expanded box:", { latMin, latMax, lngMin, lngMax }, "inside?", inside);
 
-      if (!inside) { show(msg, "Go to the venue to check in."); return; }
-    } catch (err) {
-      console.error("geolocation error", err);
-      show(msg, "Location permission denied or unavailable."); 
-      return;
-    }
-        const { error, status } = await sb.from("checkins").insert({ user_id: user.id, event_id: ev.id });
+          if (!inside) { show(msg, "Go to the venue to check in."); return; }
+        } catch (err) {
+          console.error("geolocation error", err);
+          show(msg, "Location permission denied or unavailable.");
+          return;
+        }
+      }
 
-    if (error) {
-      // 409 = unique violation via PostgREST; some drivers won’t include 23505
-      if (status === 409 || (error.code === "23505") || /duplicate|already exists/i.test(error.message || "")) {
-        btn.textContent = "✅ Checked In";
-        btn.disabled = true;
-        show(msg, "Already checked in.", true);
-        await loadPoints();
+      // Insert checkin (unique constraint prevents duplicates)
+      const { error, status } = await sb
+        .from("checkins")
+        .insert({ user_id: user.id, event_id: ev.id });
+
+      if (error) {
+        // 409/23505 → already checked in
+        if (status === 409 || (error.code === "23505") ||
+            /duplicate|already exists/i.test(error.message || "")) {
+          btn.textContent = "✅ Checked In";
+          btn.disabled = true;
+          show(msg, "Already checked in.", true);
+          await loadPoints();
+          return;
+        }
+        show(msg, "Check-in failed: " + (error.message || "Unknown error"));
         return;
-  }
-  show(msg, "Check-in failed: " + (error.message || "Unknown error"));
-  return;
-}
+      }
 
-  }
-
-  // Insert checkin (unique constraint prevents duplicates)
-  const { error } = await sb.from("checkins").insert({ user_id: user.id, event_id: ev.id });
-  if (error) {
-    if ((error.code === "23505") || /duplicate/i.test(error.message)) {
-      btn.textContent = "✅ Checked In"; btn.disabled = true; show(msg, "Already checked in.", true);
-      return;
+      btn.textContent = "✅ Checked In";
+      btn.disabled = true;
+      show(msg, "Successfully checked in!", true);
+      await loadPoints();
     }
-    show(msg, "Check-in failed: " + (error.message || "Unknown error")); 
-    return;
-  }
 
-  btn.textContent = "✅ Checked In"; btn.disabled = true;
-  show(msg, "Successfully checked in!", true);
-
-  // refresh points
-  await loadPoints();
-}
-
+    // (Only needed if you *didn't* adopt Option A; kept here for reference)
+    function localMidnightRangeISO(d = new Date()) {
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      const end = new Date(start); end.setDate(end.getDate() + 1);
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
   </script>
 </body>
 </html>

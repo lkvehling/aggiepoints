@@ -1,64 +1,72 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Aggie Points Login</title>
+  <meta charset="UTF-8" />
+  <title>Login – Aggie Points</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 30px; max-width: 400px; }
-    input, button { width: 100%; margin: 8px 0; padding: 8px; }
-    #message { color: red; margin-top: 10px; }
+    body { font-family: Arial, sans-serif; margin: 30px; max-width: 420px; }
+    input, button { width: 100%; padding: 10px; margin: 6px 0; }
+    #msg { margin-top: 10px; font-weight: 600; }
+    small { color:#666; }
   </style>
 </head>
 <body>
-  <h1>Login</h1>
+  <h2>Welcome back</h2>
 
-  <input type="email" id="email" placeholder="Email" required>
-  <input type="password" id="password" placeholder="Password" required>
-  <button onclick="login()">Login</button>
+  <input type="email" id="email" placeholder="Email" autocomplete="email" required />
+  <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
+  <button id="loginBtn">Login</button>
 
-  <p id="message"></p>
-  <p>Don’t have an account? <a href="register.html">Register here</a></p>
+  <p id="msg"></p>
+  <p><small>New here? <a href="register.html">Create an account</a></small></p>
 
-  <!-- 🔹 Load Supabase JS -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- 🔹 All JavaScript goes inside this script tag -->
+  <!-- Shared config/helpers -->
+  <script src="auth-config.js"></script>
   <script>
-    const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // replace with anon key
-    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // If already logged in, go home
+    redirectIfLoggedIn();
 
-    // Login function
-    async function login() {
-      const messageEl = document.getElementById("message");
-      messageEl.textContent = "";
+    const emailEl = document.getElementById("email");
+    const passEl  = document.getElementById("password");
+    const btn     = document.getElementById("loginBtn");
+    const msgEl   = document.getElementById("msg");
 
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
+    btn.addEventListener("click", onLogin);
+    passEl.addEventListener("keydown", (e) => { if (e.key === "Enter") onLogin(); });
+
+    async function onLogin() {
+      clear(msgEl);
+      setDisabled(btn, true);
+
+      const email = emailEl.value.trim();
+      const password = passEl.value;
+
+      if (!email || !password) {
+        show(msgEl, "Email and password are required.");
+        setDisabled(btn, false);
+        return;
+      }
 
       try {
-        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+        const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
 
-        messageEl.style.color = "green";
-        messageEl.textContent = "Login successful! Redirecting...";
-        setTimeout(() => window.location.href = "index.html", 1000);
-      } catch (err) {
-        messageEl.style.color = "red";
-        messageEl.textContent = err.message;
+        show(msgEl, "Login successful. Redirecting…", true);
+        setTimeout(() => (window.location.href = APP_HOME), 400);
+      } catch (e) {
+        log("login error", e);
+        // Friendly messages for common cases
+        const msg =
+          /email|password/i.test(e?.message || "")
+            ? "Incorrect email or password."
+            : e?.message || "Login failed.";
+        show(msgEl, msg);
+      } finally {
+        setDisabled(btn, false);
       }
     }
-
-    // Redirect if already logged in
-    async function checkSession() {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session && session.user) {
-        window.location.href = "index.html";
-      }
-    }
-
-    checkSession();
   </script>
 </body>
 </html>

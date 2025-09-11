@@ -60,11 +60,12 @@
   <button onclick="register()">Register</button>
   <p id="message"></p>
   <p>Already have an account? <a href="login.html">Login here</a></p>
+
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script>
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // use anon key only
-    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; 
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     async function register() {
       const messageEl = document.getElementById("message");
@@ -86,12 +87,15 @@
         });
         if (error) throw error;
 
-        // 2️⃣ Insert profile into users table
+        // 2️⃣ Upsert profile into users table (avoids duplicate key errors)
         const userId = data.user.id;
-        const { error: insertError } = await supabase
+        const { error: upsertError } = await supabase
           .from("users")
-          .insert([{ id: userId, email, name, student_id, team, year }]);
-        if (insertError) throw insertError;
+          .upsert(
+            { id: userId, email, name, student_id, team, year },
+            { onConflict: "id" }
+          );
+        if (upsertError) throw upsertError;
 
         // 3️⃣ Automatically sign in user after registration
         const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });

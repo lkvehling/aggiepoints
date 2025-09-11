@@ -43,12 +43,12 @@
         document.getElementById("userInfo").textContent = `Logged in as: ${currentUser.email}`;
 
         // 2️⃣ Load events
-        const today = new Date().toISOString().split("T")[0];
-        const { data: events, error: eventsError } = await supabase
+        const todayUTC = new Date().toISOString().split("T")[0];
+        const { data: events } = await supabase
           .from("events")
           .select("*")
-          .gte("start_time", today + "T00:00:00")
-          .lte("end_time", today + "T23:59:59");
+          .gte("start_time", `${todayUTC}T00:00:00Z`)
+          .lte("end_time", `${todayUTC}T23:59:59Z`);
 
         console.log("Events:", events, "Error:", eventsError);
 

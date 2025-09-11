@@ -63,8 +63,8 @@
 
   <script>
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // replace with your anon key
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // use anon key only
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
     async function register() {
       const messageEl = document.getElementById("message");
@@ -78,9 +78,11 @@
       const year = parseInt(document.getElementById("year").value);
 
       try {
-        // 1️⃣ Sign up with Supabase Auth
+        // 1️⃣ Sign up with Supabase Auth (no email confirmation)
         const { data, error } = await supabase.auth.signUp({
-          email, password
+          email,
+          password,
+          options: { emailRedirectTo: null } // disables email confirmation
         });
         if (error) throw error;
 
@@ -91,9 +93,14 @@
           .insert([{ id: userId, email, name, student_id, team, year }]);
         if (insertError) throw insertError;
 
+        // 3️⃣ Automatically sign in user after registration
+        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+        if (signInError) throw signInError;
+
         messageEl.style.color = "green";
-        messageEl.textContent = "Registration successful! Check your email.";
-        setTimeout(() => window.location.href = "login.html", 1500);
+        messageEl.textContent = "Registration successful! Redirecting...";
+        setTimeout(() => window.location.href = "index.html", 1000);
+
       } catch (err) {
         messageEl.style.color = "red";
         messageEl.textContent = err.message;

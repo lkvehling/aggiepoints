@@ -42,23 +42,22 @@
       await ensureProfileRow(user);
 
       async function ensureProfileRow(user) {
-        // look for a row; if missing, create a minimal one
-        const { data, error } = await sb
-          .from("users")
-          .select("id")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (!data && !error) {
-          await sb.from("users").insert({
-            id: user.id,
-            email: user.email,
-            name: user.user_metadata?.name || "",
-            student_id: user.user_metadata?.student_id || "",
-            team: user.user_metadata?.team || null,
-            year: user.user_metadata?.year || null
-          });
+        // Upsert is idempotent: creates if missing, no-op if exists
+        const { error } = await sb.from("users").upsert({
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.name || "",
+          student_id: user.user_metadata?.student_id || "",
+          team: user.user_metadata?.team || null,
+          year: user.user_metadata?.year || null
+        }, { onConflict: "id" });
+
+        // optional: ignore error if it's a conflict
+        if (error && error.code !== "23505") {
+          console.warn("ensureProfileRow upsert error:", error);
         }
       }
+
 
       if (!user) return;
       document.getElementById("who").textContent = `Signed in as: ${user.email}`;
@@ -119,17 +118,17 @@
     }
 
     async function checkIn(ev, btn) {
-  const msg = document.getElementById("message");
-  clear(msg);
+      const msg = document.getElementById("message");
+      clear(msg);
 
-  // Geofence (optional toggle)
-  if (document.getElementById("requireGeo").checked && "geolocation" in navigator) {
-    try {
-      const pos = await new Promise((res, rej) =>
-        navigator.geolocation.getCurrentPosition(res, rej, {
-          enableHighAccuracy: true,
-          timeout: 20000,
-          maximumAge: 0
+      // Geofence (optional toggle)
+      if (document.getElementById("requireGeo").checked && "geolocation" in navigator) {
+        try {
+          const pos = await new Promise((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, {
+            enableHighAccuracy: true,
+            timeout: 20000,
+            maximumAge: 0
         })
       );
 
@@ -156,6 +155,21 @@
       show(msg, "Location permission denied or unavailable."); 
       return;
     }
+        const { error, status } = await sb.from("checkins").insert({ user_id: user.id, event_id: ev.id });
+
+    if (error) {
+      // 409 = unique violation via PostgREST; some drivers won’t include 23505
+      if (status === 409 || (error.code === "23505") || /duplicate|already exists/i.test(error.message || "")) {
+        btn.textContent = "✅ Checked In";
+        btn.disabled = true;
+        show(msg, "Already checked in.", true);
+        await loadPoints();
+        return;
+  }
+  show(msg, "Check-in failed: " + (error.message || "Unknown error"));
+  return;
+}
+
   }
 
   // Insert checkin (unique constraint prevents duplicates)

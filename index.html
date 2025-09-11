@@ -50,9 +50,6 @@
           .gte("start_time", `${todayUTC}T00:00:00Z`)
           .lte("end_time", `${todayUTC}T23:59:59Z`);
 
-        if (error) throw error;
-        console.log("Events:", events, "Error:", eventsError);
-
         const container = document.getElementById("eventsContainer");
         container.innerHTML = "";
 

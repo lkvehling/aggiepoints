@@ -1,175 +1,131 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Aggie Points</title>
+  <meta charset="UTF-8" />
+  <title>Aggie Points – Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 30px; text-align: center; }
-    button { padding: 10px 15px; margin: 5px; cursor: pointer; }
-    .event { border: 1px solid #ccc; padding: 15px; margin: 10px auto; max-width: 520px; text-align: left; }
-    .muted { color: #666; font-size: 0.9em; }
-    #message { margin-top: 15px; font-weight: bold; }
-    #eventsContainer { margin-top: 20px; }
-    .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+    body { font-family: Arial, sans-serif; margin: 30px; }
+    .row { display:flex; gap:10px; align-items:center; }
+    .event { border:1px solid #ddd; padding:12px; margin:10px 0; }
+    .muted { color:#666; }
+    #message { font-weight:600; margin-top:10px; }
+    #events { margin-top:20px; }
   </style>
 </head>
 <body>
-
-  <h1>Aggie Points Check-In</h1>
-  <p id="userInfo">Checking login...</p>
-
-  <button id="logoutBtn" style="display:none;">Logout</button>
-
-  <div style="margin-top:10px;">
-    <label class="muted">
-      <input type="checkbox" id="requireGeo" checked />
-      Require geolocation to be inside the event area to check in
-    </label>
+  <div class="row">
+    <div id="who">Checking session…</div>
+    <button id="logoutBtn" style="display:none;">Logout</button>
+    <a href="leaderboard.html">Leaderboard →</a>
   </div>
 
-  <div id="eventsContainer">Loading events...</div>
+  <h3>My Points: <span id="points">0</span></h3>
+
+  <label class="muted"><input type="checkbox" id="requireGeo" checked /> Require geolocation to be inside venue</label>
+
+  <div id="events">Loading today’s events…</div>
   <p id="message"></p>
 
+  <script src="auth-config.js"></script>
   <script>
-    const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // anon key only
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    let user = null;
 
-    let currentUser = null;
+    document.getElementById("logoutBtn").onclick = async () => {
+      await sb.auth.signOut(); window.location.href = "login.html";
+    };
 
-    const logoutBtn = document.getElementById("logoutBtn");
-    const messageEl = document.getElementById("message");
-    const userInfoEl = document.getElementById("userInfo");
-    const eventsContainer = document.getElementById("eventsContainer");
-    const requireGeoEl = document.getElementById("requireGeo");
+    (async function main() {
+      user = await requireSessionOrRedirect();
+      if (!user) return;
+      document.getElementById("who").textContent = `Signed in as: ${user.email}`;
+      document.getElementById("logoutBtn").style.display = "inline-block";
 
-    // Helpers
+      await loadPoints();
+      await loadTodayEvents();
+    })();
+
     function localMidnightRangeISO(d = new Date()) {
-      // Local midnight to next local midnight, expressed as ISO
       const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
       const end = new Date(start); end.setDate(end.getDate() + 1);
-      return { startISO: start.toISOString(), endISO: end.toISOString() };
-    }
-    function fmtDateTimeLocal(iso) {
-      try { return new Date(iso).toLocaleString(); } catch { return iso; }
-    }
-    function pointInBbox(lat, lng, ev) {
-      return lat >= ev.lat_min && lat <= ev.lat_max && lng >= ev.lng_min && lng <= ev.lng_max;
+      return { start: start.toISOString(), end: end.toISOString() };
     }
 
-    logoutBtn.addEventListener("click", async () => {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        alert("Logout failed: " + (error.message || "Unknown error"));
-      } else {
-        currentUser = null;
-        window.location.href = "login.html";
-      }
-    });
+    async function loadPoints() {
+      // Sum of points for this user from checked-in events
+      const { data, error } = await sb
+        .from("checkins")
+        .select("event_id, events(points)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending:false });
+      if (error) return;
+      const total = (data || []).reduce((sum, row) => sum + (row.events?.points ?? 0), 0);
+      document.getElementById("points").textContent = total;
+    }
 
-    async function main() {
-      try {
-        // 1) Session check
-        const { data: { session } } = await supabase.auth.getSession();
-        if (!session || !session.user) {
-          window.location.href = "login.html";
-          return;
-        }
-        currentUser = session.user;
-        userInfoEl.textContent = `Logged in as: ${currentUser.email}`;
-        logoutBtn.style.display = "inline-block";
+    async function loadTodayEvents() {
+      const { start, end } = localMidnightRangeISO();
+      const { data: events, error } = await sb
+        .from("events")
+        .select("*")
+        .gte("start_time", start)
+        .lt("end_time", end)
+        .order("start_time", { ascending:true });
 
-        // 2) Fetch today's events (local midnight → next midnight)
-        const { startISO, endISO } = localMidnightRangeISO(new Date());
-        const { data: events, error: eventsErr } = await supabase
-          .from("events")
-          .select("*")
-          .gte("start_time", startISO)
-          .lt("end_time", endISO)
-          .order("start_time", { ascending: true });
+      const wrap = document.getElementById("events"); wrap.innerHTML = "";
+      if (error || !events || !events.length) { wrap.textContent = "No events scheduled today."; return; }
 
-        if (eventsErr) throw eventsErr;
+      // fetch user's existing checkins to pre-disable
+      const { data: my } = await sb.from("checkins").select("event_id").eq("user_id", user.id);
+      const set = new Set((my || []).map(r => r.event_id));
 
-        eventsContainer.innerHTML = "";
-        if (!events || events.length === 0) {
-          eventsContainer.textContent = "No events scheduled today.";
-          return;
-        }
-
-        // 3) Fetch my checkins (for today) to pre-disable buttons
-        const { data: myCheckins, error: checkinsErr } = await supabase
-          .from("checkins")
-          .select("event_id")
-          .eq("user_id", currentUser.id);
-        if (checkinsErr) throw checkinsErr;
-
-        const checkedSet = new Set((myCheckins || []).map(c => c.event_id));
-
-        // 4) Render events
-        for (const ev of events) {
-          const div = document.createElement("div");
-          div.className = "event";
-          const isChecked = checkedSet.has(ev.id);
-
-          div.innerHTML = `
-            <div class="row">
-              <h3 style="margin:0;">${ev.name}</h3>
-              <span class="muted">${fmtDateTimeLocal(ev.start_time)} – ${fmtDateTimeLocal(ev.end_time)}</span>
-            </div>
-            <p class="muted">Location: ${ev.location || "N/A"}</p>
-            <p>Points: <strong>${ev.points ?? 0}</strong></p>
-            <div class="row">
-              <small class="muted">Geo Area:
-                lat ${ev.lat_min.toFixed?.(4) ?? ev.lat_min} → ${ev.lat_max.toFixed?.(4) ?? ev.lat_max},
-                lng ${ev.lng_min.toFixed?.(4) ?? ev.lng_min} → ${ev.lng_max.toFixed?.(4) ?? ev.lng_max}
-              </small>
-              <button ${isChecked ? "disabled" : ""} data-event-id="${ev.id}">
-                ${isChecked ? "✅ Checked In" : "Check In"}
-              </button>
-            </div>
-          `;
-
-          const btn = div.querySelector("button");
-          btn.addEventListener("click", () => checkIn(ev, btn));
-          eventsContainer.appendChild(div);
-        }
-      } catch (err) {
-        messageEl.style.color = "red";
-        messageEl.textContent = "Error: " + (err.message || "Unknown error");
+      for (const ev of events) {
+        const div = document.createElement("div");
+        const isChecked = set.has(ev.id);
+        div.className = "event";
+        div.innerHTML = `
+          <div class="row"><strong>${ev.name}</strong><span class="muted">${new Date(ev.start_time).toLocaleString()} – ${new Date(ev.end_time).toLocaleString()}</span></div>
+          <div class="muted">Location: ${ev.location || "N/A"}</div>
+          <div>Points: <strong>${ev.points ?? 0}</strong></div>
+          <button ${isChecked?"disabled":""}>${isChecked?"✅ Checked In":"Check In"}</button>
+        `;
+        const btn = div.querySelector("button");
+        btn.onclick = () => checkIn(ev, btn);
+        wrap.appendChild(div);
       }
     }
 
-    async function checkIn(ev, buttonEl) {
-      messageEl.textContent = "";
-      if (!currentUser) {
-        window.location.href = "login.html";
-        return;
-      }
+    async function checkIn(ev, btn) {
+      const msg = document.getElementById("message");
+      clear(msg);
 
-      // Optional geofence gate
-      if (requireGeoEl.checked && "geolocation" in navigator) {
+      // Optional geofence
+      if (document.getElementById("requireGeo").checked && "geolocation" in navigator) {
         try {
-          const pos = await new Promise((resolve, reject) =>
-            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
-          );
-          const { latitude, longitude } = pos.coords;
-          if (!pointInBbox(latitude, longitude, ev)) {
-            messageEl.style.color = "red";
-            messageEl.textContent = "You must be at the venue to check in (outside geo area).";
-            return;
-          }
-        } catch (geoErr) {
-          messageEl.style.color = "red";
-          messageEl.textContent = "Location permission denied or unavailable.";
-          return;
-        }
+          const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy:true, timeout:10000 }));
+          const { latitude: lat, longitude: lng } = pos.coords;
+          const inside = lat >= ev.lat_min && lat <= ev.lat_max && lng >= ev.lng_min && lng <= ev.lng_max;
+          if (!inside) { show(msg, "Go to the venue to check in."); return; }
+        } catch { show(msg, "Location permission denied or unavailable."); return; }
       }
 
-      try {
-        const { error } = await supabase
-          .from("checkins")
-          .insert([{ user_id: currentUser.id, event_id: ev.id }]);
+      // Insert checkin (unique constraint prevents duplicates)
+      const { error } = await sb.from("checkins").insert({ user_id: user.id, event_id: ev.id });
+      if (error) {
+        if ((error.code === "23505") || /duplicate/i.test(error.message)) {
+          btn.textContent = "✅ Checked In"; btn.disabled = true; show(msg, "Already checked in.", true);
+          return;
+        }
+        show(msg, "Check-in failed: " + (error.message || "Unknown error")); return;
+      }
 
-        if (error) {
-          // Handle duplicate check-in nicely
+      btn.textContent = "✅ Checked In"; btn.disabled = true;
+      show(msg, "Successfully checked in!", true);
+
+      // refresh points
+      await loadPoints();
+    }
+  </script>
+</body>
+</html>

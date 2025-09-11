@@ -15,6 +15,19 @@
 
   <h1>Aggie Points Check-In</h1>
   <p id="userInfo">Checking login...</p>
+
+  <button id="logoutBtn">Logout</button>
+  document.getElementById("logoutBtn").addEventListener("click", async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error("Logout error:", error.message);
+      alert("Logout failed: " + error.message);
+    } else {
+      window.location.href = "login.html"; // redirect to login page
+    }
+  });
+
+  
   <div id="eventsContainer">Loading events...</div>
   <p id="message"></p> <!-- ✅ Added message element -->
 

@@ -23,7 +23,7 @@
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // ⚠️ make sure this is anon, not service
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let currentUser = null;
+    
 
     async function main() {
       const messageEl = document.getElementById("message");
@@ -39,6 +39,7 @@
         }
 
         const user = session.user;
+        let currentUser = user;
         document.getElementById("userInfo").textContent = `Logged in as: ${user.email}`;
 
 

@@ -28,19 +28,19 @@
     async function main() {
       const messageEl = document.getElementById("message");
 
-      try {
+     try {
         // 1️⃣ Get session
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        console.log("Session on page load:", session, "Error:", sessionError);
+        const { data: { session } } = await supabase.auth.getSession();
+        console.log("Session on page load:", session);
 
         if (!session || !session.user) {
           window.location.href = "login.html";
           return;
         }
 
-        // Save user for check-in
-        currentUser = session.user;
-        document.getElementById("userInfo").textContent = `Logged in as: ${currentUser.email}`;
+        const user = session.user;
+        document.getElementById("userInfo").textContent = `Logged in as: ${user.email}`;
+
 
         // 2️⃣ Load events
         const todayUTC = new Date().toISOString().split("T")[0];

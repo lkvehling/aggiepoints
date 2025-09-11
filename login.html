@@ -9,23 +9,20 @@
     body { font-family: Arial, sans-serif; margin: 30px; max-width: 420px; }
     input, button { width: 100%; padding: 10px; margin: 6px 0; }
     #msg { margin-top: 10px; font-weight: 600; }
-    small { color:#666; }
   </style>
 </head>
 <body>
   <h2>Welcome back</h2>
-  <p><small>Note: Accounts must use a UC Davis email (@ucdavis.edu).</small></p>
-  <input type="email" id="email" placeholder="Email" autocomplete="email" required />
+
+  <input type="email" id="email" placeholder="UC Davis email" autocomplete="email" required />
   <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
-  <button id="loginBtn">Login</button>
+  <button id="loginBtn" type="button">Login</button>
 
   <p id="msg"></p>
   <p><small>New here? <a href="register.html">Create an account</a></small></p>
 
-  <!-- Shared config/helpers -->
   <script src="auth-config.js"></script>
   <script>
-    // If already logged in, go home
     redirectIfLoggedIn();
 
     const emailEl = document.getElementById("email");
@@ -37,35 +34,18 @@
     passEl.addEventListener("keydown", (e) => { if (e.key === "Enter") onLogin(); });
 
     async function onLogin() {
-      clear(msgEl);
-      setDisabled(btn, true);
-
+      clear(msgEl); setDisabled(btn, true);
       const email = emailEl.value.trim();
       const password = passEl.value;
-
-      if (!email || !password) {
-        show(msgEl, "Email and password are required.");
-        setDisabled(btn, false);
-        return;
-      }
-
+      if (!email || !password) { show(msgEl, "Email and password are required."); setDisabled(btn, false); return; }
       try {
         const { error } = await sb.auth.signInWithPassword({ email, password });
         if (error) throw error;
-
         show(msgEl, "Login successful. Redirecting…", true);
         setTimeout(() => (window.location.href = APP_HOME), 400);
       } catch (e) {
-        log("login error", e);
-        // Friendly messages for common cases
-        const msg =
-          /email|password/i.test(e?.message || "")
-            ? "Incorrect email or password."
-            : e?.message || "Login failed.";
-        show(msgEl, msg);
-      } finally {
-        setDisabled(btn, false);
-      }
+        show(msgEl, /email|password/i.test(e?.message||"") ? "Incorrect email or password." : (e?.message || "Login failed."));
+      } finally { setDisabled(btn, false); }
     }
   </script>
 </body>

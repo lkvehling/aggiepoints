@@ -55,11 +55,11 @@
     <option>2028</option><option>2029</option><option>2030</option>
   </select>
 
-  <button id="registerBtn">Register</button>
+  <button id="registerBtn" type="button">Register</button>
   <p id="msg"></p>
   <p><small>Already have an account? <a href="login.html">Log in</a></small></p>
 
-  <!-- Shared config/helpers -->
+  <!-- Shared config/helpers (must exist at this path) -->
   <script src="auth-config.js"></script>
   <script>
     // If user is already logged in, bounce them to home
@@ -80,23 +80,21 @@
       clear(msgEl);
       setDisabled(btn, true);
 
-      const email = emailEl.value.trim();
+      const email = emailEl.value.trim();       // ✅ declare once
       const password = passEl.value;
       const name = nameEl.value.trim();
       const student_id = sidEl.value.trim();
       const team = teamEl.value;
       const year = parseInt(yearEl.value, 10);
 
-      // Before calling sb.auth.signUp(...)
-      const email = emailEl.value.trim();
-
+      // UC Davis email requirement
       if (!/@ucdavis\.edu$/i.test(email)) {
         show(msgEl, "Registration requires a UC Davis email (@ucdavis.edu).");
         setDisabled(btn, false);
         return;
       }
 
-      // Basic validation that stops churn early
+      // Basic validation
       if (!email || !password || !name || !student_id) {
         show(msgEl, "Please fill in all fields.");
         setDisabled(btn, false);
@@ -113,30 +111,25 @@
         const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
           email,
           password,
-          // If you enable email confirmations later,
-          // add: options: { emailRedirectTo: window.location.origin + "/login.html" }
+          // options: { emailRedirectTo: window.location.origin + "/login.html" } // if enabling confirmations later
         });
         if (signUpErr) throw signUpErr;
 
         const userId = signUpData.user?.id;
         if (!userId) {
-          // If email confirmation is on, user object can be null.
-          // Tell them to verify.
           show(msgEl, "Account created. Check your email to verify your address.", true);
           return;
         }
 
-        // 2) Upsert profile row; RLS must allow service role or (id = auth.uid())
+        // 2) Upsert profile row
         const { error: upsertErr } = await sb
           .from("users")
           .upsert({ id: userId, email, name, student_id, team, year }, { onConflict: "id" });
         if (upsertErr) throw upsertErr;
 
-        // 3) Ensure session. Some projects auto-login on signUp; some don’t.
-        // Try to sign in explicitly to avoid mystery states during dev.
+        // 3) Ensure session
         const { error: loginErr } = await sb.auth.signInWithPassword({ email, password });
         if (loginErr) {
-          // If email confirmation is required, this will fail until verified.
           show(msgEl, "Registered. Please verify your email, then log in.", true);
           return;
         }

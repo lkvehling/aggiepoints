@@ -53,11 +53,6 @@
         const container = document.getElementById("eventsContainer");
         container.innerHTML = "";
 
-        if (eventsError) {
-          container.textContent = "⚠️ Error loading events: " + eventsError.message;
-          return;
-        }
-
         if (!events || events.length === 0) {
           container.textContent = "No events scheduled today.";
           return;

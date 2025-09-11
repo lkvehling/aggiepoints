@@ -143,70 +143,110 @@
       }
     }
 
-    async function checkIn(ev, btn) {
-      const msg = document.getElementById("message");
-      clear(msg);
+   async function checkIn(ev, btn) {
+    const msg = document.getElementById("message");
+    clear(msg);
+    btn.disabled = true;
 
-      // Geofence (optional toggle)
-      if (document.getElementById("requireGeo").checked && "geolocation" in navigator) {
-        try {
-          const pos = await new Promise((res, rej) =>
-            navigator.geolocation.getCurrentPosition(res, rej, {
-              enableHighAccuracy: true,
-              timeout: 20000,
-              maximumAge: 0
-            })
-          );
-
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-
-          // --- safer bounding box check ---
-          const EPS = 0.0007; // ~75m buffer
-          const accDeg = Math.min((pos.coords.accuracy || 50), 200) / 111111; // cap at ~200m
-
-          const latMin = Math.min(ev.lat_min, ev.lat_max) - EPS - accDeg;
-          const latMax = Math.max(ev.lat_min, ev.lat_max) + EPS + accDeg;
-          const lngMin = Math.min(ev.lng_min, ev.lng_max) - EPS - accDeg;
-          const lngMax = Math.max(ev.lng_min, ev.lng_max) + EPS + accDeg;
-
-          const inside = lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax;
-
-          console.log("device lat/lng/acc:", lat, lng, pos.coords.accuracy, "m");
-          console.log("expanded box:", { latMin, latMax, lngMin, lngMax }, "inside?", inside);
-
-          if (!inside) { show(msg, "Go to the venue to check in."); return; }
-        } catch (err) {
-          console.error("geolocation error", err);
-          show(msg, "Location permission denied or unavailable.");
-          return;
-        }
+    // Geofence (optional)
+    if (document.getElementById("requireGeo").checked && "geolocation" in navigator) {
+      try {
+        const pos = await new Promise((res, rej) =>
+          navigator.geolocation.getCurrentPosition(res, rej, {
+            enableHighAccuracy: true, timeout: 20000, maximumAge: 0
+          })
+        );
+        const lat = pos.coords.latitude, lng = pos.coords.longitude;
+        const EPS = 0.0007, accDeg = Math.min((pos.coords.accuracy || 50), 200) / 111111;
+        const latMin = Math.min(ev.lat_min, ev.lat_max) - EPS - accDeg;
+        const latMax = Math.max(ev.lat_min, ev.lat_max) + EPS + accDeg;
+        const lngMin = Math.min(ev.lng_min, ev.lng_max) - EPS - accDeg;
+        const lngMax = Math.max(ev.lng_min, ev.lng_max) + EPS + accDeg;
+        const inside = lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax;
+        console.log("device lat/lng/acc:", lat, lng, pos.coords.accuracy, "m");
+        console.log("expanded box:", { latMin, latMax, lngMin, lngMax }, "inside?", inside);
+        if (!inside) { show(msg, "Go to the venue to check in."); btn.disabled = false; return; }
+      } catch (err) {
+        console.error("geolocation error", err);
+        show(msg, "Location permission denied or unavailable.");
+        btn.disabled = false;
+        return;
       }
+    }
 
-      // Insert checkin (unique constraint prevents duplicates)
-      const { error, status } = await sb
+    // helper: try insert once
+    async function tryInsert() {
+      const { data, error, status } = await sb
         .from("checkins")
-        .insert({ user_id: user.id, event_id: ev.id });
+        .insert({ user_id: user.id, event_id: ev.id })
+        .select("id")
+         .maybeSingle();
+      return { error, status };
+    }
 
-      if (error) {
-        // 409/23505 → already checked in
-        if (status === 409 || (error.code === "23505") ||
-            /duplicate|already exists/i.test(error.message || "")) {
-          btn.textContent = "✅ Checked In";
-          btn.disabled = true;
-          show(msg, "Already checked in.", true);
-          await loadPoints();
-          return;
-        }
-        show(msg, "Check-in failed: " + (error.message || "Unknown error"));
+    let { error, status } = await tryInsert();
+
+    if (error) {
+      const msgText = (error.message || "") + " " + (error.details || "") + " " + (error.hint || "");
+      const isUnique =
+        error.code === "23505" ||
+        /unique|duplicate|checkins_user_event_idx/i.test(msgText) ||
+        status === 409 && /duplicate/i.test(msgText);
+
+      const isFKUserMissing =
+        /foreign key|checkins_user_id_fkey/i.test(msgText);
+
+      if (isUnique) {
+        btn.textContent = "✅ Checked In";
+        show(msg, "Already checked in.", true);
+        await loadPoints();
         return;
       }
 
-      btn.textContent = "✅ Checked In";
-      btn.disabled = true;
-      show(msg, "Successfully checked in!", true);
-      await loadPoints();
+      if (isFKUserMissing) {
+        // If a legacy account has no users row, create a minimal one and retry once.
+        console.warn("FK users missing; creating profile then retrying check-in");
+        const up = await sb.from("users").upsert({
+          id: user.id,
+          email: user.email,
+          name: user.user_metadata?.name || "",
+          student_id: user.user_metadata?.student_id || "",
+          team: user.user_metadata?.team || null,
+          year: user.user_metadata?.year || null
+        }, { onConflict: "id" });
+        if (up.error && up.error.code !== "23505") {
+          console.error("profile upsert failed:", up.error);
+          show(msg, "Profile missing and could not be created.");
+          btn.disabled = false;
+          return;
+        }
+        // retry insert
+        ({ error, status } = await tryInsert());
+        if (error) {
+          console.error("check-in retry failed:", error);
+          show(msg, "Check-in failed: " + (error.message || "Unknown error"));
+          btn.disabled = false;
+          return;
+        }
+      } else {
+        console.error("check-in error:", error);
+        show(msg, "Check-in failed: " + (error.message || "Unknown error"));
+        btn.disabled = false;
+        return;
+      }
     }
+
+    // success
+    btn.textContent = "✅ Checked In";
+    show(msg, "Successfully checked in!", true);
+    await loadPoints();
+  }
+
+        btn.textContent = "✅ Checked In";
+        btn.disabled = true;
+        show(msg, "Successfully checked in!", true);
+        await loadPoints();
+      }
 
     // (Only needed if you *didn't* adopt Option A; kept here for reference)
     function localMidnightRangeISO(d = new Date()) {

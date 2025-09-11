@@ -2,24 +2,26 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Register - Aggie Points</title>
-  
+  <title>Register – Aggie Points</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 30px; max-width: 400px; }
-    input, select, button { width: 100%; margin: 8px 0; padding: 8px; }
-    #message { color: red; margin-top: 10px; }
+    body { font-family: Arial, sans-serif; margin: 30px; max-width: 420px; }
+    input, select, button { width: 100%; padding: 10px; margin: 6px 0; }
+    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+    #msg { margin-top: 10px; font-weight: 600; }
+    small { color:#666; }
   </style>
 </head>
 <body>
-  <h2>Register</h2>
+  <h2>Create your account</h2>
 
-  <input type="email" id="email" placeholder="Email" required>
-  <input type="password" id="password" placeholder="Password" required>
-  <input type="text" id="name" placeholder="Full Name" required>
-  <input type="text" id="student_id" placeholder="Student ID" required>
+  <input type="email" id="email" placeholder="UC Davis email" autocomplete="email" required />
+  <input type="password" id="password" placeholder="Password (min 6 chars)" autocomplete="new-password" required />
+  <input type="text" id="name" placeholder="Full name" required />
+  <input type="text" id="student_id" placeholder="Student ID" required />
 
-  <label>Team:</label>
+  <label>Team</label>
   <select id="team">
     <option value="Baseball">Baseball</option>
     <option value="Men’s Basketball">Men’s Basketball</option>
@@ -47,67 +49,96 @@
     <option value="Women’s Water Polo">Women’s Water Polo</option>
   </select>
 
-  <label>Graduation Year:</label>
+  <label>Graduation Year</label>
   <select id="year">
-    <option value="2025">2025</option>
-    <option value="2026">2026</option>
-    <option value="2027">2027</option>
-    <option value="2028">2028</option>
-    <option value="2029">2029</option>
-    <option value="2030">2030</option>
+    <option>2025</option><option>2026</option><option>2027</option>
+    <option>2028</option><option>2029</option><option>2030</option>
   </select>
 
-  <button onclick="register()">Register</button>
-  <p id="message"></p>
-  <p>Already have an account? <a href="login.html">Login here</a></p>
+  <button id="registerBtn">Register</button>
+  <p id="msg"></p>
+  <p><small>Already have an account? <a href="login.html">Log in</a></small></p>
 
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Shared config/helpers -->
+  <script src="auth-config.js"></script>
   <script>
-    const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; 
-    const supabase = windows.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    // If user is already logged in, bounce them to home
+    redirectIfLoggedIn();
 
-    async function register() {
-      const messageEl = document.getElementById("message");
-      messageEl.textContent = "";
+    const emailEl = document.getElementById("email");
+    const passEl  = document.getElementById("password");
+    const nameEl  = document.getElementById("name");
+    const sidEl   = document.getElementById("student_id");
+    const teamEl  = document.getElementById("team");
+    const yearEl  = document.getElementById("year");
+    const btn     = document.getElementById("registerBtn");
+    const msgEl   = document.getElementById("msg");
 
-      const email = document.getElementById("email").value;
-      const password = document.getElementById("password").value;
-      const name = document.getElementById("name").value;
-      const student_id = document.getElementById("student_id").value;
-      const team = document.getElementById("team").value;
-      const year = parseInt(document.getElementById("year").value);
+    btn.addEventListener("click", onRegister);
+
+    async function onRegister() {
+      clear(msgEl);
+      setDisabled(btn, true);
+
+      const email = emailEl.value.trim();
+      const password = passEl.value;
+      const name = nameEl.value.trim();
+      const student_id = sidEl.value.trim();
+      const team = teamEl.value;
+      const year = parseInt(yearEl.value, 10);
+
+      // Basic validation that stops churn early
+      if (!email || !password || !name || !student_id) {
+        show(msgEl, "Please fill in all fields.");
+        setDisabled(btn, false);
+        return;
+      }
+      if (password.length < 6) {
+        show(msgEl, "Password must be at least 6 characters.");
+        setDisabled(btn, false);
+        return;
+      }
 
       try {
-        // 1️⃣ Sign up with Supabase Auth (no email confirmation)
-        const { data, error } = await supabase.auth.signUp({
+        // 1) Sign up the auth user
+        const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: null } // disables email confirmation
+          // If you enable email confirmations later,
+          // add: options: { emailRedirectTo: window.location.origin + "/login.html" }
         });
-        if (error) throw error;
+        if (signUpErr) throw signUpErr;
 
-        // 2️⃣ Upsert profile into users table (avoids duplicate key errors)
-        const userId = data.user.id;
-        const { error: upsertError } = await supabase
+        const userId = signUpData.user?.id;
+        if (!userId) {
+          // If email confirmation is on, user object can be null.
+          // Tell them to verify.
+          show(msgEl, "Account created. Check your email to verify your address.", true);
+          return;
+        }
+
+        // 2) Upsert profile row; RLS must allow service role or (id = auth.uid())
+        const { error: upsertErr } = await sb
           .from("users")
-          .upsert(
-            { id: userId, email, name, student_id, team, year },
-            { onConflict: "id" }
-          );
-        if (upsertError) throw upsertError;
+          .upsert({ id: userId, email, name, student_id, team, year }, { onConflict: "id" });
+        if (upsertErr) throw upsertErr;
 
-        // 3️⃣ Automatically sign in user after registration
-        const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
-        if (signInError) throw signInError;
+        // 3) Ensure session. Some projects auto-login on signUp; some don’t.
+        // Try to sign in explicitly to avoid mystery states during dev.
+        const { error: loginErr } = await sb.auth.signInWithPassword({ email, password });
+        if (loginErr) {
+          // If email confirmation is required, this will fail until verified.
+          show(msgEl, "Registered. Please verify your email, then log in.", true);
+          return;
+        }
 
-        messageEl.style.color = "green";
-        messageEl.textContent = "Registration successful! Please login.";
-        setTimeout(() => window.location.href = "login.html", 1000);
-
-      } catch (err) {
-        messageEl.style.color = "red";
-        messageEl.textContent = err.message;
+        show(msgEl, "Registration successful! Redirecting…", true);
+        setTimeout(() => (window.location.href = APP_HOME), 600);
+      } catch (e) {
+        log("register error", e);
+        show(msgEl, e?.message || "Registration failed.");
+      } finally {
+        setDisabled(btn, false);
       }
     }
   </script>

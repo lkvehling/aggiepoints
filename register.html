@@ -87,6 +87,15 @@
       const team = teamEl.value;
       const year = parseInt(yearEl.value, 10);
 
+      // Before calling sb.auth.signUp(...)
+      const email = emailEl.value.trim();
+
+      if (!/@ucdavis\.edu$/i.test(email)) {
+        show(msgEl, "Registration requires a UC Davis email (@ucdavis.edu).");
+        setDisabled(btn, false);
+        return;
+      }
+
       // Basic validation that stops churn early
       if (!email || !password || !name || !student_id) {
         show(msgEl, "Please fill in all fields.");

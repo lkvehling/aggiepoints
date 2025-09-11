@@ -38,6 +38,28 @@
 
     (async function main() {
       user = await requireSessionOrRedirect();
+      // after: user = await requireSessionOrRedirect();
+      await ensureProfileRow(user);
+
+      async function ensureProfileRow(user) {
+        // look for a row; if missing, create a minimal one
+        const { data, error } = await sb
+          .from("users")
+          .select("id")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (!data && !error) {
+          await sb.from("users").insert({
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata?.name || "",
+            student_id: user.user_metadata?.student_id || "",
+            team: user.user_metadata?.team || null,
+            year: user.user_metadata?.year || null
+          });
+        }
+      }
+
       if (!user) return;
       document.getElementById("who").textContent = `Signed in as: ${user.email}`;
       document.getElementById("logoutBtn").style.display = "inline-block";

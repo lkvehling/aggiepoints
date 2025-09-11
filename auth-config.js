@@ -25,4 +25,3 @@
     if (!session?.user) window.location.href = LOGIN_PAGE;
     return session?.user ?? null;
   }
-</script>

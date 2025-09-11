@@ -8,9 +8,7 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 30px; max-width: 420px; }
     input, select, button { width: 100%; padding: 10px; margin: 6px 0; }
-    .row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
     #msg { margin-top: 10px; font-weight: 600; }
-    small { color:#666; }
   </style>
 </head>
 <body>
@@ -23,46 +21,25 @@
 
   <label>Team</label>
   <select id="team">
-    <option value="Baseball">Baseball</option>
-    <option value="Men’s Basketball">Men’s Basketball</option>
-    <option value="Women’s Basketball">Women’s Basketball</option>
-    <option value="Beach Volleyball">Beach Volleyball</option>
-    <option value="Men’s Cross Country">Men’s Cross Country</option>
-    <option value="Women’s Cross Country">Women’s Cross Country</option>
-    <option value="Equestrian">Equestrian</option>
-    <option value="Field Hockey">Field Hockey</option>
-    <option value="Football">Football</option>
-    <option value="Men’s Golf">Men’s Golf</option>
-    <option value="Women’s Golf">Women’s Golf</option>
-    <option value="Gymnastics">Gymnastics</option>
-    <option value="Lacrosse">Lacrosse</option>
-    <option value="Men’s Soccer">Men’s Soccer</option>
-    <option value="Women’s Soccer">Women’s Soccer</option>
-    <option value="Softball">Softball</option>
-    <option value="Swim & Dive">Swim & Dive</option>
-    <option value="Men’s Tennis">Men’s Tennis</option>
-    <option value="Women’s Tennis">Women’s Tennis</option>
-    <option value="Men’s Track & Field">Men’s Track & Field</option>
-    <option value="Women’s Track & Field">Women’s Track & Field</option>
-    <option value="Volleyball">Volleyball</option>
-    <option value="Men’s Water Polo">Men’s Water Polo</option>
-    <option value="Women’s Water Polo">Women’s Water Polo</option>
+    <option>Baseball</option><option>Men’s Basketball</option><option>Women’s Basketball</option>
+    <option>Beach Volleyball</option><option>Men’s Cross Country</option><option>Women’s Cross Country</option>
+    <option>Equestrian</option><option>Field Hockey</option><option>Football</option>
+    <option>Men’s Golf</option><option>Women’s Golf</option><option>Gymnastics</option>
+    <option>Lacrosse</option><option>Men’s Soccer</option><option>Women’s Soccer</option>
+    <option>Softball</option><option>Swim & Dive</option><option>Men’s Tennis</option><option>Women’s Tennis</option>
+    <option>Men’s Track & Field</option><option>Women’s Track & Field</option><option>Volleyball</option>
+    <option>Men’s Water Polo</option><option>Women’s Water Polo</option>
   </select>
 
   <label>Graduation Year</label>
-  <select id="year">
-    <option>2025</option><option>2026</option><option>2027</option>
-    <option>2028</option><option>2029</option><option>2030</option>
-  </select>
+  <select id="year"><option>2025</option><option>2026</option><option>2027</option><option>2028</option><option>2029</option><option>2030</option></select>
 
   <button id="registerBtn" type="button">Register</button>
   <p id="msg"></p>
   <p><small>Already have an account? <a href="login.html">Log in</a></small></p>
 
-  <!-- Shared config/helpers (must exist at this path) -->
   <script src="auth-config.js"></script>
   <script>
-    // If user is already logged in, bounce them to home
     redirectIfLoggedIn();
 
     const emailEl = document.getElementById("email");
@@ -77,67 +54,35 @@
     btn.addEventListener("click", onRegister);
 
     async function onRegister() {
-      clear(msgEl);
-      setDisabled(btn, true);
+      clear(msgEl); setDisabled(btn, true);
 
-      const email = emailEl.value.trim();       // ✅ declare once
+      const email = emailEl.value.trim();
       const password = passEl.value;
       const name = nameEl.value.trim();
       const student_id = sidEl.value.trim();
       const team = teamEl.value;
       const year = parseInt(yearEl.value, 10);
 
-      // UC Davis email requirement
-      if (!/@ucdavis\.edu$/i.test(email)) {
-        show(msgEl, "Registration requires a UC Davis email (@ucdavis.edu).");
-        setDisabled(btn, false);
-        return;
-      }
-
-      // Basic validation
-      if (!email || !password || !name || !student_id) {
-        show(msgEl, "Please fill in all fields.");
-        setDisabled(btn, false);
-        return;
-      }
-      if (password.length < 6) {
-        show(msgEl, "Password must be at least 6 characters.");
-        setDisabled(btn, false);
-        return;
-      }
+      if (!/@ucdavis\.edu$/i.test(email)) { show(msgEl, "Registration requires a UC Davis email (@ucdavis.edu)."); setDisabled(btn, false); return; }
+      if (!email || !password || !name || !student_id) { show(msgEl, "Please fill in all fields."); setDisabled(btn, false); return; }
+      if (password.length < 6) { show(msgEl, "Password must be at least 6 characters."); setDisabled(btn, false); return; }
 
       try {
-        // 1) Sign up the auth user
-        const { data: signUpData, error: signUpErr } = await sb.auth.signUp({
-          email,
-          password,
-          // options: { emailRedirectTo: window.location.origin + "/login.html" } // if enabling confirmations later
-        });
+        const { data: signUpData, error: signUpErr } = await sb.auth.signUp({ email, password });
         if (signUpErr) throw signUpErr;
 
         const userId = signUpData.user?.id;
-        if (!userId) {
-          show(msgEl, "Account created. Check your email to verify your address.", true);
-          return;
-        }
+        if (!userId) { show(msgEl, "Account created. Check your email to verify your address.", true); return; }
 
-        // 2) Upsert profile row
-        const { error: upsertErr } = await sb
-          .from("users")
-          .upsert({ id: userId, email, name, student_id, team, year }, { onConflict: "id" });
+        const { error: upsertErr } = await sb.from("users").upsert({ id: userId, email, name, student_id, team, year }, { onConflict: "id" });
         if (upsertErr) throw upsertErr;
 
-        // 3) Ensure session
         const { error: loginErr } = await sb.auth.signInWithPassword({ email, password });
-        if (loginErr) {
-          show(msgEl, "Registered. Please verify your email, then log in.", true);
-          return;
-        }
+        if (loginErr) { show(msgEl, "Registered. Please verify your email, then log in.", true); return; }
 
         show(msgEl, "Registration successful! Redirecting…", true);
         setTimeout(() => (window.location.href = APP_HOME), 600);
       } catch (e) {
-        log("register error", e);
         show(msgEl, e?.message || "Registration failed.");
       } finally {
         setDisabled(btn, false);

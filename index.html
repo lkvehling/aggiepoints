@@ -128,7 +128,7 @@
       // Optional geofence
       if (document.getElementById("requireGeo").checked && "geolocation" in navigator) {
         try {
-          const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy:true, timeout:10000 }));
+          const pos = await new Promise((res, rej) => navigator.geolocation.getCurrentPosition(res, rej, { enableHighAccuracy:true, timeout:20000, maximumAge: 0}));
           const { latitude: lat, longitude: lng } = pos.coords;
           const inside = lat >= ev.lat_min && lat <= ev.lat_max && lng >= ev.lng_min && lng <= ev.lng_max;
           if (!inside) { show(msg, "Go to the venue to check in."); return; }

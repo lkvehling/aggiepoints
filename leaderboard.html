@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aggie Points – Leaderboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 30px; }
+    h3 { margin-top: 24px; }
+    table { border-collapse: collapse; width: 100%; max-width: 720px; }
+    th, td { border: 1px solid #ddd; padding: 8px; }
+    th { background: #f7f7f7; text-align:left; }
+    .row { display:flex; gap:10px; align-items:center; }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <a href="index.html">← Back</a>
+    <div id="who" style="margin-left:auto;"></div>
+  </div>
+
+  <h3>My Points: <span id="myPoints">0</span></h3>
+
+  <h3>Top 10 Individuals</h3>
+  <table id="indTable"><thead><tr><th>#</th><th>Name</th><th>Team</th><th>Points</th></tr></thead><tbody></tbody></table>
+
+  <h3>Top 5 Teams (Participation % this month)</h3>
+  <table id="teamTable"><thead><tr><th>#</th><th>Team</th><th>Participation %</th><th>Participants</th><th>Roster</th></tr></thead><tbody></tbody></table>
+
+  <script src="auth-config.js"></script>
+  <script>
+    let user = null;
+    (async function main() {
+      user = await requireSessionOrRedirect();
+      if (!user) return;
+      document.getElementById("who").textContent = user.email;
+
+      await loadMyPoints();
+      await loadTopIndividuals();
+      await loadTopTeamsParticipation();
+    })();
+
+    async function loadMyPoints() {
+      const { data, error } = await sb
+        .from("checkins")
+        .select("event_id, events(points)")
+        .eq("user_id", user.id);
+      if (error) return;
+      const total = (data || []).reduce((s, r) => s + (r.events?.points ?? 0), 0);
+      document.getElementById("myPoints").textContent = total;
+    }
+
+    async function loadTopIndividuals() {
+      // Get all users with their points sum
+      const { data: allCheckins } = await sb
+        .from("checkins")
+        .select("user_id, events(points)");
+
+      const { data: allUsers } = await sb
+        .from("users")
+        .select("id, name, team");
+
+      const pointsByUser = new Map();
+      (allCheckins || []).forEach(row => {
+        const uid = row.user_id;
+        const pts = row.events?.points ?? 0;
+        pointsByUser.set(uid, (pointsByUser.get(uid) || 0) + pts);
+      });
+
+      const rows = (allUsers || []).map(u => ({
+        id: u.id,
+        name: u.name,
+        team: u.team,
+        points: pointsByUser.get(u.id) || 0
+      })).sort((a,b) => b.points - a.points).slice(0, 10);
+
+      const tbody = document.querySelector("#indTable tbody");
+      tbody.innerHTML = rows.map((r,i) =>
+        `<tr><td>${i+1}</td><td>${r.name}</td><td>${r.team??""}</td><td>${r.points}</td></tr>`
+      ).join("");
+    }
+
+    function monthRangeISO(d=new Date()) {
+      const start = new Date(d.getFullYear(), d.getMonth(), 1);
+      const end = new Date(d.getFullYear(), d.getMonth()+1, 1);
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
+
+    async function loadTopTeamsParticipation() {
+      const { start, end } = monthRangeISO();
+
+      // Roster sizes per team
+      const { data: roster } = await sb.from("users").select("team, id");
+      const teamSizes = new Map();
+      (roster || []).forEach(u => {
+        if (!u.team) return;
+        teamSizes.set(u.team, (teamSizes.get(u.team) || new Set()).add(u.id));
+      });
+
+      // Distinct participants per team this month
+      const { data: checks } = await sb
+        .from("checkins")
+        .select("user_id, users(team)")
+        .gte("created_at", start)
+        .lt("created_at", end);
+
+      const participants = new Map(); // team -> Set<user_id>
+      (checks || []).forEach(c => {
+        const team = c.users?.team;
+        if (!team) return;
+        if (!participants.has(team)) participants.set(team, new Set());
+        participants.get(team).add(c.user_id);
+      });
+
+      // Calculate participation % = unique participants / roster size
+      const rows = Array.from(teamSizes.keys()).map(team => {
+        const rosterSet = teamSizes.get(team) || new Set();
+        const partSet = participants.get(team) || new Set();
+        const rosterCount = rosterSet.size;
+        const partCount = partSet.size;
+        const pct = rosterCount ? Math.round((partCount / rosterCount) * 100) : 0;
+        return { team, pct, partCount, rosterCount };
+      }).sort((a,b) => b.pct - a.pct).slice(0, 5);
+
+      const tbody = document.querySelector("#teamTable tbody");
+      tbody.innerHTML = rows.map((r,i) =>
+        `<tr><td>${i+1}</td><td>${r.team}</td><td>${r.pct}%</td><td>${r.partCount}</td><td>${r.rosterCount}</td></tr>`
+      ).join("");
+    }
+  </script>
+</body>
+</html>

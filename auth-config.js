@@ -1,5 +1,4 @@
-<!-- auth-config.js -->
-<script>
+
   // ====== REPLACE THESE TWO ======
   const SUPABASE_URL = "https://YOUR-PROJECT-REF.supabase.co";
   const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow";

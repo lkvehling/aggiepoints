@@ -2,7 +2,7 @@
 <script>
   // ====== EDIT THESE THREE ONLY ======
   const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-  const SUPABASE_ANON_KEY = "YOUR_ANON_KEY"; // keep anon only
+  const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // keep anon only
   const APP_HOME = "index.html";  // where to go after login
   const LOGIN_PAGE = "login.html";
   const REGISTER_PAGE = "register.html";

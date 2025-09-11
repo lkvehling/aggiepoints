@@ -7,8 +7,11 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 30px; text-align: center; }
     button { padding: 10px 15px; margin: 5px; cursor: pointer; }
-    .event { border: 1px solid #ccc; padding: 15px; margin: 10px; }
+    .event { border: 1px solid #ccc; padding: 15px; margin: 10px auto; max-width: 520px; text-align: left; }
+    .muted { color: #666; font-size: 0.9em; }
     #message { margin-top: 15px; font-weight: bold; }
+    #eventsContainer { margin-top: 20px; }
+    .row { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
   </style>
 </head>
 <body>
@@ -16,121 +19,157 @@
   <h1>Aggie Points Check-In</h1>
   <p id="userInfo">Checking login...</p>
 
-  <!-- Logout button -->
-  <button id="logoutBtn">Logout</button>
+  <button id="logoutBtn" style="display:none;">Logout</button>
+
+  <div style="margin-top:10px;">
+    <label class="muted">
+      <input type="checkbox" id="requireGeo" checked />
+      Require geolocation to be inside the event area to check in
+    </label>
+  </div>
 
   <div id="eventsContainer">Loading events...</div>
   <p id="message"></p>
 
   <script>
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // replace with your anon key
-    const supabase = Supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // anon key only
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-    let currentUser = null; // global current user
+    let currentUser = null;
+
     const logoutBtn = document.getElementById("logoutBtn");
-    logoutBtn.style.display = "none"; // hide until login confirmed
+    const messageEl = document.getElementById("message");
+    const userInfoEl = document.getElementById("userInfo");
+    const eventsContainer = document.getElementById("eventsContainer");
+    const requireGeoEl = document.getElementById("requireGeo");
 
-    // 🔹 Logout functionality
+    // Helpers
+    function localMidnightRangeISO(d = new Date()) {
+      // Local midnight to next local midnight, expressed as ISO
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      const end = new Date(start); end.setDate(end.getDate() + 1);
+      return { startISO: start.toISOString(), endISO: end.toISOString() };
+    }
+    function fmtDateTimeLocal(iso) {
+      try { return new Date(iso).toLocaleString(); } catch { return iso; }
+    }
+    function pointInBbox(lat, lng, ev) {
+      return lat >= ev.lat_min && lat <= ev.lat_max && lng >= ev.lng_min && lng <= ev.lng_max;
+    }
+
     logoutBtn.addEventListener("click", async () => {
       const { error } = await supabase.auth.signOut();
       if (error) {
-        console.error("Logout error:", error.message);
-        alert("Logout failed: " + error.message);
+        alert("Logout failed: " + (error.message || "Unknown error"));
       } else {
-        currentUser = null; // clear user
-        window.location.href = "login.html"; // redirect to login
+        currentUser = null;
+        window.location.href = "login.html";
       }
     });
 
     async function main() {
-      const messageEl = document.getElementById("message");
-      const userInfoEl = document.getElementById("userInfo");
-      const eventsContainer = document.getElementById("eventsContainer");
-
       try {
-        // 1️⃣ Get session
+        // 1) Session check
         const { data: { session } } = await supabase.auth.getSession();
-
         if (!session || !session.user) {
           window.location.href = "login.html";
           return;
         }
-
         currentUser = session.user;
         userInfoEl.textContent = `Logged in as: ${currentUser.email}`;
-        logoutBtn.style.display = "inline-block"; // show logout button
+        logoutBtn.style.display = "inline-block";
 
-        // 2️⃣ Load today's events
-        const today = new Date();
-        const yyyy = today.getFullYear();
-        const mm = String(today.getMonth() + 1).padStart(2, "0");
-        const dd = String(today.getDate()).padStart(2, "0");
-
-        const start = `${yyyy}-${mm}-${dd} 00:00:00`;
-        const end   = `${yyyy}-${mm}-${dd} 23:59:59`;
-
-        const { data: events, error } = await supabase
+        // 2) Fetch today's events (local midnight → next midnight)
+        const { startISO, endISO } = localMidnightRangeISO(new Date());
+        const { data: events, error: eventsErr } = await supabase
           .from("events")
           .select("*")
-          .gte("start_time", start)
-          .lte("end_time", end);
+          .gte("start_time", startISO)
+          .lt("end_time", endISO)
+          .order("start_time", { ascending: true });
+
+        if (eventsErr) throw eventsErr;
 
         eventsContainer.innerHTML = "";
-
         if (!events || events.length === 0) {
           eventsContainer.textContent = "No events scheduled today.";
           return;
         }
 
-        events.forEach(ev => {
+        // 3) Fetch my checkins (for today) to pre-disable buttons
+        const { data: myCheckins, error: checkinsErr } = await supabase
+          .from("checkins")
+          .select("event_id")
+          .eq("user_id", currentUser.id);
+        if (checkinsErr) throw checkinsErr;
+
+        const checkedSet = new Set((myCheckins || []).map(c => c.event_id));
+
+        // 4) Render events
+        for (const ev of events) {
           const div = document.createElement("div");
           div.className = "event";
-          div.innerHTML = `
-            <h3>${ev.name}</h3>
-            <p>Location: ${ev.location || "N/A"}</p>
-            <p>Points: ${ev.points}</p>
-            <button onclick="checkIn('${ev.id}', this)">Check In</button>
-          `;
-          eventsContainer.appendChild(div);
-        });
+          const isChecked = checkedSet.has(ev.id);
 
+          div.innerHTML = `
+            <div class="row">
+              <h3 style="margin:0;">${ev.name}</h3>
+              <span class="muted">${fmtDateTimeLocal(ev.start_time)} – ${fmtDateTimeLocal(ev.end_time)}</span>
+            </div>
+            <p class="muted">Location: ${ev.location || "N/A"}</p>
+            <p>Points: <strong>${ev.points ?? 0}</strong></p>
+            <div class="row">
+              <small class="muted">Geo Area:
+                lat ${ev.lat_min.toFixed?.(4) ?? ev.lat_min} → ${ev.lat_max.toFixed?.(4) ?? ev.lat_max},
+                lng ${ev.lng_min.toFixed?.(4) ?? ev.lng_min} → ${ev.lng_max.toFixed?.(4) ?? ev.lng_max}
+              </small>
+              <button ${isChecked ? "disabled" : ""} data-event-id="${ev.id}">
+                ${isChecked ? "✅ Checked In" : "Check In"}
+              </button>
+            </div>
+          `;
+
+          const btn = div.querySelector("button");
+          btn.addEventListener("click", () => checkIn(ev, btn));
+          eventsContainer.appendChild(div);
+        }
       } catch (err) {
         messageEl.style.color = "red";
-        messageEl.textContent = "Error loading events: " + err.message;
+        messageEl.textContent = "Error: " + (err.message || "Unknown error");
       }
     }
 
-    async function checkIn(eventId, button) {
-      const messageEl = document.getElementById("message");
+    async function checkIn(ev, buttonEl) {
       messageEl.textContent = "";
-
       if (!currentUser) {
         window.location.href = "login.html";
         return;
       }
 
+      // Optional geofence gate
+      if (requireGeoEl.checked && "geolocation" in navigator) {
+        try {
+          const pos = await new Promise((resolve, reject) =>
+            navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000 })
+          );
+          const { latitude, longitude } = pos.coords;
+          if (!pointInBbox(latitude, longitude, ev)) {
+            messageEl.style.color = "red";
+            messageEl.textContent = "You must be at the venue to check in (outside geo area).";
+            return;
+          }
+        } catch (geoErr) {
+          messageEl.style.color = "red";
+          messageEl.textContent = "Location permission denied or unavailable.";
+          return;
+        }
+      }
+
       try {
         const { error } = await supabase
           .from("checkins")
-          .insert([{ user_id: currentUser.id, event_id: eventId }]);
+          .insert([{ user_id: currentUser.id, event_id: ev.id }]);
 
-        if (error) throw error;
-
-        // Update button UI
-        button.textContent = "✅ Checked In";
-        button.disabled = true;
-
-        messageEl.style.color = "green";
-        messageEl.textContent = "Successfully checked in!";
-      } catch (err) {
-        messageEl.style.color = "red";
-        messageEl.textContent = "Check-in failed: " + err.message;
-      }
-    }
-
-    main();
-  </script>
-
-</body>
-</html>
+        if (error) {
+          // Handle duplicate check-in nicely

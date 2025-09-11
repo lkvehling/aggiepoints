@@ -1,133 +1,110 @@
-<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <title>Aggie Points</title>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <style>
-    body { font-family: Arial, sans-serif; margin: 30px; text-align: center; }
-    button { padding: 10px 15px; margin: 5px; cursor: pointer; }
-    .event { border: 1px solid #ccc; padding: 15px; margin: 10px; }
-    #message { margin-top: 15px; font-weight: bold; }
-  </style>
-</head>
-<body>
+<p id="userInfo">Checking login...</p>
+<button id="logoutBtn" style="display:none;">Logout</button>
+<div id="eventsContainer">Loading events...</div>
+<p id="message"></p>
 
-  <h1>Aggie Points Check-In</h1>
-  <p id="userInfo">Checking login...</p>
+<script>
+const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
+const SUPABASE_KEY = "YOUR_ANON_KEY_HERE";
+const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-  <button id="logoutBtn">Logout</button>
-  document.getElementById("logoutBtn").addEventListener("click", async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error("Logout error:", error.message);
-      alert("Logout failed: " + error.message);
-    } else {
-      window.location.href = "login.html"; // redirect to login page
-    }
-  });
+let currentUser = null;
 
-  
-  <div id="eventsContainer">Loading events...</div>
-  <p id="message"></p> <!-- ✅ Added message element -->
+async function main() {
+  const messageEl = document.getElementById("message");
+  const userInfoEl = document.getElementById("userInfo");
+  const logoutBtn = document.getElementById("logoutBtn");
+  const eventsContainer = document.getElementById("eventsContainer");
 
-  <script>
-    const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // ⚠️ make sure this is anon, not service
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  try {
+    const { data: { session } } = await supabase.auth.getSession();
 
-    
-
-    async function main() {
-      const messageEl = document.getElementById("message");
-
-     try {
-        // 1️⃣ Get session
-        const { data: { session } } = await supabase.auth.getSession();
-        console.log("Session on page load:", session);
-
-        if (!session || !session.user) {
-          window.location.href = "login.html";
-          return;
-        }
-
-        const user = session.user;
-        let currentUser = user;
-        document.getElementById("userInfo").textContent = `Logged in as: ${user.email}`;
-
-
-        
-        // 2️⃣ Load events by local day
-          const today = new Date();
-          const yyyy = today.getFullYear();
-          const mm = String(today.getMonth() + 1).padStart(2, "0");
-          const dd = String(today.getDate()).padStart(2, "0");
-
-          const start = `${yyyy}-${mm}-${dd} 00:00:00`;
-          const end   = `${yyyy}-${mm}-${dd} 23:59:59`;
-
-          const { data: events, error } = await supabase
-            .from("events")
-            .select("*")
-            .gte("start_time", start)
-            .lte("end_time", end);
-
-        const container = document.getElementById("eventsContainer");
-        container.innerHTML = "";
-
-        if (!events || events.length === 0) {
-          container.textContent = "No events scheduled today.";
-          return;
-        }
-
-        events.forEach(ev => {
-          const div = document.createElement("div");
-          div.className = "event";
-          div.innerHTML = `
-            <h3>${ev.name}</h3>
-            <p>Location: ${ev.location || "N/A"}</p>
-            <p>Points: ${ev.points}</p>
-            <button onclick="checkIn('${ev.id}', this)">Check In</button>
-          `;
-          container.appendChild(div);
-        });
-
-      } catch (err) {
-        messageEl.style.color = "red";
-        messageEl.textContent = "Error loading events: " + err.message;
-      }
+    if (!session || !session.user) {
+      window.location.href = "login.html";
+      return;
     }
 
-    async function checkIn(eventId, button) {
-      const messageEl = document.getElementById("message");
-      messageEl.textContent = "";
+    currentUser = session.user;
+    userInfoEl.textContent = `Logged in as: ${currentUser.email}`;
+    logoutBtn.style.display = "inline-block";  // show logout button
+    eventsContainer.style.display = "block";
 
-      if (!currentUser) {
-        window.location.href = "login.html";
-        return;
-      }
+    // Load today's events (same as your code)
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, "0");
+    const dd = String(today.getDate()).padStart(2, "0");
 
-      try {
-        const { error } = await supabase
-          .from("checkins")
-          .insert([{ user_id: currentUser.id, event_id: eventId }]);
+    const start = `${yyyy}-${mm}-${dd} 00:00:00`;
+    const end   = `${yyyy}-${mm}-${dd} 23:59:59`;
 
-        if (error) throw error;
+    const { data: events, error } = await supabase
+      .from("events")
+      .select("*")
+      .gte("start_time", start)
+      .lte("end_time", end);
 
-        // Update button UI
-        button.textContent = "✅ Checked In";
-        button.disabled = true;
-
-        messageEl.style.color = "green";
-        messageEl.textContent = "Successfully checked in!";
-      } catch (err) {
-        messageEl.style.color = "red";
-        messageEl.textContent = "Check-in failed: " + err.message;
-      }
+    eventsContainer.innerHTML = "";
+    if (!events || events.length === 0) {
+      eventsContainer.textContent = "No events scheduled today.";
+      return;
     }
 
-    main();
-  </script>
+    events.forEach(ev => {
+      const div = document.createElement("div");
+      div.className = "event";
+      div.innerHTML = `
+        <h3>${ev.name}</h3>
+        <p>Location: ${ev.location || "N/A"}</p>
+        <p>Points: ${ev.points}</p>
+        <button onclick="checkIn('${ev.id}', this)">Check In</button>
+      `;
+      eventsContainer.appendChild(div);
+    });
 
-</body>
-</html>
+  } catch (err) {
+    messageEl.style.color = "red";
+    messageEl.textContent = "Error loading events: " + err.message;
+  }
+}
+
+// Logout
+document.getElementById("logoutBtn").addEventListener("click", async () => {
+  const { error } = await supabase.auth.signOut();
+  if (error) {
+    console.error("Logout error:", error.message);
+    alert("Logout failed: " + error.message);
+  } else {
+    currentUser = null;  // clear current user
+    window.location.href = "login.html";
+  }
+});
+
+async function checkIn(eventId, button) {
+  const messageEl = document.getElementById("message");
+  messageEl.textContent = "";
+
+  if (!currentUser) {
+    window.location.href = "login.html";
+    return;
+  }
+
+  try {
+    const { error } = await supabase
+      .from("checkins")
+      .insert([{ user_id: currentUser.id, event_id: eventId }]);
+
+    if (error) throw error;
+
+    button.textContent = "✅ Checked In";
+    button.disabled = true;
+    messageEl.style.color = "green";
+    messageEl.textContent = "Successfully checked in!";
+  } catch (err) {
+    messageEl.style.color = "red";
+    messageEl.textContent = "Check-in failed: " + err.message;
+  }
+}
+
+main();
+</script>

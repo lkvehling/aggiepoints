@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Aggie Points Login</title>
-  
   <style>
     body { font-family: Arial, sans-serif; margin: 30px; max-width: 400px; }
     input, button { width: 100%; margin: 8px 0; padding: 8px; }
@@ -20,14 +19,17 @@
 
   <p id="message"></p>
   <p>Don’t have an account? <a href="register.html">Register here</a></p>
-  
- <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- 🔹 Load Supabase JS -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- 🔹 All JavaScript goes inside this script tag -->
   <script>
     const SUPABASE_URL = "https://gtnptxnkminqmjnnfxie.supabase.co";
-    const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imd0bnB0eG5rbWlucW1qbm5meGllIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTY4NzA0NTEsImV4cCI6MjA3MjQ0NjQ1MX0.LkEbFzHkyBVjxEFgAm_KL30buEkkkoMPsBMUeNyRGow"; // ⚠️ use anon key only!
+    const SUPABASE_KEY = "YOUR_ANON_KEY_HERE"; // replace with anon key
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-  </script>
-    
+
+    // Login function
     async function login() {
       const messageEl = document.getElementById("message");
       messageEl.textContent = "";
@@ -48,7 +50,7 @@
       }
     }
 
-    // Optional: Redirect if already logged in
+    // Redirect if already logged in
     async function checkSession() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session && session.user) {

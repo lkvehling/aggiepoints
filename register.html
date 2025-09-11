@@ -63,31 +63,32 @@
       const team = teamEl.value;
       const year = parseInt(yearEl.value, 10);
 
+      // Client-side checks
       if (!/@ucdavis\.edu$/i.test(email)) { show(msgEl, "Registration requires a UC Davis email (@ucdavis.edu)."); setDisabled(btn, false); return; }
       if (!email || !password || !name || !student_id) { show(msgEl, "Please fill in all fields."); setDisabled(btn, false); return; }
       if (password.length < 6) { show(msgEl, "Password must be at least 6 characters."); setDisabled(btn, false); return; }
-
+    
       try {
-        const { data: signUpData, error: signUpErr } = await sb.auth.signUp({ email, password });
+        // Sign up with metadata that the DB trigger will use to create the profile row
+        const { error: signUpErr } = await sb.auth.signUp({
+          email,
+          password,
+          options: {
+            data: { name, student_id, team, year }   // <- goes to auth.users.raw_user_meta_data
+          }
+        });
         if (signUpErr) throw signUpErr;
 
-        const userId = signUpData.user?.id;
-        if (!userId) { show(msgEl, "Account created. Check your email to verify your address.", true); return; }
-
-        const { error: upsertErr } = await sb.from("users").upsert({ id: userId, email, name, student_id, team, year }, { onConflict: "id" });
-        if (upsertErr) throw upsertErr;
-
-        const { error: loginErr } = await sb.auth.signInWithPassword({ email, password });
-        if (loginErr) { show(msgEl, "Registered. Please verify your email, then log in.", true); return; }
-
-        show(msgEl, "Registration successful! Redirecting…", true);
-        setTimeout(() => (window.location.href = APP_HOME), 600);
+        // No auto sign-in; just send them to login
+        show(msgEl, "Account created! Please log in.", true);
+        setTimeout(() => (window.location.href = "login.html"), 800);
       } catch (e) {
         show(msgEl, e?.message || "Registration failed.");
       } finally {
         setDisabled(btn, false);
       }
     }
+
   </script>
 </body>
 </html>

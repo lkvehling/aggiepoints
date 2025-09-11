@@ -119,6 +119,9 @@
     }
 
     async function checkIn(ev, btn) {
+      console.log("device lat/lng/acc:", pos.coords.latitude, pos.coords.longitude, pos.coords.accuracy, "m");
+      console.log("event bbox:", ev.lat_min, ev.lat_max, ev.lng_min, ev.lng_max);
+
       const msg = document.getElementById("message");
       clear(msg);
 

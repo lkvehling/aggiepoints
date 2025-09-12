@@ -314,9 +314,9 @@
       const action = already
         ? `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`
         : `<button class="checkinBtn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95" data-id="${ev.id}">Check in</button>`;
-
+    
       return `
-        <div class="py-4">
+        <div class="py-4" id="event-${ev.id}">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="min-w-0">
               <div class="font-ui text-base font-semibold text-ink">${escapeHtml(ev.title)} ${badge}</div>
@@ -329,6 +329,7 @@
           </div>
         </div>`;
     }
+
 
     async function ensureAuthed() {
       // 'sb' is provided by auth-config.js: const sb = window.supabase.createClient(...)
@@ -389,19 +390,19 @@
       } else {
         const rows = (todays || []).map(todayRow).join('');
         list.innerHTML = rows;
-        empty.classList.toggle('hidden', (todays||[]).length > 0);
-
+        empty.classList.toggle('hidden', (todays || []).length > 0);
+      
         // Wire up Check in buttons -> RPC public.checkin(uuid, lat, lng, accuracy)
         $$('.checkinBtn').forEach(btn => {
           btn.addEventListener('click', async (e) => {
             const el = e.currentTarget;
             const id = el?.dataset.id;
             if (!id) { alert('Check-in misconfigured: missing event id.'); return; }
-        
+      
             el.disabled = true;
             const original = el.textContent;
             el.textContent = 'Checking…';
-        
+      
             // Get geolocation (required)
             const getPosition = () => new Promise((resolve, reject) => {
               if (!('geolocation' in navigator)) return reject(new Error('Geolocation not available'));
@@ -411,19 +412,19 @@
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
               );
             });
-        
+      
             try {
               const pos = await getPosition();
               const { latitude, longitude, accuracy } = pos.coords;
-        
+      
               const { error } = await sb.rpc('checkin', {
                 p_event_id: id,
                 p_lat: latitude,
                 p_lng: longitude,
                 p_accuracy: accuracy
               });
-        
-              // === Correct handling: show RED toast on error, stop there ===
+      
+              // Show RED toast on error, stop there
               if (error) {
                 console.error('checkin error', error);
                 el.disabled = false;
@@ -431,12 +432,10 @@
                 toast(showCheckinError(error), { variant: 'error' });
                 return;
               }
-        
-              // Success UI
+      
+              // Success UI + refresh points
               el.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
               toast('Checked in — have fun! 🎉', { variant: 'success', timeout: 2500 });
-        
-              // Refresh points/rank after successful check-in
               await refreshProfilePoints();
             } catch (geoErr) {
               console.error('geolocation error', geoErr);
@@ -446,6 +445,21 @@
             }
           });
         });
+      
+        // If navigated like index.html?event=<uuid>#today, focus that specific card
+        (function focusDeepLinkedEvent() {
+          const params = new URLSearchParams(location.search);
+          const focusId = params.get('event');
+          if (!focusId) return;
+          const target = document.getElementById(`event-${focusId}`);
+          if (!target) return;
+          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          // brief visual focus
+          target.classList.add('ring-2', 'ring-aggieGold', 'rounded-xl');
+          setTimeout(() => target.classList.remove('ring-2', 'ring-aggieGold'), 2500);
+        })();
+      }
+
         
       }
     })();

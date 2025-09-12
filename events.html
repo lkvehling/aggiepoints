@@ -25,9 +25,7 @@
             ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
             body: ["Merriweather", "Georgia", "serif"],
           },
-          boxShadow: {
-            soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
-          }
+          boxShadow: { soft: "0 6px 24px rgba(2, 40, 81, 0.08)" }
         }
       }
     }
@@ -113,8 +111,8 @@
 
   <!-- Main Content -->
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Force horizontal layout at all widths -->
-    <div class="grid grid-cols-3 gap-6">
+    <!-- STACKED layout (rows) -->
+    <div class="grid grid-cols-1 gap-6">
       <!-- This Week -->
       <section id="week" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
@@ -159,7 +157,7 @@
     // ===== Helpers =====
     const $  = (s) => document.querySelector(s);
     const $$ = (s) => Array.from(document.querySelectorAll(s));
-    const toggle = (el, show) => { if (!el) return; el.classList[show === undefined ? 'toggle' : (show ? 'remove' : 'add')]('hidden'); };
+    const toggle = (el, show) => { if (!el) return; el.classList[show ? 'remove' : 'add']('hidden'); };
     const TZ = 'America/Los_Angeles';
 
     // Time helpers
@@ -209,10 +207,10 @@
       const today   = isTodayPT(ev.start_ts);
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
 
-      // Heading line: if today, the time range; else the title
+      // Heading: if today, show time range; else show title
       const heading = today ? sameDayTitle(ev.start_ts, ev.end_ts) : escapeHtml(ev.title);
 
-      // Subline: if today, show "Event Name · Location"; else date range + location
+      // Subline: if today, "Event Name · Location"; else date range + location
       const whenLine = today
         ? `${escapeHtml(ev.title)} · ${escapeHtml(ev.location || 'TBA')}`
         : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)} · ${escapeHtml(ev.location || 'TBA')}`;
@@ -223,15 +221,12 @@
 
       let action;
       if (today && canNow) {
-        // Only show Check in when the true server window is open
         action = `<a href="index.html?event=${encodeURIComponent(ev.id)}#today" class="px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95">Check in</a>`;
       } else if (today) {
-        // Today but not yet/anymore
         action = nowPT() > closeAtPT(ev.end_ts)
           ? `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`
           : `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
       } else {
-        // Not today → gray label (no button)
         action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
       }
 
@@ -251,8 +246,8 @@
     // ===== Page boot =====
     (async () => {
       // Header UI
-      $('#mobileMenuBtn')?.addEventListener('click', () => toggle($('#mobileMenu')));
-      $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
+      $('#mobileMenuBtn')?.addEventListener('click', () => { const m = $('#mobileMenu'); if (m) m.classList.toggle('hidden'); });
+      $('#acctBtn')?.addEventListener('click', () => { const m = $('#acctMenu'); if (m) m.classList.toggle('hidden'); });
       $('#yearText').textContent = new Date().getFullYear();
 
       // Account label (best-effort)
@@ -289,11 +284,9 @@
       const monthListEl = $('#monthList'); // no empty element by design
       const upcomingListEl = $('#upcomingList'), upcomingEmptyEl = $('#upcomingEmpty');
 
-      const [weekData, monthData, upcomingData] = await Promise.all([
-        loadSection('events_this_week', weekListEl, weekEmptyEl),
-        loadSection('events_this_month_excl_week', monthListEl, null),
-        loadSection('events_upcoming', upcomingListEl, upcomingEmptyEl),
-      ]);
+      await loadSection('events_this_week', weekListEl, weekEmptyEl);
+      await loadSection('events_this_month_excl_week', monthListEl, null);
+      await loadSection('events_upcoming', upcomingListEl, upcomingEmptyEl);
 
       // ===== Search (client-side across all sections) =====
       const searchInput = $('#searchInput');
@@ -317,9 +310,7 @@
           const rows = Array.from(list.querySelectorAll('[data-title]'));
           let shown = 0;
           rows.forEach(row => {
-            if (!term) {
-              row.classList.remove('hidden'); shown++; return;
-            }
+            if (!term) { row.classList.remove('hidden'); shown++; return; }
             const title = row.getAttribute('data-title') || '';
             const loc   = row.getAttribute('data-location') || '';
             const match = title.includes(term) || loc.includes(term);

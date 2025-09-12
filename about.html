@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>About – Aggie Points</title>
+
+  <!-- Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            heading: ["Raleway", "sans-serif"],
+            ui: ["Montserrat", "sans-serif"],
+            body: ["Merriweather", "serif"],
+          },
+          colors: {
+            aggieBlue: "#022851",
+            aggieGold: "#FFBF00",
+            aggieBg: "#F7F7F7",
+            ink: "#111827",
+          },
+        }
+      }
+    }
+  </script>
+</head>
+<body class="bg-aggieBg font-body text-ink min-h-screen flex flex-col">
+
+  <!-- Header -->
+  <header class="bg-aggieBlue text-white shadow-md">
+    <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
+      <h1 class="font-heading font-bold text-2xl">Aggie Points</h1>
+      <nav class="space-x-6 font-ui">
+        <a href="index.html" class="hover:text-aggieGold">Home</a>
+        <a href="events.html" class="hover:text-aggieGold">Events</a>
+        <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
+        <a href="about.html" class="text-aggieGold font-semibold">About</a>
+      </nav>
+    </div>
+  </header>
+
+  <!-- Main -->
+  <main class="flex-1 max-w-4xl mx-auto px-6 py-10">
+    <!-- Intro -->
+    <section class="mb-10">
+      <h2 class="font-heading text-3xl font-bold text-aggieBlue mb-4">What are Aggie Points?</h2>
+      <p class="font-body text-lg leading-relaxed">
+        Aggie Points are a fun way to recognize and reward UC Davis student-athletes for showing 
+        support at athletic events and engaging with SAAC (Student-Athlete Advisory Committee) initiatives.  
+        By attending games, SAAC events, and soon-to-be challenges, athletes can earn points for themselves 
+        and their teams — climbing the leaderboard while building Aggie pride.
+      </p>
+    </section>
+
+    <!-- Points Breakdown -->
+    <section class="mb-10">
+      <h3 class="font-heading text-2xl font-semibold text-aggieBlue mb-4">Points Breakdown</h3>
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="bg-white rounded-2xl shadow p-6">
+          <h4 class="font-ui text-xl font-bold text-aggieBlue mb-2">Athletic Games</h4>
+          <p class="font-body text-gray-700">Earn <span class="font-bold text-aggieGold">10 points</span> each time you check in at a UC Davis game.</p>
+        </div>
+        <div class="bg-white rounded-2xl shadow p-6">
+          <h4 class="font-ui text-xl font-bold text-aggieBlue mb-2">SAAC Events</h4>
+          <p class="font-body text-gray-700">Earn <span class="font-bold text-aggieGold">15 points</span> by attending and checking in at SAAC-hosted events.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- Future Challenges -->
+    <section>
+      <h3 class="font-heading text-2xl font-semibold text-aggieBlue mb-4">Coming Soon</h3>
+      <div class="bg-white rounded-2xl shadow p-6">
+        <p class="font-body text-lg text-gray-700">
+          Stay tuned for <span class="font-bold text-aggieGold">special challenges</span> where you’ll have 
+          the opportunity to earn bonus points! These challenges will bring even more ways to 
+          support your fellow Aggies and compete for the top spot.
+        </p>
+      </div>
+    </section>
+  </main>
+
+  <!-- Footer -->
+  <footer class="bg-aggieBlue text-white text-center py-6 mt-10">
+    <p class="font-ui">&copy; 2025 Aggie Points. All rights reserved.</p>
+  </footer>
+
+</body>
+</html>

@@ -298,29 +298,36 @@
         // Wire up Check in buttons -> RPC public.checkin(uuid)
         $$('.checkinBtn').forEach(btn => {
           btn.addEventListener('click', async (e) => {
-            const id = e.currentTarget.dataset.id;
+            const el = e.currentTarget;   // capture reference once
+            const id = el?.dataset.id;
             if (!id) {
               alert('Check-in misconfigured: missing event id.');
               return;
             }
-            e.currentTarget.disabled = true;
-            const original = e.currentTarget.textContent;
-            e.currentTarget.textContent = 'Checking…';
+
+            el.disabled = true;
+            const original = el.textContent;
+            el.textContent = 'Checking…';
 
             const { error } = await sb.rpc('checkin', { event_id: id });
 
             if (error) {
               console.error('checkin error', error);
-              e.currentTarget.disabled = false;
-              e.currentTarget.textContent = original;
+              if (el) {
+                el.disabled = false;
+                el.textContent = original;
+              }
               alert(showCheckinError(error));
               return;
             }
 
-            // Success (also idempotent due to unique index + ON CONFLICT DO NOTHING)
-            e.currentTarget.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
+            // Success → swap button for "Checked in" badge
+            if (el) {
+              el.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
+            }
           });
         });
+
       }
     })();
   </script>

@@ -8,10 +8,10 @@
   <style>
     body { font-family: Arial, sans-serif; margin: 30px; }
     h3 { margin-top: 24px; }
-    table { border-collapse: collapse; width: 100%; max-width: 720px; }
+    table { border-collapse: collapse; width: 100%; max-width: 820px; }
     th, td { border: 1px solid #ddd; padding: 8px; }
-    th { background: #f7f7f7; text-align:left; }
-    .row { display:flex; gap:10px; align-items:center; }
+    th { background: #f7f7f7; text-align: left; }
+    .row { display: flex; gap: 10px; align-items: center; }
   </style>
 </head>
 <body>
@@ -28,9 +28,17 @@
     <tbody></tbody>
   </table>
 
-  <h3>Top 5 Teams (Participation % this month)</h3>
+  <h3>Top 5 Teams</h3>
   <table id="teamTable">
-    <thead><tr><th>#</th><th>Team</th><th>Participation %</th><th>Participants</th><th>Roster</th></tr></thead>
+    <thead>
+      <tr>
+        <th>#</th>
+        <th>Team</th>
+        <th>Score</th>
+        <th>Participants</th>
+        <th>Roster</th>
+      </tr>
+    </thead>
     <tbody></tbody>
   </table>
 
@@ -45,10 +53,10 @@
 
       await loadMyPoints();
       await loadTopIndividuals();
-      await loadTopTeamsParticipation();
+      await loadTopTeams();
     })();
 
-    // My total = sum of event points for my check-ins (same as before)
+    // ---- My Points ----
     async function loadMyPoints() {
       const { data, error } = await sb
         .from("checkins")
@@ -59,52 +67,58 @@
       document.getElementById("myPoints").textContent = total;
     }
 
-    // === Option 1: use RPC to compute leaderboard on the fly ===
+    // ---- Individuals ----
     async function loadTopIndividuals() {
       const { data, error } = await sb.rpc("leaderboard_top_individuals", { limit_n: 10 });
       if (error) { console.warn("leaderboard_top_individuals", error); return; }
 
       const tbody = document.querySelector("#indTable tbody");
       tbody.innerHTML = (data || []).map((r,i) =>
-        `<tr><td>${i+1}</td><td>${escapeHtml(r.name ?? "")}</td><td>${escapeHtml(r.team ?? "")}</td><td>${r.points ?? 0}</td></tr>`
+        `<tr>
+          <td>${i+1}</td>
+          <td>${escapeHtml(r.name ?? "")}</td>
+          <td>${escapeHtml(r.team ?? "")}</td>
+          <td>${r.points ?? 0}</td>
+        </tr>`
       ).join("");
     }
 
+    // ---- Teams ----
     function monthRangeISO(d=new Date()) {
       const start = new Date(d.getFullYear(), d.getMonth(), 1);
-      const end = new Date(d.getFullYear(), d.getMonth()+1, 1);
+      const end   = new Date(d.getFullYear(), d.getMonth()+1, 1);
       return { start: start.toISOString(), end: end.toISOString() };
     }
 
-    async function loadTopTeamsParticipation() {
+    async function loadTopTeams() {
       const { start, end } = monthRangeISO();
-      const { data, error } = await sb.rpc("leaderboard_top_teams_participation", {
+      const { data, error } = await sb.rpc("team_score_participation_weighted", {
         month_start: start,
         month_end: end,
         limit_n: 5
       });
-      if (error) { console.warn("leaderboard_top_teams_participation", error); return; }
+      if (error) { console.warn("team_score_participation_weighted", error); return; }
 
       const tbody = document.querySelector("#teamTable tbody");
       tbody.innerHTML = (data || []).map((r,i) =>
         `<tr>
           <td>${i+1}</td>
           <td>${escapeHtml(r.team ?? "")}</td>
-          <td>${r.pct ?? 0}%</td>
+          <td>${(r.score ?? 0).toFixed(2)}</td>
           <td>${r.participants ?? 0}</td>
           <td>${r.roster ?? 0}</td>
         </tr>`
       ).join("");
     }
 
-    // Simple HTML escape to be safe in table rendering
+    // ---- Utils ----
     function escapeHtml(str) {
       return String(str)
         .replaceAll('&','&amp;')
         .replaceAll('<','&lt;')
         .replaceAll('>','&gt;')
         .replaceAll('"','&quot;')
-        .replaceAll("'",'&#39;');
+        .replaceAll("'","&#39;");
     }
   </script>
 </body>

@@ -23,14 +23,21 @@
   <h3>My Points: <span id="myPoints">0</span></h3>
 
   <h3>Top 10 Individuals</h3>
-  <table id="indTable"><thead><tr><th>#</th><th>Name</th><th>Team</th><th>Points</th></tr></thead><tbody></tbody></table>
+  <table id="indTable">
+    <thead><tr><th>#</th><th>Name</th><th>Team</th><th>Points</th></tr></thead>
+    <tbody></tbody>
+  </table>
 
   <h3>Top 5 Teams (Participation % this month)</h3>
-  <table id="teamTable"><thead><tr><th>#</th><th>Team</th><th>Participation %</th><th>Participants</th><th>Roster</th></tr></thead><tbody></tbody></table>
+  <table id="teamTable">
+    <thead><tr><th>#</th><th>Team</th><th>Participation %</th><th>Participants</th><th>Roster</th></tr></thead>
+    <tbody></tbody>
+  </table>
 
   <script src="auth-config.js"></script>
   <script>
     let user = null;
+
     (async function main() {
       user = await requireSessionOrRedirect();
       if (!user) return;
@@ -41,43 +48,25 @@
       await loadTopTeamsParticipation();
     })();
 
+    // My total = sum of event points for my check-ins (same as before)
     async function loadMyPoints() {
       const { data, error } = await sb
         .from("checkins")
         .select("event_id, events(points)")
         .eq("user_id", user.id);
-      if (error) return;
+      if (error) { console.warn(error); return; }
       const total = (data || []).reduce((s, r) => s + (r.events?.points ?? 0), 0);
       document.getElementById("myPoints").textContent = total;
     }
 
+    // === Option 1: use RPC to compute leaderboard on the fly ===
     async function loadTopIndividuals() {
-      // Get all users with their points sum
-      const { data: allCheckins } = await sb
-        .from("checkins")
-        .select("user_id, events(points)");
-
-      const { data: allUsers } = await sb
-        .from("users")
-        .select("id, name, team");
-
-      const pointsByUser = new Map();
-      (allCheckins || []).forEach(row => {
-        const uid = row.user_id;
-        const pts = row.events?.points ?? 0;
-        pointsByUser.set(uid, (pointsByUser.get(uid) || 0) + pts);
-      });
-
-      const rows = (allUsers || []).map(u => ({
-        id: u.id,
-        name: u.name,
-        team: u.team,
-        points: pointsByUser.get(u.id) || 0
-      })).sort((a,b) => b.points - a.points).slice(0, 10);
+      const { data, error } = await sb.rpc("leaderboard_top_individuals", { limit_n: 10 });
+      if (error) { console.warn("leaderboard_top_individuals", error); return; }
 
       const tbody = document.querySelector("#indTable tbody");
-      tbody.innerHTML = rows.map((r,i) =>
-        `<tr><td>${i+1}</td><td>${r.name}</td><td>${r.team??""}</td><td>${r.points}</td></tr>`
+      tbody.innerHTML = (data || []).map((r,i) =>
+        `<tr><td>${i+1}</td><td>${escapeHtml(r.name ?? "")}</td><td>${escapeHtml(r.team ?? "")}</td><td>${r.points ?? 0}</td></tr>`
       ).join("");
     }
 
@@ -89,44 +78,33 @@
 
     async function loadTopTeamsParticipation() {
       const { start, end } = monthRangeISO();
-
-      // Roster sizes per team
-      const { data: roster } = await sb.from("users").select("team, id");
-      const teamSizes = new Map();
-      (roster || []).forEach(u => {
-        if (!u.team) return;
-        teamSizes.set(u.team, (teamSizes.get(u.team) || new Set()).add(u.id));
+      const { data, error } = await sb.rpc("leaderboard_top_teams_participation", {
+        month_start: start,
+        month_end: end,
+        limit_n: 5
       });
-
-      // Distinct participants per team this month
-      const { data: checks } = await sb
-        .from("checkins")
-        .select("user_id, users(team)")
-        .gte("created_at", start)
-        .lt("created_at", end);
-
-      const participants = new Map(); // team -> Set<user_id>
-      (checks || []).forEach(c => {
-        const team = c.users?.team;
-        if (!team) return;
-        if (!participants.has(team)) participants.set(team, new Set());
-        participants.get(team).add(c.user_id);
-      });
-
-      // Calculate participation % = unique participants / roster size
-      const rows = Array.from(teamSizes.keys()).map(team => {
-        const rosterSet = teamSizes.get(team) || new Set();
-        const partSet = participants.get(team) || new Set();
-        const rosterCount = rosterSet.size;
-        const partCount = partSet.size;
-        const pct = rosterCount ? Math.round((partCount / rosterCount) * 100) : 0;
-        return { team, pct, partCount, rosterCount };
-      }).sort((a,b) => b.pct - a.pct).slice(0, 5);
+      if (error) { console.warn("leaderboard_top_teams_participation", error); return; }
 
       const tbody = document.querySelector("#teamTable tbody");
-      tbody.innerHTML = rows.map((r,i) =>
-        `<tr><td>${i+1}</td><td>${r.team}</td><td>${r.pct}%</td><td>${r.partCount}</td><td>${r.rosterCount}</td></tr>`
+      tbody.innerHTML = (data || []).map((r,i) =>
+        `<tr>
+          <td>${i+1}</td>
+          <td>${escapeHtml(r.team ?? "")}</td>
+          <td>${r.pct ?? 0}%</td>
+          <td>${r.participants ?? 0}</td>
+          <td>${r.roster ?? 0}</td>
+        </tr>`
       ).join("");
+    }
+
+    // Simple HTML escape to be safe in table rendering
+    function escapeHtml(str) {
+      return String(str)
+        .replaceAll('&','&amp;')
+        .replaceAll('<','&lt;')
+        .replaceAll('>','&gt;')
+        .replaceAll('"','&quot;')
+        .replaceAll("'",'&#39;');
     }
   </script>
 </body>

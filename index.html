@@ -288,6 +288,21 @@
     
       // Default fallback
       return err?.message || 'Check-in failed. Please try again.';
+      // Refresh points/rank/team after a successful check-in
+      async function refreshProfilePoints() {
+        const { data: { user } } = await sb.auth.getUser();
+        const { data: prof, error } = await sb
+          .from('profiles')
+          .select('points_total, rank, team_name')
+          .eq('id', user.id)
+          .single();
+      
+        if (!error && prof) {
+          $('#pointsTotal').textContent = (prof.points_total ?? 0);
+          $('#rank').textContent        = (prof.rank ?? '—');
+          $('#team').textContent        = prof.team_name || '—';
+        }
+      }
     }
     
 
@@ -376,52 +391,57 @@
         list.innerHTML = rows;
         empty.classList.toggle('hidden', (todays||[]).length > 0);
 
-        // Wire up Check in buttons -> RPC public.checkin(uuid, lat, lng)
+        // Wire up Check in buttons -> RPC public.checkin(uuid, lat, lng, accuracy)
         $$('.checkinBtn').forEach(btn => {
           btn.addEventListener('click', async (e) => {
             const el = e.currentTarget;
             const id = el?.dataset.id;
             if (!id) { alert('Check-in misconfigured: missing event id.'); return; }
-
+        
             el.disabled = true;
             const original = el.textContent;
             el.textContent = 'Checking…';
-
+        
             // Get geolocation (required)
             const getPosition = () => new Promise((resolve, reject) => {
               if (!('geolocation' in navigator)) return reject(new Error('Geolocation not available'));
               navigator.geolocation.getCurrentPosition(
                 pos => resolve(pos),
                 err => reject(err),
-                  { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
               );
             });
-
+        
             try {
               const pos = await getPosition();
               const { latitude, longitude, accuracy } = pos.coords;
-
+        
               const { error } = await sb.rpc('checkin', {
                 p_event_id: id,
                 p_lat: latitude,
                 p_lng: longitude,
                 p_accuracy: accuracy
               });
-
+        
+              // === Correct handling: show RED toast on error, stop there ===
               if (error) {
                 console.error('checkin error', error);
-                if (el) { el.disabled = false; el.textContent = original; }
-                toast('Checked in — have fun! 🎉', { variant: 'success', timeout: 2500 });
+                el.disabled = false;
+                el.textContent = original;
+                toast(showCheckinError(error), { variant: 'error' });
                 return;
               }
-
-              if (el) {
-                el.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
-                toast('Checked in — have fun! 🎉', { variant: 'success', timeout: 2500 });
-              }
+        
+              // Success UI
+              el.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
+              toast('Checked in — have fun! 🎉', { variant: 'success', timeout: 2500 });
+        
+              // Refresh points/rank after successful check-in
+              await refreshProfilePoints();
             } catch (geoErr) {
               console.error('geolocation error', geoErr);
-              if (el) { el.disabled = false; el.textContent = original; }
+              el.disabled = false;
+              el.textContent = original;
               alert('We need your location to check in. Please allow location access (site must be HTTPS or localhost) and try again.');
             }
           });

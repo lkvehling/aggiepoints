@@ -1,327 +1,232 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Aggie Points – Home</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Aggie Points — Home</title>
+
+  <!-- Fonts (Equivalents): Raleway (headings), Montserrat (UI), Merriweather (body) -->
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            aggieBlue: "#022851",
+            aggieGold: "#FFBF00",
+            aggieBg: "#F7F7F7",
+            ink: "#333333",
+          },
+          fontFamily: {
+            heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
+            ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
+            body: ["Merriweather", "Georgia", "serif"],
+          },
+          boxShadow: {
+            soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
     :root {
-      --brand:#002855; /* UC Davis Navy-ish */
-      --accent:#ffd200; /* UC Davis Gold-ish */
-      --muted:#6b7280;
-      --card:#ffffff;
-      --bg:#f7f7fb;
-      --border:#e5e7eb;
+      --aggie-blue: #022851;
+      --aggie-gold: #FFBF00;
     }
-    * { box-sizing: border-box; }
-    body { margin:0; font-family: system-ui, Arial, sans-serif; background:var(--bg); color:#111; }
-
-    /* Topbar */
-    .topbar {
-      position:sticky; top:0; z-index:10;
-      background:var(--card); border-bottom:1px solid var(--border);
-      display:flex; align-items:center; gap:16px; padding:12px 18px;
-    }
-    .brand { font-weight:800; letter-spacing:0.5px; color:var(--brand); }
-    .nav { margin-left:auto; display:flex; gap:12px; align-items:center; }
-    .nav a { text-decoration:none; color:#111; padding:8px 10px; border-radius:8px; }
-    .nav a:hover { background:#eef2ff; }
-    .account { position:relative; }
-    .acct-btn {
-      border:1px solid var(--border); background:var(--card); border-radius:10px; padding:8px 12px;
-      cursor:pointer; display:flex; gap:8px; align-items:center; font-size:14px;
-    }
-    .acct-menu {
-      position:absolute; right:0; top:42px; background:var(--card); border:1px solid var(--border);
-      border-radius:12px; box-shadow:0 10px 30px rgba(0,0,0,0.08); min-width:200px; display:none;
-    }
-    .acct-menu a, .acct-menu button {
-      display:block; width:100%; text-align:left; padding:10px 12px; background:none; border:none; cursor:pointer;
-      font-size:14px; color:#111;
-    }
-    .acct-menu a:hover, .acct-menu button:hover { background:#f3f4f6; }
-
-    /* Page wrapper */
-    .wrap { max-width: 980px; margin: 24px auto; padding: 0 16px; }
-
-    /* Hero */
-    .hero {
-      background:linear-gradient(135deg, #fff, #fafafa);
-      border:1px solid var(--border); border-radius:16px; padding:24px; display:flex; gap:24px; align-items:center;
-    }
-    .hero h1 { margin:0 0 8px; font-size:28px; }
-    .kpi {
-      margin-left:auto; text-align:right;
-      background:#fff; border:1px solid var(--border); border-radius:12px; padding:12px 16px;
-    }
-    .kpi strong { font-size:26px; color:var(--brand); }
-
-    /* Sections */
-    h2 { margin:22px 0 10px; font-size:20px; }
-    .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(280px,1fr)); gap:12px; }
-    .card {
-      background:var(--card); border:1px solid var(--border); border-radius:14px; padding:14px;
-    }
-    .muted { color:var(--muted); }
-    .row { display:flex; align-items:center; gap:8px; flex-wrap:wrap; }
-    .btn {
-      display:inline-flex; align-items:center; justify-content:center; gap:6px; cursor:pointer;
-      background:var(--brand); color:#fff; border:none; border-radius:10px; padding:8px 12px;
-    }
-    .btn[disabled] { opacity:.6; cursor:not-allowed; }
-    .link { color:var(--brand); text-decoration:none; }
-    .tag { display:inline-block; font-size:12px; padding:2px 8px; border-radius:999px; background:#eef2ff; color:#1f2937; }
-    #message { margin-top:8px; font-weight:600; }
+    .card { transition: transform .15s ease, box-shadow .15s ease; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
   </style>
 </head>
-<body>
-  <!-- Top Navigation -->
-  <header class="topbar">
-    <div class="brand">AGGIE POINTS</div>
-    <nav class="nav">
-      <a href="index.html">Home</a>
-      <a href="events.html">All Events</a>
-      <a href="leaderboard.html">Leaderboard</a>
-      <div class="account">
-        <button id="acctBtn" class="acct-btn">
-          <span id="who">…</span> ▾
+<body class="min-h-screen bg-aggieBg text-ink font-body">
+
+  <!-- Header / Nav -->
+  <header class="bg-aggieBlue text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between py-3">
+        <a href="index.html" class="flex items-center">
+          <span class="font-ui text-xl font-semibold tracking-wide">Aggie Points</span>
+        </a>
+
+        <nav class="hidden md:flex items-center gap-8 font-ui">
+          <a href="index.html" class="hover:text-aggieGold">Home</a>
+          <a href="events.html" class="hover:text-aggieGold">All Events</a>
+          <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
+
+          <!-- Account dropdown -->
+          <div class="relative">
+            <button id="acctBtn" class="hover:text-aggieGold flex items-center gap-2">
+              <span id="acctName" class="font-medium">Account</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div id="acctMenu" class="absolute right-0 mt-2 w-44 bg-white text-ink rounded-lg shadow-soft py-2 hidden">
+              <a href="settings.html" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
+              <button id="logoutBtn" class="w-full text-left block px-4 py-2 hover:bg-gray-100">Log out</button>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Mobile menu button -->
+        <button id="mobileMenuBtn" class="md:hidden inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10">
+          <span class="sr-only">Open main menu</span>
+          <svg class="h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round" />
+          </svg>
         </button>
-        <div id="acctMenu" class="acct-menu">
-          <a href="#" id="accountSettings">Account Settings</a>
-          <button id="logoutBtn">Log out</button>
-        </div>
       </div>
-    </nav>
+    </div>
+
+    <!-- Mobile menu -->
+    <div id="mobileMenu" class="md:hidden hidden border-t border-white/10">
+      <div class="space-y-1 px-4 pb-4 pt-2 font-ui">
+        <a href="index.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Home</a>
+        <a href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
+        <a href="leaderboard.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Leaderboard</a>
+        <a href="settings.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Settings</a>
+        <button id="logoutBtnMobile" class="w-full text-left block px-3 py-2 rounded-md hover:bg-white/10">Log out</button>
+      </div>
+    </div>
   </header>
 
-  <main class="wrap">
-    <!-- Hero / Welcome -->
-    <section class="hero">
-      <div>
-        <h1>WELCOME TO AGGIE POINTS</h1>
-        <div class="muted">Earn points by checking in at events. Plan ahead on the All Events page.</div>
-      </div>
-      <div class="kpi">
-        <div class="muted">My Points</div>
-        <strong id="points">0</strong>
-      </div>
-    </section>
+  <!-- Hero -->
+  <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">WELCOME TO AGGIE POINTS</h1>
+      <p class="mt-1 font-ui text-white/90">Track your points, check in to events, and climb the leaderboard.</p>
+    </div>
+  </section>
 
-    <!-- Today's Events -->
-    <section style="margin-top:20px;">
-      <h2>Today’s Events</h2>
-      <div id="events" class="grid">
-        <!-- event cards injected here -->
+  <!-- Content -->
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+    <!-- Left column: User summary + quick links -->
+    <div class="space-y-6 lg:col-span-1">
+      <!-- User Points Card -->
+      <section class="card rounded-2xl bg-white shadow-soft p-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <h2 class="font-ui text-sm tracking-wide uppercase text-aggieBlue/80">Your Points</h2>
+            <div class="mt-2 flex items-end gap-3">
+              <span id="userPoints" class="font-heading text-5xl font-extrabold text-aggieBlue">—</span>
+              <span id="userRank" class="font-ui text-sm text-ink/70">Rank —</span>
+            </div>
+            <p id="userTeam" class="mt-1 font-ui text-sm text-ink/70">Team —</p>
+          </div>
+          <div class="rounded-xl bg-aggieGold/20 text-aggieBlue px-3 py-2 font-ui text-xs font-semibold">Season</div>
+        </div>
+        <div class="mt-5 grid grid-cols-2 gap-3">
+          <a href="leaderboard.html" class="rounded-xl border border-aggieBlue/10 px-4 py-3 text-center font-ui hover:border-aggieBlue/30">View Leaderboard</a>
+          <a href="events.html" class="rounded-xl bg-aggieGold text-aggieBlue px-4 py-3 text-center font-ui font-semibold hover:brightness-95">Find Events</a>
+        </div>
+      </section>
+
+      <!-- Quick Links -->
+      <section class="card rounded-2xl bg-white shadow-soft p-6">
+        <h3 class="font-ui text-base font-semibold text-aggieBlue">Quick Links</h3>
+        <ul class="mt-3 space-y-2 font-ui">
+          <li><a class="block rounded-lg px-3 py-2 hover:bg-aggieBlue/5" href="events.html#week">This Week’s Events</a></li>
+          <li><a class="block rounded-lg px-3 py-2 hover:bg-aggieBlue/5" href="events.html#month">Monthly Calendar</a></li>
+          <li><a class="block rounded-lg px-3 py-2 hover:bg-aggieBlue/5" href="settings.html">Account Settings</a></li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- Right column: Today's Events -->
+    <section class="lg:col-span-2 card rounded-2xl bg-white shadow-soft p-6">
+      <div class="flex items-center justify-between">
+        <h3 class="font-ui text-lg font-semibold text-aggieBlue">Today’s Events</h3>
+        <a href="events.html" class="font-ui text-sm text-aggieBlue hover:underline">View all</a>
       </div>
-      <p id="message"></p>
+
+      <!-- Events list -->
+      <div id="todayEvents" class="mt-4 divide-y divide-gray-100">
+        <div id="eventsEmpty" class="py-10 text-center text-ink/60 font-ui hidden">No events today. Check back later!</div>
+      </div>
     </section>
   </main>
 
+  <!-- Footer -->
+  <footer class="border-t border-gray-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-sm font-ui text-ink/60">
+      © <span id="year"></span> Aggie Points. UC Davis-inspired theme.
+    </div>
+  </footer>
+
+  <!-- Supabase auth/config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
+
   <script>
-    // Session + nav
-    let user = null;
-    const acctBtn  = document.getElementById("acctBtn");
-    const acctMenu = document.getElementById("acctMenu");
-    acctBtn.addEventListener("click", () => {
-      acctMenu.style.display = acctMenu.style.display === "block" ? "none" : "block";
-    });
-    document.addEventListener("click", (e) => {
-      if (!acctMenu.contains(e.target) && !acctBtn.contains(e.target)) acctMenu.style.display = "none";
-    });
-    document.getElementById("logoutBtn").onclick = async () => {
-      await sb.auth.signOut();
-      window.location.href = "login.html";
-    };
-    document.getElementById("accountSettings").onclick = (e) => {
-      e.preventDefault();
-      alert("Account settings coming soon."); // Wire up when ready
-    };
+    const $ = (sel) => document.querySelector(sel);
+    const toggle = (el) => el.classList.toggle("hidden");
 
-    // Time helpers
-    function formatPacific(utcIso) {
-      return new Date(utcIso).toLocaleString("en-US", {
-        timeZone: "America/Los_Angeles",
-        dateStyle: "medium",
-        timeStyle: "short"
+    $("#mobileMenuBtn")?.addEventListener("click", () => toggle($("#mobileMenu")));
+    $("#acctBtn")?.addEventListener("click", () => toggle($("#acctMenu")));
+    $("#year").textContent = new Date().getFullYear();
+
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = LOGIN_PAGE || "login.html"; return; }
+
+      const { data: { user } } = await sb.auth.getUser();
+      $("#acctName").textContent = user.user_metadata?.display_name || user.email || "Account";
+
+      const doLogout = async () => { await sb.auth.signOut(); window.location.href = LOGIN_PAGE || "login.html"; };
+      $("#logoutBtn")?.addEventListener("click", doLogout);
+      $("#logoutBtnMobile")?.addEventListener("click", doLogout);
+
+      const { data: profile } = await sb.from("profiles")
+        .select("display_name, team_name, points_total, rank")
+        .eq("id", user.id).single();
+
+      if (profile) {
+        $("#userPoints").textContent = profile.points_total ?? 0;
+        $("#userRank").textContent = `Rank ${profile.rank ?? "—"}`;
+        $("#userTeam").textContent = profile.team_name ? `Team ${profile.team_name}` : "Team —";
+      }
+
+      const { data: events } = await sb.from("events_today")
+        .select("id, title, start_ts, end_ts, location, points, status, user_checked_in")
+        .order("start_ts", { ascending: true });
+
+      const container = $("#todayEvents"), empty = $("#eventsEmpty");
+      if (!events || events.length === 0) empty.classList.remove("hidden");
+      else {
+        empty.classList.add("hidden");
+        events.forEach(ev => {
+          const startTime = new Date(ev.start_ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          const endTime = new Date(ev.end_ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          const row = document.createElement("div");
+          row.className = "py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3";
+          row.innerHTML = `
+            <div class="min-w-0">
+              <div class="font-ui text-base font-semibold text-ink">${ev.title}</div>
+              <div class="mt-0.5 text-sm text-ink/70 font-ui">${startTime}–${endTime} · ${ev.location || "TBA"} · ${ev.points ?? 0} pts</div>
+              <div class="mt-0.5">
+                <span class="inline-flex items-center rounded-md bg-aggieBlue/10 px-2 py-0.5 text-xs font-ui text-aggieBlue">${ev.status || "upcoming"}</span>
+                ${ev.user_checked_in ? `<span class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-ui text-emerald-700 ml-2">Checked in</span>` : ``}
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              ${ev.user_checked_in ? `<button disabled class="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 font-ui cursor-not-allowed">Checked in</button>` : `<button data-event="${ev.id}" class="checkinBtn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95">Check in</button>`}
+              <a class="font-ui text-sm text-aggieBlue hover:underline" href="events.html#today">See details</a>
+            </div>`;
+          container.appendChild(row);
+        });
+      }
+
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".checkinBtn"); if (!btn) return;
+        const eventId = btn.getAttribute("data-event"); btn.disabled = true;
+        const { error } = await sb.rpc("checkin", { event_id: eventId });
+        if (error) { btn.disabled = false; alert("Check-in failed. Please try again."); }
+        else { btn.textContent = "Checked in"; btn.classList.remove("bg-aggieGold","text-aggieBlue"); btn.classList.add("bg-emerald-600","text-white"); }
       });
-    }
-    function pacificDayBoundsUTC(d = new Date()) {
-      const tz = "America/Los_Angeles";
-      const pacificNow = new Date(d.toLocaleString("en-US", { timeZone: tz }));
-      pacificNow.setHours(0,0,0,0);
-      const pacificEnd = new Date(pacificNow); pacificEnd.setDate(pacificEnd.getDate() + 1);
-      return { startUTC: pacificNow.toISOString(), endUTC: pacificEnd.toISOString() };
-    }
-
-    (async function main() {
-      user = await requireSessionOrRedirect();
-      if (!user) return;
-      document.getElementById("who").textContent = user.email;
-
-      await loadPoints();
-      await loadTodayEvents();
     })();
-
-    // Points = sum of event points for my check-ins
-    async function loadPoints() {
-      const { data, error } = await sb
-        .from("checkins")
-        .select("event_id, events(points)")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending:false });
-      if (error) { console.warn("loadPoints error", error); return; }
-      const total = (data || []).reduce((sum, row) => sum + (row.events?.points ?? 0), 0);
-      document.getElementById("points").textContent = total;
-    }
-
-    // Today’s events
-    async function loadTodayEvents() {
-      const { startUTC, endUTC } = pacificDayBoundsUTC();
-      const wrap = document.getElementById("events");
-      wrap.innerHTML = "";
-
-      const { data: events, error } = await sb
-        .from("events")
-        .select("*")
-        .gte("start_time_utc", startUTC)
-        .lt("end_time_utc", endUTC)
-        .order("start_time_utc", { ascending:true });
-
-      if (error || !events || !events.length) {
-        wrap.innerHTML = `<div class="muted">No events scheduled for today. See <a class="link" href="events.html">All Events</a>.</div>`;
-        return;
-      }
-
-      // pre-disable from existing checkins
-      const { data: my } = await sb
-        .from("checkins")
-        .select("event_id")
-        .eq("user_id", user.id);
-      const already = new Set((my || []).map(r => r.event_id));
-
-      for (const ev of events) {
-        const isChecked = already.has(ev.id);
-        const card = document.createElement("div");
-        card.className = "card";
-
-        const when = (ev.start_time_utc && ev.end_time_utc)
-          ? `${formatPacific(ev.start_time_utc)} – ${formatPacific(ev.end_time_utc)}`
-          : `${new Date(ev.start_time).toLocaleString()} – ${new Date(ev.end_time).toLocaleString()}`;
-
-        card.innerHTML = `
-          <div class="row" style="justify-content:space-between;">
-            <div>
-              <div style="font-weight:700">${ev.name}</div>
-              <div class="muted" style="font-size:14px">${when}</div>
-              <div class="muted" style="font-size:14px">Location: ${ev.location || "N/A"}</div>
-              <div style="margin-top:6px;">Points: <span class="tag">${ev.points ?? 0}</span></div>
-            </div>
-            <div>
-              <button class="btn" ${isChecked ? "disabled" : ""}>${isChecked ? "✅ Checked In" : "Check In"}</button>
-            </div>
-          </div>
-        `;
-
-        const btn = card.querySelector("button");
-        btn.addEventListener("click", () => checkIn(ev, btn));
-        wrap.appendChild(card);
-      }
-    }
-
-    // Check-in with strict phone geofence
-    async function checkIn(ev, btn) {
-      const msg = document.getElementById("message");
-      clear(msg);
-      btn.disabled = true;
-
-      // Require geolocation
-      if ("geolocation" in navigator) {
-        try {
-          const pos = await new Promise((res, rej) =>
-            navigator.geolocation.getCurrentPosition(res, rej, {
-              enableHighAccuracy: true, timeout: 20000, maximumAge: 0
-            })
-          );
-          const lat = pos.coords.latitude, lng = pos.coords.longitude;
-          const EPS = 0.0007;
-          const accDeg = Math.min((pos.coords.accuracy || 50), 200) / 111111; // m -> deg approx
-          const latMin = Math.min(ev.lat_min, ev.lat_max) - EPS - accDeg;
-          const latMax = Math.max(ev.lat_min, ev.lat_max) + EPS + accDeg;
-          const lngMin = Math.min(ev.lng_min, ev.lng_max) - EPS - accDeg;
-          const lngMax = Math.max(ev.lng_min, ev.lng_max) + EPS + accDeg;
-          const inside = lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax;
-
-          if (!inside) {
-            show(msg, "Go to the venue to check in.");
-            btn.disabled = false;
-            return;
-          }
-        } catch (err) {
-          console.error("geolocation error", err);
-          show(msg, "Location permission denied or unavailable.");
-          btn.disabled = false;
-          return;
-        }
-      }
-
-      async function tryInsert() {
-        const { data, error, status } = await sb
-          .from("checkins")
-          .insert({ user_id: user.id, event_id: ev.id })
-          .select("id")
-          .maybeSingle();
-        return { error, status };
-      }
-
-      let { error, status } = await tryInsert();
-      if (error) {
-        const msgText = (error.message || "") + " " + (error.details || "") + " " + (error.hint || "");
-        const isUnique = error.code === "23505" || /unique|duplicate|checkins_user_event_idx/i.test(msgText) || (status === 409 && /duplicate/i.test(msgText));
-        const isFKUserMissing = /foreign key|checkins_user_id_fkey/i.test(msgText);
-
-        if (isUnique) {
-          btn.textContent = "✅ Checked In";
-          show(msg, "Already checked in.", true);
-          await loadPoints();
-          return;
-        }
-        if (isFKUserMissing) {
-          const up = await sb.from("users").upsert({
-            id: user.id, email: user.email,
-            name: user.user_metadata?.name || "",
-            student_id: user.user_metadata?.student_id ?? null,
-            team: user.user_metadata?.team ?? null,
-            year: user.user_metadata?.year ?? null
-          }, { onConflict: "id" });
-          if (up.error && up.error.code !== "23505") {
-            console.error("profile upsert failed:", up.error);
-            show(msg, "Profile missing and could not be created.");
-            btn.disabled = false; return;
-          }
-          ({ error, status } = await tryInsert());
-          if (error) {
-            console.error("check-in retry failed:", error);
-            show(msg, "Check-in failed: " + (error.message || "Unknown error"));
-            btn.disabled = false; return;
-          }
-        } else {
-          console.error("check-in error:", error);
-          show(msg, "Check-in failed: " + (error.message || "Unknown error"));
-          btn.disabled = false; return;
-        }
-      }
-
-      // success
-      btn.textContent = "✅ Checked In";
-      show(msg, "Successfully checked in!", true);
-      await loadPoints();
-    }
-
-    // UI helpers
-    function show(el, text, ok=false) { if (el) { el.textContent = text; el.style.color = ok ? "green" : "red"; } }
-    function clear(el) { if (el) el.textContent = ""; }
   </script>
 </body>
 </html>

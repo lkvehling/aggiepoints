@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Aggie Points — All Events</title>
+  <title>Aggie Points — Events</title>
 
-  <!-- Fonts (Equivalents): Raleway (headings), Montserrat (UI), Merriweather (body) -->
+  <!-- Fonts: Raleway (headings), Montserrat (UI), Merriweather (body) -->
   <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
 
-  <!-- Tailwind CDN -->
+  <!-- Tailwind -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -18,15 +18,16 @@
             aggieBlue: "#022851",
             aggieGold: "#FFBF00",
             aggieBg: "#F7F7F7",
-            ink: "#333333",
+            ink: "#111827",
+            slate: "#6B7280"
           },
           fontFamily: {
-            heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
-            ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
-            body: ["Merriweather", "Georgia", "serif"],
+            heading: ["Raleway", "ui-sans-serif", "system-ui"],
+            ui: ["Montserrat", "ui-sans-serif", "system-ui"],
+            body: ["Merriweather", "ui-serif", "Georgia"]
           },
           boxShadow: {
-            soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
+            soft: "0 10px 25px rgba(0,0,0,0.06)"
           }
         }
       }
@@ -34,323 +35,319 @@
   </script>
 
   <style>
-    :root {
-      --aggie-blue: #022851;
-      --aggie-gold: #FFBF00;
-    }
-    .card { transition: transform .15s ease, box-shadow .15s ease; }
-    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
-    .sticky-tabs { position: sticky; top: 0; z-index: 30; }
+    html, body { background: #F7F7F7; }
   </style>
 </head>
-<body class="min-h-screen bg-aggieBg text-ink font-body">
-
-  <!-- Header / Nav -->
+<body class="min-h-screen text-ink font-body">
+  <!-- Header -->
   <header class="bg-aggieBlue text-white">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between py-3">
-        <a href="index.html" class="flex items-center">
-          <span class="font-ui text-xl font-semibold tracking-wide">Aggie Points</span>
-        </a>
-
-        <nav class="hidden md:flex items-center gap-8 font-ui">
-          <a href="index.html" class="hover:text-aggieGold">Home</a>
-          <a href="events.html" class="hover:text-aggieGold text-aggieGold">All Events</a>
-          <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
-
-          <!-- Account dropdown -->
-          <div class="relative">
-            <button id="acctBtn" class="hover:text-aggieGold flex items-center gap-2">
-              <span id="acctName" class="font-medium">Account</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
-            <div id="acctMenu" class="absolute right-0 mt-2 w-44 bg-white text-ink rounded-lg shadow-soft py-2 hidden">
-              <a href="settings.html" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
-              <button id="logoutBtn" class="w-full text-left block px-4 py-2 hover:bg-gray-100">Log out</button>
-            </div>
+    <div class="mx-auto max-w-6xl px-4 py-6 flex items-center justify-between">
+      <h1 class="font-heading text-2xl sm:text-3xl tracking-wide">
+        <span class="font-extrabold">Aggie</span> <span class="text-aggieGold font-extrabold">Points</span> — Events
+      </h1>
+      <nav class="font-ui text-sm flex items-center gap-4">
+        <a href="index.html" class="hover:text-aggieGold">Home</a>
+        <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
+        <div class="relative group">
+          <button id="userMenuBtn" class="rounded-lg px-3 py-1.5 bg-white/10 hover:bg-white/20">Account ▾</button>
+          <div id="userMenu" class="hidden absolute right-0 mt-2 w-40 bg-white text-ink rounded-xl shadow-soft overflow-hidden">
+            <a href="account.html" class="block px-4 py-2 hover:bg-aggieBg">Settings</a>
+            <button id="logoutBtn" class="w-full text-left px-4 py-2 hover:bg-aggieBg">Log out</button>
           </div>
-        </nav>
-
-        <!-- Mobile menu button -->
-        <button id="mobileMenuBtn" class="md:hidden inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10">
-          <span class="sr-only">Open main menu</span>
-          <svg class="h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" fill="none">
-            <path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round" />
-          </svg>
-        </button>
-      </div>
-    </div>
-
-    <!-- Mobile menu -->
-    <div id="mobileMenu" class="md:hidden hidden border-t border-white/10">
-      <div class="space-y-1 px-4 pb-4 pt-2 font-ui">
-        <a href="index.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Home</a>
-        <a href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
-        <a href="leaderboard.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Leaderboard</a>
-        <a href="settings.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Settings</a>
-        <button id="logoutBtnMobile" class="w-full text-left block px-3 py-2 rounded-md hover:bg-white/10">Log out</button>
-      </div>
+        </div>
+      </nav>
     </div>
   </header>
 
-  <!-- Page Header -->
-  <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">All Events</h1>
-      <p class="mt-1 font-ui text-white/90">Plan ahead by week or month. To check in to today’s events, use the Home page.</p>
-    </div>
-  </section>
-
-  <!-- Tabs / Filters (sticky) -->
-  <div class="sticky-tabs bg-white/90 backdrop-blur border-b border-gray-200">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex flex-col lg:flex-row lg:items-center gap-3 py-3">
-        <div class="flex items-center gap-2 font-ui">
-          <a href="index.html#today" class="px-3 py-2 rounded-lg hover:bg-aggieBlue/5">Today</a>
-          <a href="#week" class="px-3 py-2 rounded-lg hover:bg-aggieBlue/5">This Week</a>
-          <a href="#month" class="px-3 py-2 rounded-lg hover:bg-aggieBlue/5">This Month</a>
-          <a href="#upcoming" class="px-3 py-2 rounded-lg hover:bg-aggieBlue/5">All Upcoming</a>
-          <a href="#past" class="px-3 py-2 rounded-lg hover:bg-aggieBlue/5">Past</a>
+  <!-- Page -->
+  <main class="mx-auto max-w-6xl px-4 py-8">
+    <!-- Filters / Info -->
+    <section class="mb-6">
+      <div class="flex flex-col sm:flex-row gap-3 sm:items-end justify-between">
+        <div>
+          <h2 class="font-heading text-xl sm:text-2xl text-aggieBlue">Plan your points</h2>
+          <p class="text-slate text-sm mt-1">This week, this month (excluding this week), and all upcoming events. Past events are hidden.</p>
         </div>
-
-        <!-- Search -->
-        <div class="grow"></div>
-        <div class="flex items-center gap-2 w-full lg:w-auto">
-          <input id="searchInput" type="search" placeholder="Search by title or location…" class="w-full lg:w-80 rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieGold/60" />
-          <button id="clearSearch" class="px-3 py-2 rounded-lg font-ui border border-aggieBlue/10 hover:bg-aggieBlue/5">Clear</button>
+        <div class="flex items-center gap-2">
+          <input id="searchInput" type="search" placeholder="Search events…"
+                 class="font-ui w-64 rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-aggieGold" />
+          <select id="sortSelect" class="font-ui rounded-xl border border-gray-200 bg-white px-3 py-2 shadow-sm focus:outline-none focus:ring-2 focus:ring-aggieGold">
+            <option value="soonest">Sort: Soonest</option>
+            <option value="points">Sort: Points (desc)</option>
+            <option value="title">Sort: Title (A–Z)</option>
+          </select>
         </div>
       </div>
-    </div>
-  </div>
+    </section>
 
-  <!-- Content -->
-  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Notice: today check-ins happen on Home -->
-    <div class="rounded-2xl bg-aggieGold/15 text-aggieBlue p-4 font-ui mb-6">
-      Want to check in? Head to <a class="font-semibold underline" href="index.html#today">Home → Today’s Events</a>.
-    </div>
-
-    <!-- Week -->
-    <section id="week" class="mb-10">
-      <div class="flex items-end justify-between mb-3">
-        <h2 class="font-ui text-xl font-semibold text-aggieBlue">This Week</h2>
-        <div id="weekRange" class="font-ui text-sm text-ink/60"></div>
+    <!-- Sections -->
+    <section id="thisWeek" class="mb-10">
+      <h3 class="font-heading text-lg text-aggieBlue mb-3">This Week</h3>
+      <div id="listThisWeek" class="grid gap-4 md:grid-cols-2">
+        <!-- Cards injected here -->
       </div>
-      <div id="weekList" class="divide-y divide-gray-100 bg-white rounded-2xl shadow-soft"></div>
-      <div id="weekEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No events scheduled for this week.</div>
+      <p id="emptyThisWeek" class="hidden text-slate text-sm">No events this week yet.</p>
     </section>
 
-    <!-- Month -->
-    <section id="month" class="mb-10">
-      <div class="flex items-end justify-between mb-3">
-        <h2 class="font-ui text-xl font-semibold text-aggieBlue">This Month</h2>
-        <div id="monthLabel" class="font-ui text-sm text-ink/60"></div>
+    <section id="thisMonth" class="mb-10">
+      <h3 class="font-heading text-lg text-aggieBlue mb-3">This Month (excluding this week)</h3>
+      <div id="listThisMonth" class="grid gap-4 md:grid-cols-2">
+        <!-- Cards injected here -->
       </div>
-      <div id="monthList" class="divide-y divide-gray-100 bg-white rounded-2xl shadow-soft"></div>
-      <div id="monthEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No events scheduled for this month.</div>
+      <p id="emptyThisMonth" class="hidden text-slate text-sm">No more events this month.</p>
     </section>
 
-    <!-- Upcoming -->
-    <section id="upcoming" class="mb-10">
-      <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-3">All Upcoming</h2>
-      <div id="upcomingList" class="divide-y divide-gray-100 bg-white rounded-2xl shadow-soft"></div>
-      <div id="upcomingEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No upcoming events found.</div>
-    </section>
-
-    <!-- Past -->
-    <section id="past" class="mb-10">
-      <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-3">Past Events</h2>
-      <div id="pastList" class="divide-y divide-gray-100 bg-white rounded-2xl shadow-soft"></div>
-      <div id="pastEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No past events to show.</div>
+    <section id="upcoming" class="mb-16">
+      <h3 class="font-heading text-lg text-aggieBlue mb-3">All Upcoming</h3>
+      <div id="listUpcoming" class="grid gap-4 md:grid-cols-2">
+        <!-- Cards injected here -->
+      </div>
+      <p id="emptyUpcoming" class="hidden text-slate text-sm">Nothing scheduled yet. Check back soon!</p>
     </section>
   </main>
 
   <!-- Footer -->
   <footer class="border-t border-gray-200">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-sm font-ui text-ink/60">
-      © <span id="year"></span> Aggie Points. UC Davis-inspired theme.
+    <div class="mx-auto max-w-6xl px-4 py-6 text-sm text-slate font-ui">
+      © <span id="year"></span> Aggie Points
     </div>
   </footer>
 
-  <!-- Supabase auth/config -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase + App config -->
+  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
 
   <script>
-    // ===== Utilities =====
-    const $ = (sel) => document.querySelector(sel);
-    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-    const toggle = (el) => el.classList.toggle("hidden");
-    const pad = (n) => String(n).padStart(2, "0");
+  (function () {
+    const tz = 'America/Los_Angeles';
 
-    // Date helpers
-    const startOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    const endOfDay = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999);
+    // UI elements
+    const userMenuBtn = document.getElementById('userMenuBtn');
+    const userMenu = document.getElementById('userMenu');
+    const logoutBtn = document.getElementById('logoutBtn');
+    const yearEl = document.getElementById('year');
+    const searchInput = document.getElementById('searchInput');
+    const sortSelect = document.getElementById('sortSelect');
 
-    // Week: Monday→Sunday (adjust if you prefer Sunday start)
-    function getWeekRange(d = new Date()) {
-      const day = d.getDay(); // 0 Sun … 6 Sat
-      const diffToMonday = (day + 6) % 7; // 0 if Monday
-      const monday = new Date(d); monday.setDate(d.getDate() - diffToMonday);
-      const sunday = new Date(monday); sunday.setDate(monday.getDate() + 6);
-      return { start: startOfDay(monday), end: endOfDay(sunday) };
+    const listThisWeek = document.getElementById('listThisWeek');
+    const listThisMonth = document.getElementById('listThisMonth');
+    const listUpcoming = document.getElementById('listUpcoming');
+    const emptyThisWeek = document.getElementById('emptyThisWeek');
+    const emptyThisMonth = document.getElementById('emptyThisMonth');
+    const emptyUpcoming = document.getElementById('emptyUpcoming');
+
+    yearEl.textContent = new Date().getFullYear();
+
+    // Simple menu toggle
+    userMenuBtn?.addEventListener('click', () => userMenu.classList.toggle('hidden'));
+    document.addEventListener('click', (e) => {
+      if (!userMenuBtn.contains(e.target) && !userMenu.contains(e.target)) {
+        userMenu.classList.add('hidden');
+      }
+    });
+
+    // Auth guard
+    async function ensureAuthed() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        window.location.href = 'login.html';
+        return null;
+      }
+      return session;
     }
 
-    function getMonthRange(d = new Date()) {
-      const start = new Date(d.getFullYear(), d.getMonth(), 1);
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 0, 23, 59, 59, 999);
-      return { start, end };
+    logoutBtn?.addEventListener('click', async () => {
+      await sb.auth.signOut();
+      window.location.href = 'login.html';
+    });
+
+    // Formatting helpers
+    function fmtRange(startIso, endIso) {
+      const s = new Date(startIso);
+      const e = new Date(endIso);
+      const sameDay = s.toDateString() === e.toDateString();
+      const dtfDate = new Intl.DateTimeFormat('en-US', { timeZone: tz, weekday: 'short', month: 'short', day: 'numeric' });
+      const dtfTime = new Intl.DateTimeFormat('en-US', { timeZone: tz, hour: 'numeric', minute: '2-digit' });
+      if (sameDay) {
+        return `${dtfDate.format(s)} · ${dtfTime.format(s)}–${dtfTime.format(e)} PT`;
+      }
+      const dtfDateTime = new Intl.DateTimeFormat('en-US', { timeZone: tz, month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' });
+      return `${dtfDateTime.format(s)} – ${dtfDateTime.format(e)} PT`;
     }
 
-    const fmtDate = (ts) => new Date(ts).toLocaleDateString([], { weekday: "short", month: "short", day: "numeric" });
-    const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+    function inProgress(endIso) {
+      return new Date(endIso).getTime() >= Date.now();
+    }
 
-    function eventRow(ev, isToday) {
-      // On All Events page, "Check in" is not actionable; send to Home.
-      const checkinBtn = isToday
-        ? `<a href="index.html#today" class="px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95">Check in on Home</a>`
-        : `<span class="px-3 py-2 rounded-lg bg-gray-100 text-gray-600 font-ui text-sm">Not open yet</span>`;
-
+    function card(event) {
+      const { id, title, start_ts, end_ts, location, points } = event;
+      const when = fmtRange(start_ts, end_ts);
+      const badge = points ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${points} pts</span>` : '';
       return `
-      <div class="py-4 px-4 sm:px-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-        <div class="min-w-0">
-          <div class="font-ui text-base font-semibold text-ink">${ev.title}</div>
-          <div class="mt-0.5 text-sm text-ink/70 font-ui">
-            ${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)} · ${ev.location || "TBA"} · ${ev.points ?? 0} pts
+        <article class="rounded-2xl bg-white shadow-soft border border-gray-100 p-4 flex flex-col justify-between">
+          <div>
+            <h4 class="font-heading text-lg text-aggieBlue">${escapeHtml(title)} ${badge}</h4>
+            <p class="mt-1 text-sm text-slate">${escapeHtml(location || 'TBA')}</p>
+            <p class="mt-2 font-ui text-sm">${when}</p>
           </div>
-          <div class="mt-0.5">
-            <span class="inline-flex items-center rounded-md bg-aggieBlue/10 px-2 py-0.5 text-xs font-ui text-aggieBlue">${ev.status || "upcoming"}</span>
+          <div class="mt-4">
+            <a href="index.html#today" class="inline-flex items-center gap-2 rounded-xl bg-aggieBlue px-3 py-2 text-white font-ui hover:bg-aggieBlue/90">
+              View / Check-in on Home
+              <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+              </svg>
+            </a>
           </div>
-        </div>
-        <div class="flex items-center gap-3">
-          ${checkinBtn}
-          <a class="font-ui text-sm text-aggieBlue hover:underline" href="#upcoming">More</a>
-        </div>
-      </div>`;
+        </article>
+      `;
     }
 
-    function renderList(containerEl, emptyEl, events, predicate = () => true) {
-      containerEl.innerHTML = "";
-      const filtered = events.filter(predicate);
-      if (filtered.length === 0) {
-        emptyEl.classList.remove("hidden");
+    function escapeHtml(s) {
+      return (s ?? '').toString()
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    // Fetch: single view for low throttling
+    let rawEvents = [];
+    async function loadEvents() {
+      // Ensure session because RLS requires it
+      const session = await ensureAuthed();
+      if (!session) return;
+
+      // Prefer the combined view 'events_catalog' (created from our SQL patch).
+      // Fallback: query base 'events' and bucket on client (works but not ideal).
+      let { data, error } = await sb
+        .from('events_catalog')
+        .select('*')
+        .order('start_ts', { ascending: true });
+
+      if (error && error.code === '42P01') {
+        // view not found — fallback
+        ({ data, error } = await sb
+          .from('events')
+          .select('id, title, start_ts, end_ts, location, points, status')
+          .order('start_ts', { ascending: true }));
+      }
+      if (error) {
+        console.error(error);
+        showError('Could not load events. Please try again.');
         return;
       }
-      emptyEl.classList.add("hidden");
-      filtered
-        .sort((a, b) => new Date(a.start_ts) - new Date(b.start_ts))
-        .forEach(ev => {
-          const isToday = (new Date(ev.start_ts)).toDateString() === (new Date()).toDateString();
-          containerEl.insertAdjacentHTML("beforeend", eventRow(ev, isToday));
-        });
+
+      // Filter out any past events defensively (server should already do this)
+      rawEvents = (data || []).filter(e => e?.end_ts && inProgress(e.end_ts));
+
+      render();
     }
 
-    function textFilter(q) {
-      if (!q) return () => true;
-      const needle = q.toLowerCase();
-      return (ev) => (ev.title || "").toLowerCase().includes(needle) ||
-                      (ev.location || "").toLowerCase().includes(needle);
-    }
-
-    // ===== Boot =====
-    $("#mobileMenuBtn")?.addEventListener("click", () => toggle($("#mobileMenu")));
-    $("#acctBtn")?.addEventListener("click", () => toggle($("#acctMenu")));
-    $("#year").textContent = new Date().getFullYear();
-
-    // If someone deep-links to #today here, bounce to Home
-    if (location.hash.toLowerCase() === "#today") {
-      location.replace("index.html#today");
-    }
-
-    (async () => {
-      // Require auth
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) { window.location.href = LOGIN_PAGE || "login.html"; return; }
-
-      const { data: { user } } = await sb.auth.getUser();
-      $("#acctName").textContent = user.user_metadata?.display_name || user.email || "Account";
-      const doLogout = async () => { await sb.auth.signOut(); window.location.href = LOGIN_PAGE || "login.html"; };
-      $("#logoutBtn")?.addEventListener("click", doLogout);
-      $("#logoutBtnMobile")?.addEventListener("click", doLogout);
-
-      // Pre-calc ranges
+    function bucketize(events) {
+      // Build PT week & month windows
       const now = new Date();
-      const { start: wkStart, end: wkEnd } = getWeekRange(now);
-      const { start: moStart, end: moEnd } = getMonthRange(now);
+      const localNow = new Date(now.toLocaleString('en-US', { timeZone: tz }));
 
-      // UI labels
-      $("#weekRange").textContent =
-        `${wkStart.toLocaleDateString([], { month: "short", day: "numeric" })} – ${wkEnd.toLocaleDateString([], { month: "short", day: "numeric" })}`;
-      $("#monthLabel").textContent =
-        `${moStart.toLocaleDateString([], { month: "long", year: "numeric" })}`;
+      // Monday-start week in PT
+      const day = localNow.getDay(); // Sun 0 .. Sat 6
+      const daysFromMonday = (day + 6) % 7; // Mon 0 .. Sun 6
+      const weekStartLocal = new Date(localNow);
+      weekStartLocal.setDate(localNow.getDate() - daysFromMonday);
+      weekStartLocal.setHours(0,0,0,0);
 
-      // Fetch events
-      // Assumes a base "events" table with: id, title, start_ts, end_ts, location, points, status
-      // If you have separate views, you can switch to those, but this keeps queries simple.
-      const iso = (d) => d.toISOString();
+      const weekEndLocal = new Date(weekStartLocal);
+      weekEndLocal.setDate(weekStartLocal.getDate() + 7);
 
-      const [{ data: weekEv, error: wErr }] = await Promise.all([
-        sb.from("events")
-          .select("id, title, start_ts, end_ts, location, points, status")
-          .gte("start_ts", iso(wkStart))
-          .lte("start_ts", iso(wkEnd))
-          .order("start_ts", { ascending: true })
-      ]);
-      if (wErr) console.error("Week events error:", wErr);
+      // Month window
+      const monthStartLocal = new Date(localNow.getFullYear(), localNow.getMonth(), 1);
+      const monthEndLocal = new Date(localNow.getFullYear(), localNow.getMonth()+1, 1);
 
-      const { data: monthEv, error: mErr } = await sb.from("events")
-        .select("id, title, start_ts, end_ts, location, points, status")
-        .gte("start_ts", iso(moStart))
-        .lte("start_ts", iso(moEnd))
-        .order("start_ts", { ascending: true });
-      if (mErr) console.error("Month events error:", mErr);
+      // Convert local PT window bounds to UTC ISO for comparing UTC timestamps
+      const weekStart = new Date(weekStartLocal.toLocaleString('en-US', { timeZone: 'UTC' })).toISOString();
+      const weekEnd   = new Date(weekEndLocal.toLocaleString('en-US', { timeZone: 'UTC' })).toISOString();
+      const monthStart= new Date(monthStartLocal.toLocaleString('en-US', { timeZone: 'UTC' })).toISOString();
+      const monthEnd  = new Date(monthEndLocal.toLocaleString('en-US', { timeZone: 'UTC' })).toISOString();
 
-      const { data: upcomingEv, error: uErr } = await sb.from("events")
-        .select("id, title, start_ts, end_ts, location, points, status")
-        .gte("start_ts", iso(startOfDay(now)))
-        .order("start_ts", { ascending: true });
-      if (uErr) console.error("Upcoming events error:", uErr);
+      const thisWeek = [];
+      const thisMonthExclWeek = [];
+      const upcoming = [];
 
-      const { data: pastEv, error: pErr } = await sb.from("events")
-        .select("id, title, start_ts, end_ts, location, points, status")
-        .lt("start_ts", iso(startOfDay(now)))
-        .order("start_ts", { ascending: false })
-        .limit(50);
-      if (pErr) console.error("Past events error:", pErr);
+      for (const e of events) {
+        if (!inProgress(e.end_ts)) continue; // extra safety
+        const s = e.start_ts;
 
-      // Render initial
-      const weekList = $("#weekList"), weekEmpty = $("#weekEmpty");
-      const monthList = $("#monthList"), monthEmpty = $("#monthEmpty");
-      const upcomingList = $("#upcomingList"), upcomingEmpty = $("#upcomingEmpty");
-      const pastList = $("#pastList"), pastEmpty = $("#pastEmpty");
-
-      let searchQuery = "";
-      const applySearch = () => {
-        const pred = textFilter(searchQuery);
-        renderList(weekList, weekEmpty, weekEv || [], pred);
-        renderList(monthList, monthEmpty, monthEv || [], pred);
-        renderList(upcomingList, upcomingEmpty, upcomingEv || [], pred);
-        renderList(pastList, pastEmpty, pastEv || [], pred);
-      };
-
-      $("#searchInput").addEventListener("input", (e) => {
-        searchQuery = e.target.value.trim();
-        applySearch();
-      });
-      $("#clearSearch").addEventListener("click", () => {
-        $("#searchInput").value = "";
-        searchQuery = "";
-        applySearch();
-      });
-
-      applySearch();
-
-      // If hash is #week or #month on load, scroll it into view
-      if (location.hash) {
-        const target = document.querySelector(location.hash);
-        if (target) target.scrollIntoView({ behavior: "smooth", block: "start" });
+        if (s >= weekStart && s < weekEnd) {
+          thisWeek.push(e);
+        } else if (s >= monthStart && s < monthEnd) {
+          thisMonthExclWeek.push(e);
+        } else {
+          upcoming.push(e);
+        }
       }
-    })();
+      return { thisWeek, thisMonthExclWeek, upcoming };
+    }
+
+    function sortEvents(arr, mode) {
+      const list = [...arr];
+      if (mode === 'points') {
+        list.sort((a,b) => (b.points||0) - (a.points||0) || new Date(a.start_ts) - new Date(b.start_ts));
+      } else if (mode === 'title') {
+        list.sort((a,b) => (a.title||'').localeCompare(b.title||''));
+      } else {
+        // soonest
+        list.sort((a,b) => new Date(a.start_ts) - new Date(b.start_ts));
+      }
+      return list;
+    }
+
+    function applySearch(arr, q) {
+      if (!q) return arr;
+      const term = q.trim().toLowerCase();
+      return arr.filter(e =>
+        (e.title||'').toLowerCase().includes(term) ||
+        (e.location||'').toLowerCase().includes(term)
+      );
+    }
+
+    function render() {
+      const q = searchInput.value;
+      const mode = sortSelect.value;
+
+      const { thisWeek, thisMonthExclWeek, upcoming } = bucketize(rawEvents);
+
+      const w = sortEvents(applySearch(thisWeek, q), mode);
+      const m = sortEvents(applySearch(thisMonthExclWeek, q), mode);
+      const u = sortEvents(applySearch(upcoming, q), mode);
+
+      listThisWeek.innerHTML = w.map(card).join('');
+      listThisMonth.innerHTML = m.map(card).join('');
+      listUpcoming.innerHTML = u.map(card).join('');
+
+      emptyThisWeek.classList.toggle('hidden', w.length > 0);
+      emptyThisMonth.classList.toggle('hidden', m.length > 0);
+      emptyUpcoming.classList.toggle('hidden', u.length > 0);
+    }
+
+    function showError(msg) {
+      listThisWeek.innerHTML = '';
+      listThisMonth.innerHTML = '';
+      listUpcoming.innerHTML = '';
+      emptyThisWeek.textContent = msg;
+      emptyThisMonth.textContent = msg;
+      emptyUpcoming.textContent = msg;
+      emptyThisWeek.classList.remove('hidden');
+      emptyThisMonth.classList.remove('hidden');
+      emptyUpcoming.classList.remove('hidden');
+    }
+
+    // Events
+    searchInput.addEventListener('input', render);
+    sortSelect.addEventListener('change', render);
+
+    // Boot
+    loadEvents();
+  })();
   </script>
 </body>
 </html>

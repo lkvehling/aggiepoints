@@ -2,138 +2,110 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Aggie Points — Home</title>
 
-  <!-- Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
-
-  <!-- Tailwind -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            aggieBlue: "#022851",
-            aggieGold: "#FFBF00",
-            aggieBg:   "#F7F7F7",
-            ink:       "#0F172A"
-          },
-          fontFamily: {
-            display: ["Raleway", "ui-sans-serif", "system-ui"],
-            ui: ["Montserrat", "ui-sans-serif", "system-ui"],
-            body: ["Merriweather", "ui-serif", "Georgia"]
-          },
-          boxShadow: {
-            card: "0 10px 25px -5px rgba(2,40,81,0.15)"
-          },
-          borderRadius: {
-            xl2: "1rem"
-          }
-        }
-      }
-    }
-  </script>
+  <!-- keep your existing stylesheet/theme -->
+  <link rel="stylesheet" href="styles.css" />
 
   <!-- Supabase v2 -->
   <script defer src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-  <!-- Your config: defines SUPABASE_URL, SUPABASE_ANON_KEY, APP_HOME, LOGIN_PAGE, and window.sb -->
+  <!-- Your config (must define SUPABASE_URL, SUPABASE_ANON_KEY, APP_HOME, LOGIN_PAGE, and window.sb) -->
   <script defer src="auth-config.js"></script>
 </head>
-<body class="bg-aggieBg text-ink">
-  <!-- NAV -->
-  <header class="bg-aggieBlue text-white">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-      <a href="index.html" class="flex items-center gap-3">
-        <div class="w-9 h-9 rounded-full bg-aggieGold"></div>
-        <h1 class="font-display font-extrabold text-xl tracking-wide">Aggie Points</h1>
-      </a>
-      <nav class="hidden md:flex items-center gap-6 font-ui">
-        <a href="index.html" class="hover:text-aggieGold">Home</a>
-        <a href="events.html" class="hover:text-aggieGold">All Events</a>
-        <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
+<body>
+  <!-- ======= HEADER (preserve your existing markup/classes) ======= -->
+  <header class="site-header">
+    <div class="container header-inner">
+      <a href="index.html" class="brand">Aggie Points</a>
+      <nav class="nav">
+        <a href="index.html" class="nav-link is-active">Home</a>
+        <a href="events.html" class="nav-link">All Events</a>
+        <a href="leaderboard.html" class="nav-link">Leaderboard</a>
       </nav>
-
-      <!-- User menu -->
-      <div id="userMenu" class="relative">
-        <button id="userButton" class="font-ui bg-white text-aggieBlue px-3 py-2 rounded-xl2 shadow hover:bg-aggieGold hover:text-aggieBlue transition">
-          Account ▾
-        </button>
-        <div id="userDropdown" class="hidden absolute right-0 mt-2 w-44 bg-white text-aggieBlue rounded-xl2 shadow-card overflow-hidden">
-          <a href="account.html" class="block px-4 py-2 hover:bg-aggieBg">Account settings</a>
-          <button id="logoutBtn" class="w-full text-left px-4 py-2 hover:bg-aggieBg">Log out</button>
+      <div class="user-menu">
+        <button id="userMenuButton" class="btn btn-secondary">Account ▾</button>
+        <div id="userMenuDropdown" class="menu menu-right hidden">
+          <a href="account.html" class="menu-item">Account settings</a>
+          <button id="logoutBtn" class="menu-item">Log out</button>
         </div>
       </div>
     </div>
   </header>
 
-  <!-- HERO -->
-  <section class="bg-white">
-    <div class="max-w-6xl mx-auto px-4 py-10">
-      <h2 class="font-display text-3xl md:text-4xl font-extrabold text-aggieBlue">WELCOME TO AGGIE POINTS</h2>
-      <p class="font-body text-lg mt-2 text-slate-700">Track your points, check in to events, and climb the leaderboard.</p>
+  <!-- ======= HERO ======= -->
+  <section class="hero">
+    <div class="container">
+      <h1 class="hero-title">WELCOME TO AGGIE POINTS</h1>
+      <p class="hero-subtitle">Track your points, check in to events, and climb the leaderboard.</p>
     </div>
   </section>
 
-  <!-- CONTENT -->
-  <main class="max-w-6xl mx-auto px-4 pb-16 grid grid-cols-1 lg:grid-cols-3 gap-6">
-    <!-- Profile / Points -->
-    <section class="lg:col-span-1">
-      <div class="bg-white rounded-2xl shadow-card p-5">
-        <h3 class="font-display text-xl font-bold text-aggieBlue mb-4">Your Status</h3>
+  <!-- ======= CONTENT ======= -->
+  <main class="container layout-grid">
+    <!-- Profile / Points (left column) -->
+    <section class="card" id="profileSection">
+      <h2 class="section-title">Your Status</h2>
 
-        <div id="profileCard" class="grid grid-cols-3 gap-3">
-          <div class="col-span-1 bg-aggieBg rounded-2xl p-4 text-center">
-            <div class="font-ui text-sm text-slate-600">Points</div>
-            <div id="profilePoints" class="font-display text-2xl font-extrabold mt-1">—</div>
-          </div>
-          <div class="col-span-1 bg-aggieBg rounded-2xl p-4 text-center">
-            <div class="font-ui text-sm text-slate-600">Rank</div>
-            <div id="profileRank" class="font-display text-2xl font-extrabold mt-1">—</div>
-          </div>
-          <div class="col-span-1 bg-aggieBg rounded-2xl p-4 text-center">
-            <div class="font-ui text-sm text-slate-600">Team</div>
-            <div id="profileTeam" class="font-display text-xl font-bold mt-1">—</div>
-          </div>
+      <div class="stats three-up">
+        <div class="stat">
+          <div class="stat-label">Points</div>
+          <div id="profilePoints" class="stat-value">—</div>
         </div>
+        <div class="stat">
+          <div class="stat-label">Rank</div>
+          <div id="profileRank" class="stat-value">—</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Team</div>
+          <div id="profileTeam" class="stat-value">—</div>
+        </div>
+      </div>
 
-        <div id="welcomeName" class="font-ui text-slate-600 mt-4">Signed in as <span id="displayName">…</span></div>
+      <div class="signed-in-as">
+        Signed in as <span id="displayName">…</span>
       </div>
     </section>
 
-    <!-- Today's Events -->
-    <section class="lg:col-span-2">
-      <div class="bg-white rounded-2xl shadow-card p-5">
-        <div class="flex items-end justify-between gap-3 mb-3">
-          <div>
-            <h3 class="font-display text-xl font-bold text-aggieBlue">Today’s Events</h3>
-            <p class="font-ui text-sm text-slate-600">Times shown in Pacific Time.</p>
-          </div>
-          <a href="events.html" class="font-ui text-sm text-aggieBlue hover:text-aggieGold">See all events →</a>
+    <!-- Today's Events (right column) -->
+    <section class="card" id="eventsSection">
+      <div class="section-header">
+        <div>
+          <h2 class="section-title">Today’s Events</h2>
+          <div class="section-subtitle">Times shown in Pacific Time.</div>
         </div>
-
-        <div id="eventsList" class="space-y-3">
-          <!-- Populated by JS -->
-        </div>
-
-        <div id="noEvents" class="hidden text-slate-600 font-ui">No events today.</div>
+        <a href="events.html" class="link">See all events →</a>
       </div>
+
+      <div id="eventsList" class="list list-spaced">
+        <!-- populated by JS -->
+      </div>
+
+      <div id="noEvents" class="muted hidden">No events today.</div>
     </section>
   </main>
 
+  <!-- ======= FOOTER (optional) ======= -->
+  <footer class="site-footer">
+    <div class="container">
+      <span class="muted">© Aggie Points</span>
+    </div>
+  </footer>
+
   <script>
-    // Simple dropdown
+    // keep your existing dropdown behavior; minimal JS here
     document.addEventListener('click', (e) => {
-      const btn = document.getElementById('userButton');
-      const dd = document.getElementById('userDropdown');
+      const btn = document.getElementById('userMenuButton');
+      const dd  = document.getElementById('userMenuDropdown');
       if (!btn || !dd) return;
-      if (btn.contains(e.target)) dd.classList.toggle('hidden');
-      else if (!dd.contains(e.target)) dd.classList.add('hidden');
+      if (btn.contains(e.target)) {
+        dd.classList.toggle('hidden');
+      } else if (!dd.contains(e.target)) {
+        dd.classList.add('hidden');
+      }
     });
 
-    // Helpers
+    // ---- Helpers ----
     const PT = 'America/Los_Angeles';
     function fmtPT(ts) {
       if (!ts) return '';
@@ -168,10 +140,10 @@
         return;
       }
 
-      document.getElementById('displayName').textContent = data.display_name || user.email || 'User';
+      document.getElementById('displayName').textContent   = data.display_name || user.email || 'User';
       document.getElementById('profilePoints').textContent = (data.points_total ?? 0);
-      document.getElementById('profileRank').textContent = (data.rank ?? '—');
-      document.getElementById('profileTeam').textContent = data.team_name || '—';
+      document.getElementById('profileRank').textContent   = (data.rank ?? '—');
+      document.getElementById('profileTeam').textContent   = data.team_name || '—';
     }
 
     async function loadTodaysEvents() {
@@ -199,20 +171,22 @@
 
       data.forEach(ev => {
         const checked = !!ev.user_checked_in;
-        const card = document.createElement('div');
-        card.className = 'border border-slate-200 rounded-2xl p-4 flex flex-col md:flex-row md:items-center gap-4';
 
-        card.innerHTML = `
-          <div class="flex-1">
-            <div class="font-display text-lg font-bold text-aggieBlue">${ev.title}</div>
-            <div class="font-ui text-sm text-slate-600">
+        const item = document.createElement('div');
+        item.className = 'list-item event';
+
+        // inner structure uses generic classes so your CSS keeps styling
+        item.innerHTML = `
+          <div class="event-main">
+            <div class="event-title">${ev.title}</div>
+            <div class="event-meta">
               ${fmtPT(ev.start_ts)} – ${fmtPT(ev.end_ts)} • ${ev.location ?? 'TBA'}
             </div>
-            <div class="font-ui text-sm mt-1"><span class="px-2 py-0.5 rounded bg-aggieBg">+${ev.points ?? 0} pts</span></div>
+            <div class="event-points">+${ev.points ?? 0} pts</div>
           </div>
-          <div class="flex gap-2">
+          <div class="event-actions">
             <button
-              class="checkin-btn font-ui px-4 py-2 rounded-xl2 text-white ${checked ? 'bg-slate-400 cursor-not-allowed' : 'bg-aggieBlue hover:bg-aggieGold hover:text-aggieBlue'} transition"
+              class="btn ${checked ? 'btn-disabled' : 'btn-primary'} checkin-btn"
               data-event-id="${ev.id}"
               ${checked ? 'disabled' : ''}>
               ${checked ? 'Checked In' : 'Check In'}
@@ -220,25 +194,26 @@
           </div>
         `;
 
-        list.appendChild(card);
+        list.appendChild(item);
       });
 
-      // wire up buttons
+      // Wire buttons
       document.querySelectorAll('.checkin-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const eventId = btn.getAttribute('data-event-id');
           btn.disabled = true;
+          const originalText = btn.textContent;
           btn.textContent = 'Checking...';
           try {
             const { error } = await sb.rpc('checkin', { event_id: eventId });
             if (error) throw error;
             btn.textContent = 'Checked In';
-            btn.classList.remove('bg-aggieBlue', 'hover:bg-aggieGold', 'hover:text-aggieBlue');
-            btn.classList.add('bg-slate-400', 'cursor-not-allowed', 'text-white');
+            btn.classList.remove('btn-primary');
+            btn.classList.add('btn-disabled');
           } catch (e) {
             console.error('checkin error', e);
             btn.disabled = false;
-            btn.textContent = 'Check In';
+            btn.textContent = originalText;
             alert('Could not check in. Please try again.');
           }
         });
@@ -249,7 +224,7 @@
       const user = await ensureAuth();
       if (!user) return;
 
-      // Logout
+      // logout
       document.getElementById('logoutBtn')?.addEventListener('click', async () => {
         await sb.auth.signOut();
         window.location.href = typeof LOGIN_PAGE !== 'undefined' ? LOGIN_PAGE : 'login.html';
@@ -259,7 +234,6 @@
       await loadTodaysEvents();
     }
 
-    // Wait for auth-config to load
     window.addEventListener('load', main);
   </script>
 </body>

@@ -94,46 +94,21 @@
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
       <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">All Events</h1>
-      <p class="mt-1 font-ui text-white/90">Upcoming events ordered by closeness to today. Use this page to plan ahead. Check-in happens on Home.</p>
+      <p class="mt-1 font-ui text-white/90">Browse by time window. Check-in happens on Home.</p>
     </div>
   </section>
 
   <!-- Main Content -->
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-
-    <!-- Sections: Today, Tomorrow, Later This Week, This Month, Later -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
       <section class="lg:col-span-2 space-y-6">
-        <!-- Today -->
-        <div id="today" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-          <div class="p-6">
-            <div class="flex items-end justify-between">
-              <h2 class="font-ui text-xl font-semibold text-aggieBlue">Today</h2>
-              <div id="todayDate" class="text-sm font-ui text-ink/60">—</div>
-            </div>
-            <div id="todayList" class="mt-4 divide-y divide-gray-100"></div>
-            <div id="todayEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No events today.</div>
-          </div>
-        </div>
-
-        <!-- Tomorrow -->
-        <div id="tomorrow" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-          <div class="p-6">
-            <div class="flex items-end justify-between">
-              <h2 class="font-ui text-xl font-semibold text-aggieBlue">Tomorrow</h2>
-              <div id="tomorrowDate" class="text-sm font-ui text-ink/60">—</div>
-            </div>
-            <div id="tomorrowList" class="mt-4 divide-y divide-gray-100"></div>
-            <div id="tomorrowEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No events tomorrow.</div>
-          </div>
-        </div>
-
-        <!-- Later This Week -->
+        <!-- This Week -->
         <div id="week" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
           <div class="p-6">
-            <h2 class="font-ui text-xl font-semibold text-aggieBlue">Later This Week</h2>
+            <h2 class="font-ui text-xl font-semibold text-aggieBlue">This Week</h2>
             <div id="weekList" class="mt-4 divide-y divide-gray-100"></div>
-            <div id="weekEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No more events this week.</div>
+            <div id="weekEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No events this week.</div>
+            <div id="weekErr" class="hidden mt-4 text-center font-ui text-red-600"></div>
           </div>
         </div>
 
@@ -143,15 +118,17 @@
             <h2 class="font-ui text-xl font-semibold text-aggieBlue">This Month</h2>
             <div id="monthList" class="mt-4 divide-y divide-gray-100"></div>
             <div id="monthEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No more events this month.</div>
+            <div id="monthErr" class="hidden mt-4 text-center font-ui text-red-600"></div>
           </div>
         </div>
 
-        <!-- All Upcoming (after this month) -->
+        <!-- All Upcoming -->
         <div id="upcoming" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
           <div class="p-6">
-            <h2 class="font-ui text-xl font-semibold text-aggieBlue">Later</h2>
+            <h2 class="font-ui text-xl font-semibold text-aggieBlue">All Upcoming</h2>
             <div id="upcomingList" class="mt-4 divide-y divide-gray-100"></div>
-            <div id="upcomingEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No later events.</div>
+            <div id="upcomingEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No upcoming events.</div>
+            <div id="upcomingErr" class="hidden mt-4 text-center font-ui text-red-600"></div>
           </div>
         </div>
       </section>
@@ -161,11 +138,9 @@
         <div class="p-6">
           <h3 class="font-ui text-xl font-semibold text-aggieBlue mb-4">Quick Links</h3>
           <ul class="space-y-2 font-ui">
-            <li><a href="#today" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">Today</a></li>
-            <li><a href="#tomorrow" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">Tomorrow</a></li>
-            <li><a href="#week" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">Later This Week</a></li>
+            <li><a href="#week" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">This Week</a></li>
             <li><a href="#month" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">This Month</a></li>
-            <li><a href="#upcoming" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">Later</a></li>
+            <li><a href="#upcoming" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">All Upcoming</a></li>
           </ul>
         </div>
       </aside>
@@ -195,42 +170,16 @@
     const TZ = 'America/Los_Angeles';
     const fmtDate = (ts) => new Date(ts).toLocaleDateString([], { timeZone: TZ, weekday:'short', month:'short', day:'numeric' });
     const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], { timeZone: TZ, hour:'numeric', minute:'2-digit' });
+    const isTodayPT = (ts) => {
+      const a = new Date(ts).toLocaleDateString('en-CA', { timeZone: TZ });
+      const b = new Date(new Date().toLocaleString('en-US', { timeZone: TZ })).toLocaleDateString('en-CA', { timeZone: TZ });
+      return a === b;
+    };
 
-    function dayKeyPT(dateObj) {
-      return dateObj.toLocaleDateString('en-CA', { timeZone: TZ }); // YYYY-MM-DD
-    }
-
-    function keyFromTs(ts) {
-      return new Date(ts).toLocaleDateString('en-CA', { timeZone: TZ });
-    }
-
-    function startOfTodayPT() {
-      const nowPT = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
-      return nowPT;
-    }
-
-    function addDaysPT(baseDate, days) {
-      return new Date(baseDate.getTime() + days * 24 * 60 * 60 * 1000);
-    }
-
-    function weekBoundsPT(d) {
-      // Week starts Monday in PT
-      const day = (d.getDay() + 6) % 7; // 0..6 with Monday=0
-      const start = new Date(d); start.setDate(d.getDate() - day);
-      const end = new Date(start); end.setDate(start.getDate() + 7);
-      return { start, end };
-    }
-
-    function monthBoundsPT(d) {
-      const start = new Date(d.getFullYear(), d.getMonth(), 1);
-      const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
-      return { start, end };
-    }
-
-    function row(ev, { showCheckinLink = false } = {}) {
+    function row(ev) {
       const when = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
       const badge = ev.points ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>` : '';
-      const action = showCheckinLink
+      const action = isTodayPT(ev.start_ts)
         ? `<a href="index.html?event=${ev.id}#today" class="px-3 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95">Check in</a>`
         : `<a class="font-ui text-sm text-aggieBlue hover:underline" href="#upcoming">More</a>`;
 
@@ -271,59 +220,41 @@
       $('#logoutBtn')?.addEventListener('click', doLogout);
       $('#logoutBtnMobile')?.addEventListener('click', doLogout);
 
-      // Dates in PT
-      const todayPT = startOfTodayPT();
-      $('#todayDate').textContent = todayPT.toLocaleDateString([], { timeZone: TZ, weekday:'long', month:'long', day:'numeric' });
-      const tomorrowPT = addDaysPT(todayPT, 1);
-      $('#tomorrowDate').textContent = tomorrowPT.toLocaleDateString([], { timeZone: TZ, weekday:'long', month:'long', day:'numeric' });
+      // Fetch each view directly (no past events by design)
+      const [wRes, mRes, uRes] = await Promise.all([
+        sb.from('events_this_week').select('id, title, name, start_ts, end_ts, location, points, status').order('start_ts', { ascending: true }),
+        sb.from('events_this_month_excl_week').select('id, title, name, start_ts, end_ts, location, points, status').order('start_ts', { ascending: true }),
+        sb.from('events_upcoming').select('id, title, name, start_ts, end_ts, location, points, status').order('start_ts', { ascending: true })
+      ]);
 
-      const { start: weekStart, end: weekEnd } = weekBoundsPT(todayPT);
-      const { start: monthStart, end: monthEnd } = monthBoundsPT(todayPT);
+      const { data: wk = [], error: wErr } = wRes;
+      const { data: mo = [], error: mErr } = mRes;
+      const { data: up = [], error: uErr } = uRes;
 
-      // Fetch all upcoming (server already filters past via view)
-      const { data: upcoming, error } = await sb
-        .from('events_upcoming')
-        .select('id, title, name, start_ts, end_ts, location, points, status')
-        .order('start_ts', { ascending: true });
-
-      if (error) {
-        console.error('events_upcoming error', error);
-        $('#todayList').innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">Could not load events.</div>`;
-        $('#tomorrowList').innerHTML = ``;
-        return;
+      // Render helpers per section
+      function renderSection(listEl, emptyEl, errEl, rows, err) {
+        if (err) {
+          console.error('events section error', err);
+          errEl.textContent = 'Could not load events.';
+          errEl.classList.remove('hidden');
+          emptyEl.classList.add('hidden');
+          listEl.innerHTML = '';
+          return;
+        }
+        if (!rows.length) {
+          emptyEl.classList.remove('hidden');
+          errEl.classList.add('hidden');
+          listEl.innerHTML = '';
+        } else {
+          emptyEl.classList.add('hidden');
+          errEl.classList.add('hidden');
+          listEl.innerHTML = rows.map(row).join('');
+        }
       }
 
-      const tKey = dayKeyPT(todayPT);
-      const tmKey = dayKeyPT(tomorrowPT);
-
-      const onlyUpcoming = (upcoming || []).filter(ev => new Date(ev.end_ts).getTime() >= Date.now());
-
-      const todayEvents = onlyUpcoming.filter(ev => keyFromTs(ev.start_ts) === tKey);
-      const tomorrowEvents = onlyUpcoming.filter(ev => keyFromTs(ev.start_ts) === tmKey);
-
-      const laterThisWeek = onlyUpcoming.filter(ev => {
-        const d = new Date(ev.start_ts);
-        return d >= addDaysPT(todayPT, 2) && d < weekEnd; // after tomorrow, before week end
-      });
-
-      const thisMonthRest = onlyUpcoming.filter(ev => {
-        const d = new Date(ev.start_ts);
-        return d >= weekEnd && d < monthEnd; // after this week, within this month
-      });
-
-      const later = onlyUpcoming.filter(ev => new Date(ev.start_ts) >= monthEnd);
-
-      // Render sections (each already sorted ascending by query)
-      const renderList = (el, emptyEl, rows) => {
-        if (!rows.length) { emptyEl.classList.remove('hidden'); el.innerHTML = ''; }
-        else { emptyEl.classList.add('hidden'); el.innerHTML = rows.join(''); }
-      };
-
-      renderList($('#todayList'), $('#todayEmpty'), todayEvents.map(ev => row(ev, { showCheckinLink: true })));
-      renderList($('#tomorrowList'), $('#tomorrowEmpty'), tomorrowEvents.map(ev => row(ev)));
-      renderList($('#weekList'), $('#weekEmpty'), laterThisWeek.map(ev => row(ev)));
-      renderList($('#monthList'), $('#monthEmpty'), thisMonthRest.map(ev => row(ev)));
-      renderList($('#upcomingList'), $('#upcomingEmpty'), later.map(ev => row(ev)));
+      renderSection($('#weekList'), $('#weekEmpty'), $('#weekErr'), wk, wErr);
+      renderSection($('#monthList'), $('#monthEmpty'), $('#monthErr'), mo, mErr);
+      renderSection($('#upcomingList'), $('#upcomingEmpty'), $('#upcomingErr'), up, uErr);
     })();
   </script>
 </body>

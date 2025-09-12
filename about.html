@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Aggie Points — About</title>
 
-  <!-- Fonts (Raleway, Montserrat, Merriweather) -->
-  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
+  <!-- Fonts (Raleway, Montserrat) -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
 
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -23,7 +23,7 @@
           fontFamily: {
             heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
             ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
-            body: ["Merriweather", "Georgia", "serif"],
+            body: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"], /* no-serif body */
           },
           boxShadow: {
             soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
@@ -39,7 +39,7 @@
     .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
   </style>
 </head>
-<body class="min-h-screen bg-aggieBg text-ink font-body">
+<body class="min-h-screen bg-aggieBg text-ink font-ui">
 
   <!-- Header / Nav -->
   <header class="bg-aggieBlue text-white">
@@ -127,14 +127,16 @@
         </div>
       </div>
 
-      <!-- Card: SAAC Events -->
+      <!-- Card: SAAC + SARG Events -->
       <div class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
           <div class="flex items-center justify-between">
-            <h3 class="font-ui text-xl font-semibold text-aggieBlue">SAAC Events</h3>
+            <h3 class="font-ui text-xl font-semibold text-aggieBlue">SAAC &amp; SARG Events</h3>
             <span class="inline-flex items-center rounded-lg bg-aggieGold text-aggieBlue px-3 py-1 font-ui font-semibold">+15</span>
           </div>
-          <p class="mt-2 text-ink/80">Participate in SAAC-hosted events and check in to earn points.</p>
+          <p class="mt-2 text-ink/80">
+            Participate in SAAC or SARG events (e.g., <span class="font-semibold">AAPI</span>, <span class="font-semibold">AGS</span>, <span class="font-semibold">Aggie Mentor</span>) and check in to earn points.
+          </p>
         </div>
       </div>
     </section>
@@ -159,9 +161,9 @@
                 <td class="px-4 py-3">Attend and check in during the event window</td>
               </tr>
               <tr class="bg-white">
-                <td class="px-4 py-3">SAAC Events</td>
+                <td class="px-4 py-3">SAAC &amp; SARG Events (AAPI, AGS, Aggie Mentor, etc.)</td>
                 <td class="px-4 py-3 font-semibold">+15</td>
-                <td class="px-4 py-3">Attend SAAC-hosted event and check in</td>
+                <td class="px-4 py-3">Attend qualifying event and check in</td>
               </tr>
             </tbody>
           </table>
@@ -172,7 +174,7 @@
     <!-- Coming Soon -->
     <section class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
       <div class="p-6 sm:p-8">
-        <h3 class="font-heading text-2xl font-extrabold text-aggieBlue">Coming Soon: Challenges & Bonus Points</h3>
+        <h3 class="font-heading text-2xl font-extrabold text-aggieBlue">Coming Soon: Challenges &amp; Bonus Points</h3>
         <p class="mt-2 leading-relaxed">
           In the works: <span class="font-semibold">special challenges</span> that unlock
           <span class="font-semibold text-aggieBlue">bonus points</span> — think themed check-ins, team spirit activities,
@@ -212,7 +214,10 @@
         const el = document.getElementById('acctName');
         if (el) el.textContent = name;
       }
-      const doLogout = async () => { await sb.auth.signOut(); window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; };
+      const doLogout = async () => { 
+        await sb.auth.signOut(); 
+        window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; 
+      };
       document.getElementById('logoutBtn')?.addEventListener('click', doLogout);
       document.getElementById('logoutBtnMobile')?.addEventListener('click', doLogout);
     })();

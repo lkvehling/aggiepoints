@@ -190,6 +190,56 @@
     const fmtDate = (ts) => new Date(ts).toLocaleDateString([], {timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
     const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], {timeZone:TZ, hour:'numeric', minute:'2-digit'});
 
+    function toast(message, { variant = 'error', timeout = 4500 } = {}) {
+      const root = document.querySelector('#toast-root > div');
+      if (!root) return;
+    
+      // palette per variant
+      const variants = {
+        success: 'bg-green-100 text-green-900 ring-1 ring-green-300',
+        error:   'bg-red-100 text-red-900 ring-1 ring-red-300',
+        info:    'bg-aggieBlue/10 text-aggieBlue ring-1 ring-aggieBlue/30',
+        warn:    'bg-yellow-100 text-yellow-900 ring-1 ring-yellow-300'
+      };
+      const cls = variants[variant] || variants.info;
+    
+      const el = document.createElement('div');
+      el.setAttribute('role', 'status');
+      el.className = [
+        'pointer-events-auto',
+        'max-w-sm w-[360px]',
+        'rounded-2xl shadow-soft',
+        'px-4 py-3',
+        'font-ui text-sm',
+        'backdrop-blur',
+        'flex items-start gap-3',
+        cls
+      ].join(' ');
+    
+      el.innerHTML = `
+        <div class="shrink-0 pt-0.5">
+          ${variant === 'success' ? '✅' : variant === 'warn' ? '⚠️' : variant === 'info' ? 'ℹ️' : '❌'}
+        </div>
+        <div class="min-w-0 leading-snug">${message}</div>
+        <button class="ml-auto shrink-0 opacity-70 hover:opacity-100" aria-label="Close">✕</button>
+      `;
+    
+      const closeBtn = el.querySelector('button');
+      const remove = () => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); };
+      closeBtn.addEventListener('click', remove);
+    
+      root.appendChild(el);
+      if (timeout > 0) setTimeout(remove, timeout);
+    }
+    
+    // Tiny fade-out animation
+    const style = document.createElement('style');
+    style.textContent = `
+    @keyframes toast-fade-out { to { opacity: 0; transform: translateY(-4px); } }
+    .animate-fade-out { animation: toast-fade-out .15s ease forwards; }
+    `;
+    document.head.appendChild(style);
+
     function showCheckinError(err) {
       const code = err?.code;
       const details = err?.details || '';
@@ -361,12 +411,13 @@
               if (error) {
                 console.error('checkin error', error);
                 if (el) { el.disabled = false; el.textContent = original; }
-                alert(showCheckinError(error));
+                toast('Checked in — have fun! 🎉', { variant: 'success', timeout: 2500 });
                 return;
               }
 
               if (el) {
                 el.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
+                toast('Checked in — have fun! 🎉', { variant: 'success', timeout: 2500 });
               }
             } catch (geoErr) {
               console.error('geolocation error', geoErr);
@@ -379,5 +430,9 @@
       }
     })();
   </script>
+  <!-- Toast root -->
+  <div id="toast-root" class="fixed inset-0 pointer-events-none z-[1000]">
+    <div class="absolute top-4 right-4 space-y-3"></div>
+  </div>
 </body>
 </html>

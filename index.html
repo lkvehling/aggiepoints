@@ -1,232 +1,299 @@
-begin;
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Aggie Points – Dashboard</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 40px; }
+    .row { display:flex; gap:10px; align-items:center; flex-wrap: wrap; }
+    .event { border:1px solid #ddd; padding:12px; margin:10px 0; border-radius:10px; }
+    .muted { color:#666; }
+    #message { font-weight:600; margin-top:10px; }
+    #events { margin-top:20px; }
+    a { text-decoration: none; }
+  </style>
+</head>
+<body>
+  <div class="row">
+    <div id="who">Checking session…</div>
+    <button id="logoutBtn" style="display:none;">Logout</button>
+    <a href="leaderboard.html">Leaderboard →</a>
+  </div>
 
--- =========================
--- Tables (idempotent)
--- =========================
-create table if not exists public.users (
-  id uuid primary key,
-  email text not null unique,
-  name text not null,
-  student_id text,
-  team text,
-  year int,
-  created_at timestamptz default now()
-);
+  <h3>My Points: <span id="points">0</span></h3>
 
-create table if not exists public.events (
-  id uuid primary key default gen_random_uuid(),
-  name text not null,
-  lat_min double precision not null,
-  lat_max double precision not null,
-  lng_min double precision not null,
-  lng_max double precision not null,
-  start_time timestamptz not null,
-  end_time timestamptz not null,
-  points int default 0,
-  location text
-);
+  <label class="muted"><input type="checkbox" id="requireGeo" checked /> Require geolocation to be inside venue</label>
 
-create table if not exists public.checkins (
-  id uuid primary key default gen_random_uuid(),
-  user_id uuid not null,
-  event_id uuid not null references public.events(id) on delete cascade,
-  created_at timestamptz default now()
-);
+  <div id="events">Loading today’s events…</div>
+  <p id="message"></p>
 
-create unique index if not exists checkins_user_event_idx
-  on public.checkins (user_id, event_id);
+  <script src="auth-config.js"></script>
+  <script>
+    let user = null;
 
--- Ensure checkins FK is resilient
-alter table public.checkins drop constraint if exists checkins_user_id_fkey;
-alter table public.checkins
-  add constraint checkins_user_id_fkey
-  foreign key (user_id) references public.users(id)
-  on update cascade on delete cascade;
+    // ---- Time helpers (Pacific display + day bounds) ----
+    function formatPacific(utcIso) {
+      // Pass UTC ISO (e.g., start_time_utc) and render in Pacific
+      return new Date(utcIso).toLocaleString("en-US", {
+        timeZone: "America/Los_Angeles",
+        dateStyle: "medium",
+        timeStyle: "short"
+      });
+    }
 
--- =========================
--- RLS & Policies (idempotent)
--- =========================
-alter table public.users    enable row level security;
-alter table public.events   enable row level security;
-alter table public.checkins enable row level security;
+    function pacificDayBoundsUTC(d = new Date()) {
+      const tz = "America/Los_Angeles";
+      // Get local-midnight in Pacific, then convert to UTC ISO bounds
+      const pacificNow = new Date(d.toLocaleString("en-US", { timeZone: tz }));
+      pacificNow.setHours(0, 0, 0, 0);
+      const pacificEnd = new Date(pacificNow);
+      pacificEnd.setDate(pacificEnd.getDate() + 1);
+      return { startUTC: pacificNow.toISOString(), endUTC: pacificEnd.toISOString() };
+    }
 
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies where schemaname='public' and tablename='events' and policyname='events_select_authenticated'
-  ) then
-    create policy events_select_authenticated on public.events
-      for select to authenticated using (true);
-  end if;
-end $$;
+    // Logout
+    document.getElementById("logoutBtn").onclick = async () => {
+      await sb.auth.signOut();
+      window.location.href = "login.html";
+    };
 
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies where schemaname='public' and tablename='checkins' and policyname='checkins_select_own'
-  ) then
-    create policy checkins_select_own on public.checkins
-      for select to authenticated using (user_id = auth.uid());
-  end if;
-end $$;
+    // ---- Main ----
+    (async function main() {
+      user = await requireSessionOrRedirect();
+      if (!user) return;
 
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies where schemaname='public' and tablename='checkins' and policyname='checkins_insert_own'
-  ) then
-    create policy checkins_insert_own on public.checkins
-      for insert to authenticated with check (user_id = auth.uid());
-  end if;
-end $$;
+      document.getElementById("who").textContent = `Signed in as: ${user.email}`;
+      document.getElementById("logoutBtn").style.display = "inline-block";
 
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies where schemaname='public' and tablename='users' and policyname='users_select_self'
-  ) then
-    create policy users_select_self on public.users
-      for select to authenticated using (id = auth.uid());
-  end if;
-end $$;
+      await loadPoints();
+      await loadTodayEvents();
+    })();
 
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies where schemaname='public' and tablename='users' and policyname='users_insert_self'
-  ) then
-    create policy users_insert_self on public.users
-      for insert to authenticated with check (id = auth.uid());
-  end if;
-end $$;
+    // ---- Points ----
+    async function loadPoints() {
+      // Sum of points for this user from checked-in events
+      const { data, error } = await sb
+        .from("checkins")
+        .select("event_id, events(points)")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
 
-do $$
-begin
-  if not exists (
-    select 1 from pg_policies where schemaname='public' and tablename='users' and policyname='users_update_self'
-  ) then
-    create policy users_update_self on public.users
-      for update to authenticated
-      using (id = auth.uid()) with check (id = auth.uid());
-  end if;
-end $$;
+      if (error) {
+        console.warn("loadPoints error", error);
+        return;
+      }
+      const total = (data || []).reduce((sum, row) => sum + (row.events?.points ?? 0), 0);
+      document.getElementById("points").textContent = total;
+    }
 
--- =========================
--- student_id optional + unique when present
--- =========================
-alter table public.users
-  alter column student_id drop not null;
+    // ---- Events (today, formatted to Pacific) ----
+    async function loadTodayEvents() {
+      const { startUTC, endUTC } = pacificDayBoundsUTC();
 
-do $$
-declare conname text;
-begin
-  select constraint_name into conname
-  from information_schema.table_constraints
-  where table_schema='public' and table_name='users'
-    and constraint_type='UNIQUE' and constraint_name like '%student_id%';
-  if conname is not null then
-    execute format('alter table public.users drop constraint %I', conname);
-  end if;
-end $$;
+      // Recommended: query by generated UTC columns
+      const { data: events, error } = await sb
+        .from("events")
+        .select("*")
+        .gte("start_time_utc", startUTC)
+        .lt("end_time_utc", endUTC)
+        .order("start_time_utc", { ascending: true });
 
-create unique index if not exists users_student_id_unique_not_null
-  on public.users (lower(student_id))
-  where student_id is not null;
+      const wrap = document.getElementById("events");
+      wrap.innerHTML = "";
 
-update public.users set student_id = null where student_id = '';
+      if (error || !events || !events.length) {
+        wrap.textContent = "No events scheduled today.";
+        return;
+      }
 
--- =========================
--- Events PST/UTC helpers
--- =========================
-alter table public.events
-  add column if not exists start_time_pst timestamp,
-  add column if not exists end_time_pst   timestamp;
+      // fetch user's existing checkins to pre-disable
+      const { data: my } = await sb
+        .from("checkins")
+        .select("event_id")
+        .eq("user_id", user.id);
 
-alter table public.events
-  add column if not exists start_time_utc timestamptz
-    generated always as (start_time_pst at time zone 'America/Los_Angeles') stored,
-  add column if not exists end_time_utc timestamptz
-    generated always as (end_time_pst   at time zone 'America/Los_Angeles') stored;
+      const already = new Set((my || []).map(r => r.event_id));
 
-update public.events
-set start_time_pst = coalesce(start_time_pst, (start_time at time zone 'America/Los_Angeles')),
-    end_time_pst   = coalesce(end_time_pst,   (end_time   at time zone 'America/Los_Angeles'))
-where start_time_pst is null or end_time_pst is null;
+      for (const ev of events) {
+        const div = document.createElement("div");
+        const isChecked = already.has(ev.id);
+        div.className = "event";
 
-create index if not exists events_start_time_utc_idx on public.events (start_time_utc);
+        // Render using UTC columns (Option A) with Pacific formatting; fallback to original columns if needed
+        const when = (ev.start_time_utc && ev.end_time_utc)
+          ? `${formatPacific(ev.start_time_utc)} – ${formatPacific(ev.end_time_utc)}`
+          : `${new Date(ev.start_time).toLocaleString()} – ${new Date(ev.end_time).toLocaleString()}`;
 
--- =========================
--- Single canonical trigger to create profile rows
--- =========================
-drop trigger if exists on_auth_user_created on auth.users;
-drop function if exists public.handle_new_user();
+        div.innerHTML = `
+          <div class="row">
+            <strong>${ev.name}</strong>
+            <span class="muted">${when}</span>
+          </div>
+          <div class="muted">Location: ${ev.location || "N/A"}</div>
+          <div>Points: <strong>${ev.points ?? 0}</strong></div>
+          <button ${isChecked ? "disabled" : ""}>${isChecked ? "✅ Checked In" : "Check In"}</button>
+        `;
 
-create or replace function public.handle_new_user()
-returns trigger
-language plpgsql
-security definer
-set search_path = public
-as $fn$
-begin
-  insert into public.users (id, email, name, student_id, team, year, created_at)
-  values (
-    new.id,
-    new.email,
-    coalesce(new.raw_user_meta_data->>'name',''),
-    nullif(new.raw_user_meta_data->>'student_id',''),
-    nullif(new.raw_user_meta_data->>'team',''),
-    nullif((new.raw_user_meta_data->>'year')::int, null),
-    now()
-  )
-  on conflict (id) do nothing;
-  return new;
-end;
-$fn$;
+        const btn = div.querySelector("button");
+        btn.onclick = () => checkIn(ev, btn);
+        wrap.appendChild(div);
+      }
+    }
 
-create trigger on_auth_user_created
-  after insert on auth.users
-  for each row execute function public.handle_new_user();
+    // ---- Check-in flow ----
+    async function checkIn(ev, btn) {
+      const msg = document.getElementById("message");
+      clear(msg);
+      btn.disabled = true;
 
--- =========================
--- TEMP disable public.users triggers, align IDs, re-enable
--- (prevents "id is immutable" while we repair)
--- =========================
-alter table public.users disable trigger all;
+      // Geofence (STRICT: require mobile + high-accuracy GPS)
+      if (document.getElementById("requireGeo").checked && "geolocation" in navigator) {
+        try {
+          // 0) Require HTTPS (or localhost) for precise location
+          if (!window.isSecureContext && location.hostname !== "localhost") {
+            show(msg, "Location requires HTTPS. Open the site over https:// or use localhost.");
+            btn.disabled = false;
+            return;
+          }
 
--- Align every public.users.id to its auth.users.id by email
-update public.users u
-set id = au.id
-from auth.users au
-where u.email = au.email
-  and u.id <> au.id;
+          // Heuristic mobile check (encourage phone usage)
+          const isMobileUA =
+            navigator.userAgentData?.mobile === true ||
+            /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
--- Backfill any missing profiles from auth.users (by id)
-insert into public.users (id, email, name, student_id, team, year, created_at)
-select
-  au.id,
-  au.email,
-  coalesce(au.raw_user_meta_data->>'name',''),
-  nullif(au.raw_user_meta_data->>'student_id',''),
-  nullif(au.raw_user_meta_data->>'team',''),
-  nullif((au.raw_user_meta_data->>'year')::int, null),
-  now()
-from auth.users au
-left join public.users u on u.id = au.id
-where u.id is null;
+          if (!isMobileUA) {
+            show(msg, "Check-ins require a mobile device with GPS. Please use your phone.");
+            btn.disabled = false;
+            return;
+          }
 
-alter table public.users enable trigger all;
+          // 1) Ask for a fresh, high-accuracy reading
+          const pos = await new Promise((res, rej) =>
+            navigator.geolocation.getCurrentPosition(res, rej, {
+              enableHighAccuracy: true,
+              timeout: 20000,
+              maximumAge: 0
+            })
+          );
 
--- =========================
--- Add cross-schema FK AFTER alignment; validate
--- =========================
-alter table public.users drop constraint if exists users_id_fk_auth;
-alter table public.users
-  add constraint users_id_fk_auth
-  foreign key (id) references auth.users(id)
-  on delete cascade
-  not valid;
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const accM = pos.coords.accuracy ?? Infinity; // meters
+          console.log("device lat/lng/acc:", lat, lng, accM, "m");
 
--- Validate (will check existing rows)
-alter table public.users validate constraint users_id_fk_auth;
+          // 2) Enforce tight accuracy
+          const MAX_ACC_M = 75; // tighten/loosen if needed
+          if (!(accM > 0) || accM > MAX_ACC_M) {
+            show(
+              msg,
+              `Location too imprecise (${Math.round(accM)} m). On iOS: enable “Precise Location” for your browser app, then try again.`,
+            );
+            btn.disabled = false;
+            return;
+          }
 
-commit;
+          // 3) With good accuracy, do a tight bounding-box check
+          const EPS = 0.0005; // ~55 m padding
+          const latMin = Math.min(ev.lat_min, ev.lat_max) - EPS;
+          const latMax = Math.max(ev.lat_min, ev.lat_max) + EPS;
+          const lngMin = Math.min(ev.lng_min, ev.lng_max) - EPS;
+          const lngMax = Math.max(ev.lng_min, ev.lng_max) + EPS;
+
+          const inside = lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax;
+          console.log("strict box:", { latMin, latMax, lngMin, lngMax }, "inside?", inside);
+
+          if (!inside) {
+            show(msg, "You’re not at the venue boundary. Move closer to the event area and try again.");
+            btn.disabled = false;
+            return;
+          }
+        } catch (err) {
+          console.error("geolocation error", err);
+          show(msg, "Location permission denied or unavailable.");
+          btn.disabled = false;
+          return;
+        }
+      }
+
+      // helper: try insert once
+      async function tryInsert() {
+        const { data, error, status } = await sb
+          .from("checkins")
+          .insert({ user_id: user.id, event_id: ev.id })
+          .select("id")
+          .maybeSingle();
+        return { error, status };
+      }
+
+      let { error, status } = await tryInsert();
+
+      if (error) {
+        const msgText = (error.message || "") + " " + (error.details || "") + " " + (error.hint || "");
+        const isUnique =
+          error.code === "23505" ||
+          /unique|duplicate|checkins_user_event_idx/i.test(msgText) ||
+          (status === 409 && /duplicate/i.test(msgText));
+
+        const isFKUserMissing =
+          /foreign key|checkins_user_id_fkey/i.test(msgText);
+
+        if (isUnique) {
+          btn.textContent = "✅ Checked In";
+          show(msg, "Already checked in.", true);
+          await loadPoints();
+          return;
+        }
+
+        if (isFKUserMissing) {
+          // If a legacy account has no users row, create a minimal one and retry once.
+          console.warn("FK users missing; creating profile then retrying check-in");
+          const up = await sb.from("users").upsert({
+            id: user.id,
+            email: user.email,
+            name: user.user_metadata?.name || "",
+            student_id: user.user_metadata?.student_id || "",
+            team: user.user_metadata?.team || null,
+            year: user.user_metadata?.year || null
+          }, { onConflict: "id" });
+
+          if (up.error && up.error.code !== "23505") {
+            console.error("profile upsert failed:", up.error);
+            show(msg, "Profile missing and could not be created.");
+            btn.disabled = false;
+            return;
+          }
+
+          // retry insert
+          ({ error, status } = await tryInsert());
+          if (error) {
+            console.error("check-in retry failed:", error);
+            show(msg, "Check-in failed: " + (error.message || "Unknown error"));
+            btn.disabled = false;
+            return;
+          }
+        } else {
+          console.error("check-in error:", error);
+          show(msg, "Check-in failed: " + (error.message || "Unknown error"));
+          btn.disabled = false;
+          return;
+        }
+      }
+
+      // success
+      btn.textContent = "✅ Checked In";
+      show(msg, "Successfully checked in!", true);
+      await loadPoints();
+      // leave button disabled to prevent re-clicks
+    }
+
+    // (Only needed if you *didn't* adopt Option A; kept here for reference)
+    function localMidnightRangeISO(d = new Date()) {
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 0, 0, 0, 0);
+      const end = new Date(start); end.setDate(end.getDate() + 1);
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
+  </script>
+</body>
+</html>

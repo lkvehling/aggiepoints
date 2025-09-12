@@ -1,289 +1,232 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Aggie Points — Home</title>
-  <!-- Supabase JS CDN -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+  <!-- Fonts (Equivalents): Raleway (headings), Montserrat (UI), Merriweather (body) -->
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            aggieBlue: "#022851",
+            aggieGold: "#FFBF00",
+            aggieBg: "#F7F7F7",
+            ink: "#333333",
+          },
+          fontFamily: {
+            heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
+            ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
+            body: ["Merriweather", "Georgia", "serif"],
+          },
+          boxShadow: {
+            soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
+          }
+        }
+      }
+    }
+  </script>
+
   <style>
     :root {
-      --bg:#0b0f1a; --panel:#121826; --muted:#9aa6b2; --fg:#e6edf3; --accent:#6bb6ff; --ok:#22c55e; --warn:#facc15; --danger:#ef4444;
+      --aggie-blue: #022851;
+      --aggie-gold: #FFBF00;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Helvetica,Arial,sans-serif;background:linear-gradient(180deg,#0b0f1a,#0e1424 40%,#0b0f1a);color:var(--fg)}
-    a{color:var(--accent);text-decoration:none}
-    header{position:sticky;top:0;background:rgba(18,24,38,.8);backdrop-filter:blur(8px);border-bottom:1px solid #1e293b}
-    .nav{max-width:1100px;margin:0 auto;display:flex;align-items:center;gap:16px;padding:12px 16px}
-    .brand{font-weight:700;letter-spacing:.3px}
-    .spacer{flex:1}
-    .menu a{margin:0 8px;font-weight:600;color:#cbd5e1}
-    .card{background:linear-gradient(180deg,#0f172a 0%, #0b1224 100%);border:1px solid #1e293b;border-radius:16px;padding:16px}
-    .container{max-width:1100px;margin:24px auto;padding:0 16px}
-    .welcome{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:16px}
-    .welcome h1{margin:0;font-size:28px}
-    .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:16px}
-    .col-4{grid-column:span 4}
-    .col-8{grid-column:span 8}
-    .stat{display:flex;flex-direction:column;gap:6px}
-    .stat .label{color:var(--muted);font-size:12px;text-transform:uppercase;letter-spacing:.08em}
-    .stat .value{font-size:28px;font-weight:700}
-    .events-list{display:flex;flex-direction:column;gap:12px}
-    .event{display:flex;align-items:center;justify-content:space-between;gap:12px;border:1px solid #1e293b;border-radius:12px;padding:12px}
-    .event h4{margin:0 0 6px 0}
-    .kicker{font-size:12px;color:var(--muted)}
-    .btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:10px;border:1px solid #1e293b;background:#0f172a;color:#e2e8f0;font-weight:600;cursor:pointer}
-    .btn:hover{filter:brightness(1.1)}
-    .btn.primary{background:linear-gradient(180deg,#1e293b,#0f172a);border-color:#334155}
-    .btn.ghost{background:transparent}
-    .pill{padding:4px 8px;border-radius:999px;background:#0b1224;border:1px solid #1e293b;color:#cbd5e1;font-size:12px}
-    .muted{color:var(--muted)}
-    .row{display:flex;align-items:center;gap:10px}
-    .right{margin-left:auto}
-    .hidden{display:none}
-    .danger{color:var(--danger)}
-    .ok{color:var(--ok)}
-    .warn{color:var(--warn)}
-    .dropdown{position:relative}
-    .dropdown-menu{position:absolute;right:0;top:100%;margin-top:8px;background:#0f172a;border:1px solid #1e293b;border-radius:12px;padding:8px;min-width:180px;display:none}
-    .dropdown.open .dropdown-menu{display:block}
-    .dropdown-menu a,.dropdown-menu button{display:block;width:100%;text-align:left;padding:10px 12px;border-radius:10px;color:#cbd5e1;background:transparent;border:none;cursor:pointer}
-    .dropdown-menu a:hover,.dropdown-menu button:hover{background:#0b1224}
-    .skeleton{background:linear-gradient(90deg,#0e1424 25%,#0f1628 37%,#0e1424 63%);background-size:400% 100%;animation:shimmer 1.4s ease infinite;border-radius:8px}
-    @keyframes shimmer{0%{background-position:100% 0}100%{background-position:-100% 0}}
+    .card { transition: transform .15s ease, box-shadow .15s ease; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
   </style>
 </head>
-<body>
-  <header>
-    <nav class="nav">
-      <div class="brand">🏅 Aggie Points</div>
-      <div class="menu">
-        <a href="index.html" aria-current="page">Home</a>
-        <a href="events.html">All Events</a>
-        <a href="leaderboard.html">Leaderboard</a>
+<body class="min-h-screen bg-aggieBg text-ink font-body">
+
+  <!-- Header / Nav -->
+  <header class="bg-aggieBlue text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between py-3">
+        <a href="index.html" class="flex items-center">
+          <span class="font-ui text-xl font-semibold tracking-wide">Aggie Points</span>
+        </a>
+
+        <nav class="hidden md:flex items-center gap-8 font-ui">
+          <a href="index.html" class="hover:text-aggieGold">Home</a>
+          <a href="events.html" class="hover:text-aggieGold">All Events</a>
+          <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
+
+          <!-- Account dropdown -->
+          <div class="relative">
+            <button id="acctBtn" class="hover:text-aggieGold flex items-center gap-2">
+              <span id="acctName" class="font-medium">Account</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div id="acctMenu" class="absolute right-0 mt-2 w-44 bg-white text-ink rounded-lg shadow-soft py-2 hidden">
+              <a href="settings.html" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
+              <button id="logoutBtn" class="w-full text-left block px-4 py-2 hover:bg-gray-100">Log out</button>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Mobile menu button -->
+        <button id="mobileMenuBtn" class="md:hidden inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10">
+          <span class="sr-only">Open main menu</span>
+          <svg class="h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </button>
       </div>
-      <div class="spacer"></div>
-      <div class="dropdown" id="accountDropdown">
-        <button class="btn" id="accountBtn">Account ▾</button>
-        <div class="dropdown-menu">
-          <a href="#" id="accountSettings">Account Settings</a>
-          <button id="logoutBtn">Log out</button>
-        </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <div id="mobileMenu" class="md:hidden hidden border-t border-white/10">
+      <div class="space-y-1 px-4 pb-4 pt-2 font-ui">
+        <a href="index.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Home</a>
+        <a href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
+        <a href="leaderboard.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Leaderboard</a>
+        <a href="settings.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Settings</a>
+        <button id="logoutBtnMobile" class="w-full text-left block px-3 py-2 rounded-md hover:bg-white/10">Log out</button>
       </div>
-      <a href="login.html" class="btn primary" id="loginBtn">Log in</a>
-    </nav>
+    </div>
   </header>
 
-  <main class="container">
-    <section class="welcome card">
-      <div>
-        <div class="kicker">Welcome</div>
-        <h1 id="welcomeHeadline">WELCOME TO AGGIE POINTS</h1>
-        <div class="muted" id="welcomeSub">Track your progress and check in to today's events.</div>
-      </div>
-      <div class="row">
-        <span id="authStatus" class="pill">Not signed in</span>
-      </div>
-    </section>
+  <!-- Hero -->
+  <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">WELCOME TO AGGIE POINTS</h1>
+      <p class="mt-1 font-ui text-white/90">Track your points, check in to events, and climb the leaderboard.</p>
+    </div>
+  </section>
 
-    <section class="grid" style="margin-bottom:16px">
-      <div class="col-4 card">
-        <div class="stat"><span class="label">Points</span>
-          <div id="pointsValue" class="value skeleton" style="height:36px;width:120px"></div>
-        </div>
-      </div>
-      <div class="col-4 card">
-        <div class="stat"><span class="label">Rank</span>
-          <div id="rankValue" class="value skeleton" style="height:36px;width:120px"></div>
-        </div>
-      </div>
-      <div class="col-4 card">
-        <div class="stat"><span class="label">Team</span>
-          <div id="teamValue" class="value skeleton" style="height:36px;width:160px"></div>
-        </div>
-      </div>
-    </section>
+  <!-- Content -->
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    <section class="card">
-      <div class="row" style="margin-bottom:12px">
-        <h2 style="margin:0">Today's Events</h2>
-        <span class="pill right" id="todayPill">—</span>
+    <!-- Left column: User summary + quick links -->
+    <div class="space-y-6 lg:col-span-1">
+      <!-- User Points Card -->
+      <section class="card rounded-2xl bg-white shadow-soft p-6">
+        <div class="flex items-start justify-between">
+          <div>
+            <h2 class="font-ui text-sm tracking-wide uppercase text-aggieBlue/80">Your Points</h2>
+            <div class="mt-2 flex items-end gap-3">
+              <span id="userPoints" class="font-heading text-5xl font-extrabold text-aggieBlue">—</span>
+              <span id="userRank" class="font-ui text-sm text-ink/70">Rank —</span>
+            </div>
+            <p id="userTeam" class="mt-1 font-ui text-sm text-ink/70">Team —</p>
+          </div>
+          <div class="rounded-xl bg-aggieGold/20 text-aggieBlue px-3 py-2 font-ui text-xs font-semibold">Season</div>
+        </div>
+        <div class="mt-5 grid grid-cols-2 gap-3">
+          <a href="leaderboard.html" class="rounded-xl border border-aggieBlue/10 px-4 py-3 text-center font-ui hover:border-aggieBlue/30">View Leaderboard</a>
+          <a href="events.html" class="rounded-xl bg-aggieGold text-aggieBlue px-4 py-3 text-center font-ui font-semibold hover:brightness-95">Find Events</a>
+        </div>
+      </section>
+
+      <!-- Quick Links -->
+      <section class="card rounded-2xl bg-white shadow-soft p-6">
+        <h3 class="font-ui text-base font-semibold text-aggieBlue">Quick Links</h3>
+        <ul class="mt-3 space-y-2 font-ui">
+          <li><a class="block rounded-lg px-3 py-2 hover:bg-aggieBlue/5" href="events.html#week">This Week’s Events</a></li>
+          <li><a class="block rounded-lg px-3 py-2 hover:bg-aggieBlue/5" href="events.html#month">Monthly Calendar</a></li>
+          <li><a class="block rounded-lg px-3 py-2 hover:bg-aggieBlue/5" href="settings.html">Account Settings</a></li>
+        </ul>
+      </section>
+    </div>
+
+    <!-- Right column: Today's Events -->
+    <section class="lg:col-span-2 card rounded-2xl bg-white shadow-soft p-6">
+      <div class="flex items-center justify-between">
+        <h3 class="font-ui text-lg font-semibold text-aggieBlue">Today’s Events</h3>
+        <a href="events.html" class="font-ui text-sm text-aggieBlue hover:underline">View all</a>
       </div>
-      <div id="eventsEmpty" class="muted">No events today.</div>
-      <div id="eventsList" class="events-list"></div>
+
+      <!-- Events list -->
+      <div id="todayEvents" class="mt-4 divide-y divide-gray-100">
+        <div id="eventsEmpty" class="py-10 text-center text-ink/60 font-ui hidden">No events today. Check back later!</div>
+      </div>
     </section>
   </main>
 
-  <!-- Your Supabase project config (already in your repo) -->
+  <!-- Footer -->
+  <footer class="border-t border-gray-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-sm font-ui text-ink/60">
+      © <span id="year"></span> Aggie Points. UC Davis-inspired theme.
+    </div>
+  </footer>
+
+  <!-- Supabase auth/config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
+
   <script>
-    // ======= Auth / UI helpers =======
-    const accountBtn = document.getElementById('accountBtn');
-    const accountDropdown = document.getElementById('accountDropdown');
-    const loginBtn = document.getElementById('loginBtn');
-    accountBtn?.addEventListener('click', () => accountDropdown.classList.toggle('open'));
-    document.addEventListener('click', (e) => {
-      if (!accountDropdown.contains(e.target)) accountDropdown.classList.remove('open');
-    });
+    const $ = (sel) => document.querySelector(sel);
+    const toggle = (el) => el.classList.toggle("hidden");
 
-    const $ = (id) => document.getElementById(id);
-    const setLoading = () => {
-      ['pointsValue','rankValue','teamValue'].forEach(id => {
-        $(id).classList.add('skeleton'); $(id).textContent = '';
+    $("#mobileMenuBtn")?.addEventListener("click", () => toggle($("#mobileMenu")));
+    $("#acctBtn")?.addEventListener("click", () => toggle($("#acctMenu")));
+    $("#year").textContent = new Date().getFullYear();
+
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = LOGIN_PAGE || "login.html"; return; }
+
+      const { data: { user } } = await sb.auth.getUser();
+      $("#acctName").textContent = user.user_metadata?.display_name || user.email || "Account";
+
+      const doLogout = async () => { await sb.auth.signOut(); window.location.href = LOGIN_PAGE || "login.html"; };
+      $("#logoutBtn")?.addEventListener("click", doLogout);
+      $("#logoutBtnMobile")?.addEventListener("click", doLogout);
+
+      const { data: profile } = await sb.from("profiles")
+        .select("display_name, team_name, points_total, rank")
+        .eq("id", user.id).single();
+
+      if (profile) {
+        $("#userPoints").textContent = profile.points_total ?? 0;
+        $("#userRank").textContent = `Rank ${profile.rank ?? "—"}`;
+        $("#userTeam").textContent = profile.team_name ? `Team ${profile.team_name}` : "Team —";
+      }
+
+      const { data: events } = await sb.from("events_today")
+        .select("id, title, start_ts, end_ts, location, points, status, user_checked_in")
+        .order("start_ts", { ascending: true });
+
+      const container = $("#todayEvents"), empty = $("#eventsEmpty");
+      if (!events || events.length === 0) empty.classList.remove("hidden");
+      else {
+        empty.classList.add("hidden");
+        events.forEach(ev => {
+          const startTime = new Date(ev.start_ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          const endTime = new Date(ev.end_ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+          const row = document.createElement("div");
+          row.className = "py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3";
+          row.innerHTML = `
+            <div class="min-w-0">
+              <div class="font-ui text-base font-semibold text-ink">${ev.title}</div>
+              <div class="mt-0.5 text-sm text-ink/70 font-ui">${startTime}–${endTime} · ${ev.location || "TBA"} · ${ev.points ?? 0} pts</div>
+              <div class="mt-0.5">
+                <span class="inline-flex items-center rounded-md bg-aggieBlue/10 px-2 py-0.5 text-xs font-ui text-aggieBlue">${ev.status || "upcoming"}</span>
+                ${ev.user_checked_in ? `<span class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-ui text-emerald-700 ml-2">Checked in</span>` : ``}
+              </div>
+            </div>
+            <div class="flex items-center gap-3">
+              ${ev.user_checked_in ? `<button disabled class="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 font-ui cursor-not-allowed">Checked in</button>` : `<button data-event="${ev.id}" class="checkinBtn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95">Check in</button>`}
+              <a class="font-ui text-sm text-aggieBlue hover:underline" href="events.html#today">See details</a>
+            </div>`;
+          container.appendChild(row);
+        });
+      }
+
+      document.addEventListener("click", async (e) => {
+        const btn = e.target.closest(".checkinBtn"); if (!btn) return;
+        const eventId = btn.getAttribute("data-event"); btn.disabled = true;
+        const { error } = await sb.rpc("checkin", { event_id: eventId });
+        if (error) { btn.disabled = false; alert("Check-in failed. Please try again."); }
+        else { btn.textContent = "Checked in"; btn.classList.remove("bg-aggieGold","text-aggieBlue"); btn.classList.add("bg-emerald-600","text-white"); }
       });
-      $('eventsList').innerHTML = '';
-      $('eventsEmpty').classList.remove('hidden');
-    };
-
-    const fmtTime = (d) => new Date(d).toLocaleTimeString([], { hour:'numeric', minute:'2-digit' });
-    const fmtDate = (d) => new Date(d).toLocaleDateString([], { month:'short', day:'numeric' });
-
-    // ======= Data fetchers =======
-    async function ensureAuth() {
-      const { data: { user } } = await sb.auth.getUser();
-      if (!user) {
-        $('authStatus').textContent = 'Not signed in';
-        loginBtn?.classList.remove('hidden');
-        accountDropdown?.classList.add('hidden');
-        $('welcomeSub').textContent = 'Please log in to see your points and events.';
-        return null;
-      }
-      $('authStatus').textContent = `Signed in as ${user.email}`;
-      loginBtn?.classList.add('hidden');
-      accountDropdown?.classList.remove('hidden');
-      return user;
-    }
-
-    async function loadProfileAndStats(user) {
-      // 1) Profile
-      const { data: profile, error: pErr } = await sb
-        .from('profiles')
-        .select('id, full_name, team, points')
-        .eq('id', user.id)
-        .single();
-      if (pErr) throw new Error('profiles: ' + pErr.message);
-
-      $('welcomeHeadline').textContent = profile?.full_name ? `WELCOME, ${profile.full_name.toUpperCase()}` : 'WELCOME TO AGGIE POINTS';
-      $('teamValue').textContent = profile?.team || '—';
-      $('teamValue').classList.remove('skeleton');
-
-      const points = Number(profile?.points || 0);
-      $('pointsValue').textContent = points.toLocaleString();
-      $('pointsValue').classList.remove('skeleton');
-
-      // 2) Rank = count of users with points greater than mine + 1
-      const { count, error: rErr } = await sb
-        .from('profiles')
-        .select('*', { count: 'exact', head: true })
-        .gt('points', points);
-      if (rErr) throw new Error('rank: ' + rErr.message);
-      $('rankValue').textContent = ((count || 0) + 1).toString();
-      $('rankValue').classList.remove('skeleton');
-    }
-
-    function dayBoundsLocalToUTC(date = new Date()) {
-      // Convert the user's local day to UTC window [start,end)
-      const start = new Date(date);
-      start.setHours(0,0,0,0);
-      const end = new Date(date);
-      end.setHours(23,59,59,999);
-      return { start: start.toISOString(), end: end.toISOString(), label: date.toLocaleDateString(undefined, { weekday:'short', month:'short', day:'numeric' }) };
-    }
-
-    async function loadTodaysEvents(user) {
-      const { start, end, label } = dayBoundsLocalToUTC(new Date());
-      $('todayPill').textContent = label;
-
-      const { data: events, error: eErr } = await sb
-        .from('events')
-        .select('id, title, location, start_time, end_time, points_awarded, is_active')
-        .gte('start_time', start)
-        .lte('start_time', end)
-        .eq('is_active', true)
-        .order('start_time', { ascending: true });
-      if (eErr) throw new Error('events: ' + eErr.message);
-
-      const list = $('eventsList');
-      list.innerHTML = '';
-
-      if (!events || events.length === 0) {
-        $('eventsEmpty').classList.remove('hidden');
-        return;
-      }
-      $('eventsEmpty').classList.add('hidden');
-
-      // Preload user's existing check-ins to disable buttons
-      const { data: myChecks } = await sb
-        .from('checkins')
-        .select('event_id')
-        .eq('user_id', user.id)
-        .gte('created_at', start)
-        .lte('created_at', end);
-      const checkedMap = new Set((myChecks||[]).map(c => c.event_id));
-
-      for (const ev of events) {
-        const isChecked = checkedMap.has(ev.id);
-        const card = document.createElement('div');
-        card.className = 'event';
-        card.innerHTML = `
-          <div>
-            <h4>${ev.title || 'Event'}</h4>
-            <div class="muted">${fmtDate(ev.start_time)} · ${fmtTime(ev.start_time)}–${fmtTime(ev.end_time || ev.start_time)} · ${ev.location || ''}</div>
-          </div>
-          <div class="row">
-            <span class="pill">${ev.points_awarded ?? 0} pts</span>
-            <button class="btn primary" ${isChecked ? 'disabled' : ''} data-ev="${ev.id}">
-              ${isChecked ? 'Checked in' : 'Check in'}
-            </button>
-          </div>`;
-        card.querySelector('button')?.addEventListener('click', () => checkIn(ev.id));
-        list.appendChild(card);
-      }
-    }
-
-    async function checkIn(eventId) {
-      const { data: { user } } = await sb.auth.getUser();
-      if (!user) return window.location.href = 'login.html';
-      const { error } = await sb.from('checkins').insert({ user_id: user.id, event_id: eventId });
-      if (error) {
-        alert('Check-in failed: ' + error.message);
-        return;
-      }
-      // Optimistic refresh
-      loadPage();
-    }
-
-    async function loadPage() {
-      try {
-        setLoading();
-        const user = await ensureAuth();
-        if (!user) return; // not signed in
-        await loadProfileAndStats(user);
-        await loadTodaysEvents(user);
-      } catch (err) {
-        console.error(err);
-        $('welcomeSub').innerHTML = `<span class="danger">${err.message}</span>`;
-      }
-    }
-
-    // Handle auth state changes (e.g., after login redirect)
-    sb.auth.onAuthStateChange((_evt, session) => {
-      if (session?.user) loadPage();
-    });
-
-    // Kick off
-    loadPage();
-
-    // Buttons
-    document.getElementById('logoutBtn')?.addEventListener('click', async () => {
-      await sb.auth.signOut();
-      window.location.href = 'login.html';
-    });
-    document.getElementById('accountSettings')?.addEventListener('click', () => alert('Coming soon'));
+    })();
   </script>
 </body>
 </html>

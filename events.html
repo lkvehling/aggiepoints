@@ -36,7 +36,6 @@
   <style>
     .card { transition: transform .15s ease, box-shadow .15s ease; }
     .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
-    .chip { @apply inline-flex items-center rounded-full px-2 py-0.5 text-xs font-ui; }
   </style>
 </head>
 
@@ -95,7 +94,7 @@
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
       <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">All Events</h1>
-      <p class="mt-1 font-ui text-white/90">Plan ahead. If an event is today, checking in happens on the Home page.</p>
+      <p class="mt-1 font-ui text-white/90">Plan ahead. If an event is today and in the check-in window, you can check in from Home.</p>
 
       <!-- Search bar -->
       <div class="mt-6">
@@ -114,10 +113,10 @@
 
   <!-- Main Content -->
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-    <!-- Tabs-ish headings -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+    <!-- Force horizontal layout at all widths -->
+    <div class="grid grid-cols-3 gap-6">
       <!-- This Week -->
-      <section id="week" class="lg:col-span-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+      <section id="week" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
           <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">This Week</h2>
           <div id="weekList" class="divide-y divide-gray-100"></div>
@@ -126,16 +125,16 @@
       </section>
 
       <!-- This Month -->
-      <section id="month" class="lg:col-span-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+      <section id="month" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
           <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">This Month</h2>
           <div id="monthList" class="divide-y divide-gray-100"></div>
-          <div id="monthEmpty" class="hidden font-ui text-ink/60">No more events this month.</div>
+          <!-- intentionally no empty label for Month -->
         </div>
       </section>
 
       <!-- All Upcoming -->
-      <section id="upcoming" class="lg:col-span-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+      <section id="upcoming" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
           <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">All Upcoming</h2>
           <div id="upcomingList" class="divide-y divide-gray-100"></div>
@@ -160,14 +159,37 @@
     // ===== Helpers =====
     const $  = (s) => document.querySelector(s);
     const $$ = (s) => Array.from(document.querySelectorAll(s));
-    const toggle = (el, show) => el.classList[show === undefined ? 'toggle' : (show ? 'remove' : 'add')]('hidden');
+    const toggle = (el, show) => { if (!el) return; el.classList[show === undefined ? 'toggle' : (show ? 'remove' : 'add')]('hidden'); };
     const TZ = 'America/Los_Angeles';
+
+    // Time helpers
+    const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
+    const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
     const fmtDT = (ts) => new Date(ts).toLocaleString([], { timeZone: TZ, month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
-    const isTodayPT = (ts) => {
-      const d = new Date(new Date(ts).toLocaleString('en-US',{timeZone:TZ}));
-      const now = new Date(new Date().toLocaleString('en-US',{timeZone:TZ}));
-      return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth() && d.getDate()===now.getDate();
+    const fmtHM = (dt) => dt.toLocaleTimeString([], { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
+
+    // Same-day heading format: "Fri, Sep 12 · 12:09 PM–11:59 PM"
+    const sameDayTitle = (start_ts, end_ts) => {
+      const d = toPT(start_ts);
+      const left = d.toLocaleDateString([], { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric' });
+      return `${left} · ${fmtHM(toPT(start_ts))}–${fmtHM(toPT(end_ts))}`;
     };
+
+    const isTodayPT = (ts) => {
+      const d = toPT(ts), n = nowPT();
+      return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+    };
+
+    // Check-in window (open 20 min before start → close 10 min before end)
+    const WINDOW_BEFORE_MIN = 20;
+    const WINDOW_CLOSE_MIN  = 10;
+    const openAtPT  = (start_ts) => new Date(toPT(start_ts).getTime() - WINDOW_BEFORE_MIN * 60 * 1000);
+    const closeAtPT = (end_ts)   => new Date(toPT(end_ts).getTime()   - WINDOW_CLOSE_MIN  * 60 * 1000);
+    const isCheckinWindow = (start_ts, end_ts) => {
+      const n = nowPT();
+      return n >= openAtPT(start_ts) && n <= closeAtPT(end_ts);
+    };
+
     const escapeHtml = (s) => (s ?? '').toString()
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
@@ -182,18 +204,43 @@
       el.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">${msg}</div>`;
     }
 
+    // Row renderer — safe "Check in" logic
     function eventRow(ev) {
-      const when = `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)}`;
-      const pts = ev.points ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>` : '';
-      const action = isTodayPT(ev.start_ts)
-        ? `<a href="index.html?event=${encodeURIComponent(ev.id)}#today" class="px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95">Check in</a>`
-        : `<a href="index.html" class="px-3 py-1.5 rounded-lg bg-aggieBlue text-white font-ui text-sm hover:bg-aggieBlue/90">Home</a>`;
+      const today   = isTodayPT(ev.start_ts);
+      const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
+
+      // Heading line: if today, the time range; else the title
+      const heading = today ? sameDayTitle(ev.start_ts, ev.end_ts) : escapeHtml(ev.title);
+
+      // Subline: if today, show "Event Name · Location"; else date range + location
+      const whenLine = today
+        ? `${escapeHtml(ev.title)} · ${escapeHtml(ev.location || 'TBA')}`
+        : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)} · ${escapeHtml(ev.location || 'TBA')}`;
+
+      const pts = ev.points
+        ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>`
+        : '';
+
+      let action;
+      if (today && canNow) {
+        // Only show Check in when the true server window is open
+        action = `<a href="index.html?event=${encodeURIComponent(ev.id)}#today" class="px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95">Check in</a>`;
+      } else if (today) {
+        // Today but not yet/anymore
+        action = nowPT() > closeAtPT(ev.end_ts)
+          ? `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`
+          : `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
+      } else {
+        // Not today → gray label (no button)
+        action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
+      }
+
       return `
         <div class="py-4" data-title="${escapeHtml(ev.title).toLowerCase()}" data-location="${escapeHtml(ev.location||'').toLowerCase()}">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="min-w-0">
-              <div class="font-ui text-base font-semibold text-ink">${escapeHtml(ev.title)} ${pts}</div>
-              <div class="mt-0.5 text-sm text-ink/70 font-ui">${when} · ${escapeHtml(ev.location || 'TBA')}</div>
+              <div class="font-ui text-base font-semibold text-ink">${heading} ${pts}</div>
+              <div class="mt-0.5 text-sm text-ink/70 font-ui">${whenLine}</div>
             </div>
             <div class="shrink-0">${action}</div>
           </div>
@@ -208,7 +255,7 @@
       $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
       $('#yearText').textContent = new Date().getFullYear();
 
-      // Populate account name if logged in
+      // Account label (best-effort)
       try {
         const { data: { user } } = await sb.auth.getUser();
         if (user) $('#acctName').textContent = user.user_metadata?.display_name || user.email || 'Account';
@@ -233,48 +280,45 @@
         if (error) { uiError(listEl, error); toggle(emptyEl, true); return []; }
 
         listEl.innerHTML = (data || []).map(eventRow).join('');
-        toggle(emptyEl, !!(data && data.length));
+        // Show the empty message ONLY when there are zero rows
+        toggle(emptyEl, (data || []).length === 0);
         return data || [];
       }
 
       const weekListEl = $('#weekList'), weekEmptyEl = $('#weekEmpty');
-      const monthListEl = $('#monthList'), monthEmptyEl = $('#monthEmpty');
+      const monthListEl = $('#monthList'); // no empty element by design
       const upcomingListEl = $('#upcomingList'), upcomingEmptyEl = $('#upcomingEmpty');
 
-      // Load all sections in parallel
       const [weekData, monthData, upcomingData] = await Promise.all([
         loadSection('events_this_week', weekListEl, weekEmptyEl),
-        loadSection('events_this_month_excl_week', monthListEl, monthEmptyEl),
+        loadSection('events_this_month_excl_week', monthListEl, null),
         loadSection('events_upcoming', upcomingListEl, upcomingEmptyEl),
       ]);
 
-      // ===== Search (client-side filter across all three lists) =====
+      // ===== Search (client-side across all sections) =====
       const searchInput = $('#searchInput');
       const searchHint = $('#searchHint');
 
-      // Seed from ?q= if present
+      // seed from ?q=
       const params = new URLSearchParams(location.search);
-      const initialQ = params.get('q');
-      if (initialQ) searchInput.value = initialQ;
+      const initialQ = params.get('q'); if (initialQ) searchInput.value = initialQ;
 
       function applySearch(q) {
         const term = (q || '').trim().toLowerCase();
         const sections = [
           { list: weekListEl, empty: weekEmptyEl },
-          { list: monthListEl, empty: monthEmptyEl },
+          { list: monthListEl, empty: null },
           { list: upcomingListEl, empty: upcomingEmptyEl },
         ];
 
         let totalShown = 0;
 
         sections.forEach(({ list, empty }) => {
-          const rows = Array.from(list.children);
+          const rows = Array.from(list.querySelectorAll('[data-title]'));
           let shown = 0;
           rows.forEach(row => {
             if (!term) {
-              row.classList.remove('hidden');
-              shown++;
-              return;
+              row.classList.remove('hidden'); shown++; return;
             }
             const title = row.getAttribute('data-title') || '';
             const loc   = row.getAttribute('data-location') || '';
@@ -282,27 +326,20 @@
             row.classList.toggle('hidden', !match);
             if (match) shown++;
           });
-          // If search is active, show the section's empty label only when nothing matched in that section.
-          if (term) {
-            toggle(empty, shown > 0);
-          } else {
-            // revert to default: show empty if list truly has no rows at all
-            toggle(empty, rows.length > 0);
-          }
+          // During search: show empty only if nothing matched in that section
+          if (empty) toggle(empty, term ? (shown === 0) : (rows.length === 0));
           totalShown += shown;
         });
 
-        // Small UX hint
         if (term) {
-          searchHint.textContent = totalShown ? `Showing ${totalShown} event${totalShown===1?'':'s'} matching “${q}”.` : `No events match “${q}”.`;
+          searchHint.textContent = totalShown ? `Showing ${totalShown} matching event${totalShown===1?'':'s'}.` : `No events match “${q}”.`;
           searchHint.classList.remove('hidden');
         } else {
-          searchHint.classList.add('hidden');
           searchHint.textContent = '';
+          searchHint.classList.add('hidden');
         }
       }
 
-      // Apply on load and on input
       applySearch(searchInput.value);
       searchInput.addEventListener('input', (e) => applySearch(e.target.value));
     })();

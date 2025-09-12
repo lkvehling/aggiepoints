@@ -148,28 +148,64 @@
       clear(msg);
       btn.disabled = true;
 
-      // Geofence (optional)
+      // Geofence (STRICT: require mobile + high-accuracy GPS)
       if (document.getElementById("requireGeo").checked && "geolocation" in navigator) {
         try {
+          // 0) Require HTTPS (or localhost) for precise location
+          if (!window.isSecureContext && location.hostname !== "localhost") {
+            show(msg, "Location requires HTTPS. Open the site over https:// or use localhost.");
+            btn.disabled = false;
+            return;
+          }
+
+          // Heuristic mobile check (encourage phone usage)
+          const isMobileUA =
+            navigator.userAgentData?.mobile === true ||
+            /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+          if (!isMobileUA) {
+            show(msg, "Check-ins require a mobile device with GPS. Please use your phone.");
+            btn.disabled = false;
+            return;
+          }
+
+          // 1) Ask for a fresh, high-accuracy reading
           const pos = await new Promise((res, rej) =>
             navigator.geolocation.getCurrentPosition(res, rej, {
-              enableHighAccuracy: true, timeout: 20000, maximumAge: 0
+              enableHighAccuracy: true,
+              timeout: 20000,
+              maximumAge: 0
             })
           );
-          const lat = pos.coords.latitude, lng = pos.coords.longitude;
-          const EPS = 0.0007;
-          const accDeg = Math.min((pos.coords.accuracy || 50), 200) / 111111; // meters -> deg approx
-          const latMin = Math.min(ev.lat_min, ev.lat_max) - EPS - accDeg;
-          const latMax = Math.max(ev.lat_min, ev.lat_max) + EPS + accDeg;
-          const lngMin = Math.min(ev.lng_min, ev.lng_max) - EPS - accDeg;
-          const lngMax = Math.max(ev.lng_min, ev.lng_max) + EPS + accDeg;
-          const inside = lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax;
 
-          console.log("device lat/lng/acc:", lat, lng, pos.coords.accuracy, "m");
-          console.log("expanded box:", { latMin, latMax, lngMin, lngMax }, "inside?", inside);
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const accM = pos.coords.accuracy ?? Infinity; // meters
+          console.log("device lat/lng/acc:", lat, lng, accM, "m");
+
+          // 2) Enforce tight accuracy
+          const MAX_ACC_M = 75; // tighten/loosen if needed
+          if (!(accM > 0) || accM > MAX_ACC_M) {
+            show(
+              msg,
+              `Location too imprecise (${Math.round(accM)} m). On iOS: enable “Precise Location” for your browser app, then try again.`,
+            );
+            btn.disabled = false;
+            return;
+          }
+
+          // 3) With good accuracy, do a tight bounding-box check
+          const EPS = 0.0005; // ~55 m padding
+          const latMin = Math.min(ev.lat_min, ev.lat_max) - EPS;
+          const latMax = Math.max(ev.lat_min, ev.lat_max) + EPS;
+          const lngMin = Math.min(ev.lng_min, ev.lng_max) - EPS;
+          const lngMax = Math.max(ev.lng_min, ev.lng_max) + EPS;
+
+          const inside = lat >= latMin && lat <= latMax && lng >= lngMin && lng <= lngMax;
+          console.log("strict box:", { latMin, latMax, lngMin, lngMax }, "inside?", inside);
 
           if (!inside) {
-            show(msg, "Go to the venue to check in.");
+            show(msg, "You’re not at the venue boundary. Move closer to the event area and try again.");
             btn.disabled = false;
             return;
           }

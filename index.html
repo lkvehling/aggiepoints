@@ -280,7 +280,7 @@
         return 'We need your location to check in. Please allow location access and try again.';
       }
       if (/low_accuracy/i.test(details)) {
-        return 'Your location is not precise enough. Please check in using a smartphone with GPS (≤75m).';
+        return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled.';
       }
       if (/missing_accuracy/i.test(details)) {
         return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';

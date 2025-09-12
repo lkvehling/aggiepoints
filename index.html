@@ -38,7 +38,6 @@
       --aggie-blue: #022851;
       --aggie-gold: #FFBF00;
     }
-    /* Smooth card hover */
     .card { transition: transform .15s ease, box-shadow .15s ease; }
     .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
   </style>
@@ -49,9 +48,7 @@
   <header class="bg-aggieBlue text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between py-3">
-        <a href="index.html" class="flex items-center gap-3">
-          <!-- Place your uploaded file at: /assets/logo.png -->
-          <img src=""C:\Users\LILLI\OneDrive\Desktop\Work\AggiePoints\UC_Davis_Aggies_logo.svg"" alt="Aggie Points Logo" class="h-10 w-auto" />
+        <a href="index.html" class="flex items-center">
           <span class="font-ui text-xl font-semibold tracking-wide">Aggie Points</span>
         </a>
 
@@ -98,13 +95,8 @@
   <!-- Hero -->
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-      <div class="flex items-center gap-5">
-        <img src="assets/logo.png" alt="Aggie A" class="h-16 w-16" />
-        <div>
-          <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">WELCOME TO AGGIE POINTS</h1>
-          <p class="mt-1 font-ui text-white/90">Track your points, check in to events, and climb the leaderboard.</p>
-        </div>
-      </div>
+      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">WELCOME TO AGGIE POINTS</h1>
+      <p class="mt-1 font-ui text-white/90">Track your points, check in to events, and climb the leaderboard.</p>
     </div>
   </section>
 
@@ -152,7 +144,6 @@
 
       <!-- Events list -->
       <div id="todayEvents" class="mt-4 divide-y divide-gray-100">
-        <!-- JS will render rows here -->
         <div id="eventsEmpty" class="py-10 text-center text-ink/60 font-ui hidden">No events today. Check back later!</div>
       </div>
     </section>
@@ -170,133 +161,70 @@
   <script src="auth-config.js"></script>
 
   <script>
-    // --- UI helpers ---
     const $ = (sel) => document.querySelector(sel);
-    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
     const toggle = (el) => el.classList.toggle("hidden");
 
-    // Mobile menu
     $("#mobileMenuBtn")?.addEventListener("click", () => toggle($("#mobileMenu")));
-    // Account dropdown
     $("#acctBtn")?.addEventListener("click", () => toggle($("#acctMenu")));
-
-    // Footer year
     $("#year").textContent = new Date().getFullYear();
 
-    // --- Auth guard + data binding ---
     (async () => {
-      // Ensure session
       const { data: { session } } = await sb.auth.getSession();
-      if (!session) {
-        window.location.href = LOGIN_PAGE || "login.html";
-        return;
-      }
+      if (!session) { window.location.href = LOGIN_PAGE || "login.html"; return; }
 
-      // Show display name in nav (fallback to email)
       const { data: { user } } = await sb.auth.getUser();
       $("#acctName").textContent = user.user_metadata?.display_name || user.email || "Account";
 
-      // Bind logout
-      const doLogout = async () => {
-        await sb.auth.signOut();
-        window.location.href = LOGIN_PAGE || "login.html";
-      };
+      const doLogout = async () => { await sb.auth.signOut(); window.location.href = LOGIN_PAGE || "login.html"; };
       $("#logoutBtn")?.addEventListener("click", doLogout);
       $("#logoutBtnMobile")?.addEventListener("click", doLogout);
 
-      // Fetch current user profile (adjust table/columns to your schema)
-      // Expected table: profiles { id, display_name, team_name, points_total, rank }
-      const { data: profile, error: pErr } = await sb
-        .from("profiles")
+      const { data: profile } = await sb.from("profiles")
         .select("display_name, team_name, points_total, rank")
-        .eq("id", user.id)
-        .single();
+        .eq("id", user.id).single();
 
-      if (!pErr && profile) {
+      if (profile) {
         $("#userPoints").textContent = profile.points_total ?? 0;
         $("#userRank").textContent = `Rank ${profile.rank ?? "—"}`;
         $("#userTeam").textContent = profile.team_name ? `Team ${profile.team_name}` : "Team —";
       }
 
-      // Fetch today's events
-      // Expected table: events { id, title, start_ts, end_ts, location, points, status, checkin_method }
-      // And optional view/rpc that marks user_checked_in
-      const start = new Date();
-      start.setHours(0,0,0,0);
-      const end = new Date();
-      end.setHours(23,59,59,999);
-
-      const { data: events, error: eErr } = await sb
-        .from("events_today") // TIP: create a view for today-filtered events, else query "events" with gte/lte
-        .select("id, title, start_ts, end_ts, location, points, status, checkin_method, user_checked_in")
+      const { data: events } = await sb.from("events_today")
+        .select("id, title, start_ts, end_ts, location, points, status, user_checked_in")
         .order("start_ts", { ascending: true });
 
-      const container = $("#todayEvents");
-      const empty = $("#eventsEmpty");
-
-      if (eErr || !events || events.length === 0) {
-        empty.classList.remove("hidden");
-      } else {
+      const container = $("#todayEvents"), empty = $("#eventsEmpty");
+      if (!events || events.length === 0) empty.classList.remove("hidden");
+      else {
         empty.classList.add("hidden");
         events.forEach(ev => {
           const startTime = new Date(ev.start_ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
           const endTime = new Date(ev.end_ts).toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
-
           const row = document.createElement("div");
           row.className = "py-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3";
-
           row.innerHTML = `
             <div class="min-w-0">
               <div class="font-ui text-base font-semibold text-ink">${ev.title}</div>
-              <div class="mt-0.5 text-sm text-ink/70 font-ui">
-                ${startTime}–${endTime} · ${ev.location || "TBA"} · ${ev.points ?? 0} pts
-              </div>
+              <div class="mt-0.5 text-sm text-ink/70 font-ui">${startTime}–${endTime} · ${ev.location || "TBA"} · ${ev.points ?? 0} pts</div>
               <div class="mt-0.5">
                 <span class="inline-flex items-center rounded-md bg-aggieBlue/10 px-2 py-0.5 text-xs font-ui text-aggieBlue">${ev.status || "upcoming"}</span>
                 ${ev.user_checked_in ? `<span class="inline-flex items-center rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-ui text-emerald-700 ml-2">Checked in</span>` : ``}
               </div>
             </div>
             <div class="flex items-center gap-3">
-              ${renderCheckinButton(ev)}
+              ${ev.user_checked_in ? `<button disabled class="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 font-ui cursor-not-allowed">Checked in</button>` : `<button data-event="${ev.id}" class="checkinBtn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95">Check in</button>`}
               <a class="font-ui text-sm text-aggieBlue hover:underline" href="events.html#today">See details</a>
-            </div>
-          `;
+            </div>`;
           container.appendChild(row);
         });
       }
 
-      function renderCheckinButton(ev) {
-        if (ev.user_checked_in) {
-          return `<button disabled class="px-4 py-2 rounded-lg bg-gray-100 text-gray-600 font-ui cursor-not-allowed">Checked in</button>`;
-        }
-        // Customize per method
-        if (ev.checkin_method === "qr") {
-          return `<a href="checkin.html?event=${ev.id}" class="px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95">Scan QR</a>`;
-        }
-        if (ev.checkin_method === "code") {
-          return `<a href="checkin.html?event=${ev.id}" class="px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95">Enter Code</a>`;
-        }
-        // default button
-        return `<button data-event="${ev.id}" class="checkinBtn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95">Check in</button>`;
-      }
-
-      // Optional direct button check-in (RPC recommended to enforce rules)
       document.addEventListener("click", async (e) => {
-        const btn = e.target.closest(".checkinBtn");
-        if (!btn) return;
-        const eventId = btn.getAttribute("data-event");
-        btn.disabled = true;
-
-        // Example RPC: call function checkin(event_id uuid)
-        const { data, error } = await sb.rpc("checkin", { event_id: eventId });
-        if (error) {
-          btn.disabled = false;
-          alert("Check-in failed. Please try again.");
-        } else {
-          btn.textContent = "Checked in";
-          btn.classList.remove("bg-aggieGold", "text-aggieBlue");
-          btn.classList.add("bg-emerald-600", "text-white");
-        }
+        const btn = e.target.closest(".checkinBtn"); if (!btn) return;
+        const eventId = btn.getAttribute("data-event"); btn.disabled = true;
+        const { error } = await sb.rpc("checkin", { event_id: eventId });
+        if (error) { btn.disabled = false; alert("Check-in failed. Please try again."); }
+        else { btn.textContent = "Checked in"; btn.classList.remove("bg-aggieGold","text-aggieBlue"); btn.classList.add("bg-emerald-600","text-white"); }
       });
     })();
   </script>

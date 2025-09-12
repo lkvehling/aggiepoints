@@ -1,34 +1,131 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Login – Aggie Points</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Fonts (Raleway, Montserrat, Merriweather) -->
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CDN + Theme -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            aggieBlue: "#022851",
+            aggieGold: "#FFBF00",
+            aggieBg:   "#F7F7F7",
+            ink:       "#333333",
+          },
+          fontFamily: {
+            heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
+            ui:      ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
+            body:    ["Merriweather", "Georgia", "serif"],
+          },
+          boxShadow: {
+            soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 30px; max-width: 420px; }
-    input, button { width: 100%; padding: 10px; margin: 6px 0; }
-    #msg { margin-top: 10px; font-weight: 600; }
+    :root { --aggie-blue:#022851; --aggie-gold:#FFBF00; }
+    .card { transition: transform .15s ease, box-shadow .15s ease; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
   </style>
 </head>
-<body>
-  <h2>Welcome back</h2>
 
-  <input type="email" id="email" placeholder="UC Davis email" autocomplete="email" required />
-  <input type="password" id="password" placeholder="Password" autocomplete="current-password" required />
-  <button id="loginBtn" type="button">Login</button>
+<body class="min-h-screen bg-aggieBg text-ink font-body">
+  <!-- Header -->
+  <header class="bg-aggieBlue text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between py-3">
+        <a href="index.html" class="flex items-center">
+          <span class="font-ui text-xl font-semibold tracking-wide">Aggie Points</span>
+        </a>
+        <nav class="hidden md:flex items-center gap-8 font-ui">
+          <a href="index.html" class="hover:text-aggieGold">Home</a>
+          <a href="events.html" class="hover:text-aggieGold">All Events</a>
+          <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
+          <a href="register.html" class="hover:text-aggieGold">Register</a>
+        </nav>
+      </div>
+    </div>
+  </header>
 
-  <p id="msg"></p>
-  <p><small>New here? <a href="register.html">Create an account</a></small></p>
+  <!-- Page Header -->
+  <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">Welcome back</h1>
+      <p class="mt-1 font-ui text-white/90">Log in to continue to Aggie Points.</p>
+    </div>
+  </section>
 
+  <!-- Form Card -->
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+    <div class="mx-auto w-full max-w-md card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+      <form class="p-6" onsubmit="return false;">
+        <div class="grid grid-cols-1 gap-4">
+          <label class="block">
+            <span class="font-ui text-sm uppercase tracking-wide text-ink/60">UC Davis email</span>
+            <input id="email" type="email" autocomplete="email" required
+                   class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue"
+                   placeholder="you@ucdavis.edu" />
+          </label>
+
+          <label class="block">
+            <span class="font-ui text-sm uppercase tracking-wide text-ink/60">Password</span>
+            <input id="password" type="password" autocomplete="current-password" required
+                   class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue"
+                   placeholder="Password" />
+          </label>
+
+          <button id="loginBtn" type="button"
+                  class="mt-2 inline-flex items-center justify-center rounded-lg bg-aggieGold px-4 py-2 font-ui font-semibold text-aggieBlue hover:brightness-95">
+            Login
+          </button>
+
+          <p id="msg" class="font-ui text-sm"></p>
+          <p class="font-ui text-sm text-ink/70">
+            New here? <a class="text-aggieBlue hover:underline" href="register.html">Create an account</a>
+          </p>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-sm font-ui text-ink/60">
+      © <span id="yearText"></span> Aggie Points.
+    </div>
+  </footer>
+
+  <!-- Supabase + App config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
+
   <script>
+    document.getElementById('yearText').textContent = new Date().getFullYear();
     redirectIfLoggedIn();
 
     const emailEl = document.getElementById("email");
     const passEl  = document.getElementById("password");
     const btn     = document.getElementById("loginBtn");
     const msgEl   = document.getElementById("msg");
+
+    // helpers
+    function setDisabled(el, v){ if(el){ el.disabled = !!v; el.classList.toggle('opacity-60', !!v); } }
+    function clear(el){ if(el){ el.textContent = ""; el.className = "font-ui text-sm"; } }
+    function show(el, text, ok=false){
+      if(!el) return;
+      el.textContent = text;
+      el.className = "font-ui text-sm " + (ok ? "text-green-700" : "text-red-700");
+    }
 
     btn.addEventListener("click", onLogin);
     passEl.addEventListener("keydown", (e) => { if (e.key === "Enter") onLogin(); });

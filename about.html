@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>About – Aggie Points</title>
 
-  <!-- Fonts -->
+  <!-- Fonts: Raleway (headings), Montserrat (UI), Merriweather (body) -->
   <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
 
   <!-- Tailwind -->
@@ -25,71 +25,135 @@
             aggieBg: "#F7F7F7",
             ink: "#111827",
           },
+          boxShadow: {
+            card: "0 8px 24px rgba(2, 40, 81, .08)",
+          },
+          borderRadius: {
+            "2xl": "1.25rem",
+          }
         }
       }
     }
   </script>
+
+  <!-- Optional: small favicon color block -->
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg'/%3E">
 </head>
 <body class="bg-aggieBg font-body text-ink min-h-screen flex flex-col">
 
-  <!-- Header -->
+  <!-- Header / Nav -->
   <header class="bg-aggieBlue text-white shadow-md">
-    <div class="max-w-5xl mx-auto px-6 py-4 flex items-center justify-between">
-      <h1 class="font-heading font-bold text-2xl">Aggie Points</h1>
-      <nav class="space-x-6 font-ui">
-        <a href="index.html" class="hover:text-aggieGold">Home</a>
-        <a href="events.html" class="hover:text-aggieGold">Events</a>
-        <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
+    <div class="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+      <a href="index.html" class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-full bg-aggieGold"></div>
+        <span class="font-heading font-extrabold text-xl tracking-wide">Aggie Points</span>
+      </a>
+
+      <nav class="hidden md:flex items-center gap-8 font-ui">
+        <a href="index.html" class="hover:text-aggieGold transition-colors">Home</a>
+        <a href="events.html" class="hover:text-aggieGold transition-colors">All Events</a>
+        <a href="leaderboard.html" class="hover:text-aggieGold transition-colors">Leaderboard</a>
         <a href="about.html" class="text-aggieGold font-semibold">About</a>
       </nav>
+
+      <!-- Account / Login -->
+      <div class="font-ui">
+        <a href="login.html" class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-xl transition">
+          <span class="hidden sm:inline">Account</span>
+          <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15.75 6a3.75 3.75 0 11-7.5 0 3.75 3.75 0 017.5 0zM4.5 20.25a8.25 8.25 0 1115 0v.75H4.5v-.75z"/></svg>
+        </a>
+      </div>
     </div>
   </header>
 
   <!-- Main -->
   <main class="flex-1 max-w-4xl mx-auto px-6 py-10">
-    <!-- Intro -->
-    <section class="mb-10">
-      <h2 class="font-heading text-3xl font-bold text-aggieBlue mb-4">What are Aggie Points?</h2>
-      <p class="font-body text-lg leading-relaxed">
-        Aggie Points are a fun way to recognize and reward UC Davis student-athletes for showing 
-        support at athletic events and engaging with SAAC (Student-Athlete Advisory Committee) initiatives.  
-        By attending games, SAAC events, and soon-to-be challenges, athletes can earn points for themselves 
-        and their teams — climbing the leaderboard while building Aggie pride.
+
+    <!-- Page Title -->
+    <div class="mb-8">
+      <h1 class="font-heading text-3xl md:text-4xl font-extrabold text-aggieBlue">About Aggie Points</h1>
+      <p class="font-ui text-gray-700 mt-2">How it works, how to earn, and what’s coming next.</p>
+    </div>
+
+    <!-- What are Aggie Points -->
+    <section class="bg-white rounded-2xl shadow-card p-6 md:p-8 mb-8">
+      <h2 class="font-heading text-2xl md:text-3xl font-bold text-aggieBlue mb-4">What are Aggie Points?</h2>
+      <p class="leading-relaxed text-lg text-gray-800">
+        Aggie Points recognize and reward UC Davis student-athletes for supporting fellow Aggies and engaging
+        with SAAC initiatives. Check in at eligible events to earn points for <span class="font-semibold">you</span>
+        and your <span class="font-semibold">team</span>, climb the leaderboard, and fuel Aggie pride.
       </p>
     </section>
 
     <!-- Points Breakdown -->
-    <section class="mb-10">
-      <h3 class="font-heading text-2xl font-semibold text-aggieBlue mb-4">Points Breakdown</h3>
+    <section class="mb-8">
+      <h3 class="font-heading text-2xl font-bold text-aggieBlue mb-4">Points Breakdown</h3>
+
       <div class="grid md:grid-cols-2 gap-6">
-        <div class="bg-white rounded-2xl shadow p-6">
-          <h4 class="font-ui text-xl font-bold text-aggieBlue mb-2">Athletic Games</h4>
-          <p class="font-body text-gray-700">Earn <span class="font-bold text-aggieGold">10 points</span> each time you check in at a UC Davis game.</p>
+        <!-- Card: Games -->
+        <div class="bg-white rounded-2xl shadow-card p-6">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-ui text-xl font-bold text-aggieBlue">Athletic Games</h4>
+            <span class="inline-flex items-center justify-center rounded-xl bg-aggieBlue text-white px-3 py-1 font-ui font-semibold">+10</span>
+          </div>
+          <p class="text-gray-700">Check in at UC Davis games to earn <span class="font-semibold text-aggieBlue">10 points</span> per event.</p>
         </div>
-        <div class="bg-white rounded-2xl shadow p-6">
-          <h4 class="font-ui text-xl font-bold text-aggieBlue mb-2">SAAC Events</h4>
-          <p class="font-body text-gray-700">Earn <span class="font-bold text-aggieGold">15 points</span> by attending and checking in at SAAC-hosted events.</p>
+
+        <!-- Card: SAAC Events -->
+        <div class="bg-white rounded-2xl shadow-card p-6">
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-ui text-xl font-bold text-aggieBlue">SAAC Events</h4>
+            <span class="inline-flex items-center justify-center rounded-xl bg-aggieGold text-ink px-3 py-1 font-ui font-semibold">+15</span>
+          </div>
+          <p class="text-gray-700">Attend SAAC-hosted events and check in to earn <span class="font-semibold text-aggieBlue">15 points</span>.</p>
+        </div>
+      </div>
+
+      <!-- Optional compact table for clarity -->
+      <div class="bg-white rounded-2xl shadow-card p-6 mt-6">
+        <div class="flex items-center justify-between mb-4">
+          <h4 class="font-ui text-lg font-semibold text-aggieBlue">Quick Reference</h4>
+        </div>
+        <div class="overflow-x-auto">
+          <table class="min-w-full border border-gray-200 rounded-xl overflow-hidden">
+            <thead class="bg-aggieBlue text-white font-ui">
+              <tr>
+                <th class="text-left px-4 py-3">Event Type</th>
+                <th class="text-left px-4 py-3">Points</th>
+                <th class="text-left px-4 py-3">How to Earn</th>
+              </tr>
+            </thead>
+            <tbody class="divide-y divide-gray-200">
+              <tr class="bg-white">
+                <td class="px-4 py-3">UC Davis Athletic Games</td>
+                <td class="px-4 py-3 font-semibold">+10</td>
+                <td class="px-4 py-3">Attend and check in during the event window</td>
+              </tr>
+              <tr class="bg-white">
+                <td class="px-4 py-3">SAAC Events</td>
+                <td class="px-4 py-3 font-semibold">+15</td>
+                <td class="px-4 py-3">Attend SAAC-hosted event and check in</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
 
-    <!-- Future Challenges -->
-    <section>
-      <h3 class="font-heading text-2xl font-semibold text-aggieBlue mb-4">Coming Soon</h3>
-      <div class="bg-white rounded-2xl shadow p-6">
-        <p class="font-body text-lg text-gray-700">
-          Stay tuned for <span class="font-bold text-aggieGold">special challenges</span> where you’ll have 
-          the opportunity to earn bonus points! These challenges will bring even more ways to 
-          support your fellow Aggies and compete for the top spot.
-        </p>
-      </div>
+    <!-- Coming Soon -->
+    <section class="bg-white rounded-2xl shadow-card p-6 md:p-8">
+      <h3 class="font-heading text-2xl font-bold text-aggieBlue mb-2">Coming Soon: Challenges & Bonus Points</h3>
+      <p class="text-gray-800 leading-relaxed">
+        We’re building <span class="font-semibold text-aggieBlue">special challenges</span> where you can earn
+        <span class="font-semibold text-aggieGold">bonus points</span> for things like themed check-ins,
+        team spirit activities, and multi-event streaks. Watch this page and the home screen for announcements.
+      </p>
     </section>
   </main>
 
   <!-- Footer -->
-  <footer class="bg-aggieBlue text-white text-center py-6 mt-10">
+  <footer class="bg-aggieBlue text-white text-center py-8 mt-10">
     <p class="font-ui">&copy; 2025 Aggie Points. All rights reserved.</p>
   </footer>
-
 </body>
 </html>

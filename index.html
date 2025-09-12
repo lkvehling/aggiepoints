@@ -174,199 +174,158 @@
   <script src="auth-config.js"></script>
 
   <script>
-    // ========= Helpers (match SQL) =========
-    // Uses views: public.profiles (display_name, team_name, points_total, rank)
-    //             public.events_today (id, title, start_ts, end_ts, location, points, user_checked_in)
-    // RPC:        public.checkin(uuid)
+  // ========= Helpers (match SQL) =========
+  // Uses views: public.profiles (display_name, team_name, points_total, rank)
+  //             public.events_today (id, title, start_ts, end_ts, location, points, user_checked_in)
+  // RPC:        public.checkin(uuid, lat, lng, accuracy)
 
-    const $  = (s) => document.querySelector(s);
-    const $$ = (s) => Array.from(document.querySelectorAll(s));
-    const toggle = (el) => el.classList.toggle('hidden');
-    const escapeHtml = (s) => (s ?? '').toString()
-      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+  const $  = (s) => document.querySelector(s);
+  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const toggle = (el) => el.classList.toggle('hidden');
+  const escapeHtml = (s) => (s ?? '').toString()
+    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
-    const TZ = 'America/Los_Angeles';
-    const fmtDate = (ts) => new Date(ts).toLocaleDateString([], {timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
-    const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], {timeZone:TZ, hour:'numeric', minute:'2-digit'});
+  const TZ = 'America/Los_Angeles';
+  const fmtDate = (ts) => new Date(ts).toLocaleDateString([], {timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
+  const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], {timeZone:TZ, hour:'numeric', minute:'2-digit'});
 
-    function toast(message, { variant = 'error', timeout = 4500 } = {}) {
-      const root = document.querySelector('#toast-root > div');
-      if (!root) return;
-    
-      // palette per variant
-      const variants = {
-        success: 'bg-green-100 text-green-900 ring-1 ring-green-300',
-        error:   'bg-red-100 text-red-900 ring-1 ring-red-300',
-        info:    'bg-aggieBlue/10 text-aggieBlue ring-1 ring-aggieBlue/30',
-        warn:    'bg-yellow-100 text-yellow-900 ring-1 ring-yellow-300'
-      };
-      const cls = variants[variant] || variants.info;
-    
-      const el = document.createElement('div');
-      el.setAttribute('role', 'status');
-      el.className = [
-        'pointer-events-auto',
-        'max-w-sm w-[360px]',
-        'rounded-2xl shadow-soft',
-        'px-4 py-3',
-        'font-ui text-sm',
-        'backdrop-blur',
-        'flex items-start gap-3',
-        cls
-      ].join(' ');
-    
-      el.innerHTML = `
-        <div class="shrink-0 pt-0.5">
-          ${variant === 'success' ? '✅' : variant === 'warn' ? '⚠️' : variant === 'info' ? 'ℹ️' : '❌'}
-        </div>
-        <div class="min-w-0 leading-snug">${message}</div>
-        <button class="ml-auto shrink-0 opacity-70 hover:opacity-100" aria-label="Close">✕</button>
-      `;
-    
-      const closeBtn = el.querySelector('button');
-      const remove = () => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); };
-      closeBtn.addEventListener('click', remove);
-    
-      root.appendChild(el);
-      if (timeout > 0) setTimeout(remove, timeout);
-    }
-    
-    // Tiny fade-out animation
-    const style = document.createElement('style');
-    style.textContent = `
-    @keyframes toast-fade-out { to { opacity: 0; transform: translateY(-4px); } }
-    .animate-fade-out { animation: toast-fade-out .15s ease forwards; }
+  function toast(message, { variant = 'error', timeout = 4500 } = {}) {
+    const root = document.querySelector('#toast-root > div');
+    if (!root) return;
+
+    const variants = {
+      success: 'bg-green-100 text-green-900 ring-1 ring-green-300',
+      error:   'bg-red-100 text-red-900 ring-1 ring-red-300',
+      info:    'bg-aggieBlue/10 text-aggieBlue ring-1 ring-aggieBlue/30',
+      warn:    'bg-yellow-100 text-yellow-900 ring-1 ring-yellow-300'
+    };
+    const cls = variants[variant] || variants.info;
+
+    const el = document.createElement('div');
+    el.setAttribute('role', 'status');
+    el.className = [
+      'pointer-events-auto','max-w-sm','w-[360px]','rounded-2xl','shadow-soft',
+      'px-4','py-3','font-ui','text-sm','backdrop-blur','flex','items-start','gap-3',cls
+    ].join(' ');
+    el.innerHTML = `
+      <div class="shrink-0 pt-0.5">
+        ${variant === 'success' ? '✅' : variant === 'warn' ? '⚠️' : variant === 'info' ? 'ℹ️' : '❌'}
+      </div>
+      <div class="min-w-0 leading-snug">${message}</div>
+      <button class="ml-auto shrink-0 opacity-70 hover:opacity-100" aria-label="Close">✕</button>
     `;
+    el.querySelector('button').addEventListener('click', () => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); });
+    root.appendChild(el);
+    if (timeout > 0) setTimeout(() => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); }, timeout);
+  }
+
+  // Tiny fade-out animation
+  (function injectToastAnim(){
+    const style = document.createElement('style');
+    style.textContent = `@keyframes toast-fade-out { to { opacity: 0; transform: translateY(-4px); } } .animate-fade-out { animation: toast-fade-out .15s ease forwards; }`;
     document.head.appendChild(style);
+  })();
 
-    function showCheckinError(err) {
-      const code = err?.code;
-      const details = err?.details || '';
+  function showCheckinError(err) {
+    const code = err?.code;
+    const details = err?.details || '';
 
-      // UUID / input errors
-      if (code === '22P02' || /invalid input syntax for type uuid/i.test(details)) {
-        return 'Invalid event id. Please refresh and try again.';
-      }
+    if (code === '22P02' || /invalid input syntax for type uuid/i.test(details)) return 'Invalid event id. Please refresh and try again.';
+    if (code === '23503' || /foreign key/i.test(details))               return 'This event no longer exists. Please refresh the page.';
+    if (code === 'PGRST301' || code === '401' || /JWT|auth/i.test(details)) return 'You must be signed in to check in.';
+    if (/Missing required input parameter: event_id/i.test(details))    return 'Check-in misconfigured (missing event id). Please contact an admin.';
+    if (code === '42501')                                               return 'You do not have permission to check in to this event.';
+    if (/outside_geofence/i.test(details))                              return 'You must be at the venue to check in.';
+    if (/outside_time_window/i.test(details))                           return 'This event is not currently active (20 min before start → 10 min before end).';
+    if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please allow location access and try again.';
+    if (/low_accuracy/i.test(details))                                  return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled.';
+    if (/missing_accuracy/i.test(details))                               return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
+    return err?.message || 'Check-in failed. Please try again.';
+  }
 
-      // Missing / deleted event
-      if (code === '23503' || /foreign key/i.test(details)) {
-        return 'This event no longer exists. Please refresh the page.';
-      }
-
-      // Auth/session issues
-      if (code === 'PGRST301' || code === '401' || /JWT|auth/i.test(details)) {
-        return 'You must be signed in to check in.';
-      }
-
-      // Misconfigured RPC
-      if (/Missing required input parameter: event_id/i.test(details)) {
-        return 'Check-in misconfigured (missing event id). Please contact an admin.';
-      }
-    
-      // Permission denied
-      if (code === '42501') {
-        return 'You do not have permission to check in to this event.';
-      }
-    
-      // Geofence / time window / location errors
-      if (/outside_geofence/i.test(details)) {
-        return 'You must be at the venue to check in.';
-      }
-      if (/outside_time_window/i.test(details)) {
-        return 'This event is not currently active (20 min before start → 10 min before end).';
-      }
-      if (/missing_lat_lng/i.test(details)) {
-        return 'We need your location to check in. Please allow location access and try again.';
-      }
-      if (/low_accuracy/i.test(details)) {
-        return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled.';
-      }
-      if (/missing_accuracy/i.test(details)) {
-        return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
-      }
-    
-      // Default fallback
-      return err?.message || 'Check-in failed. Please try again.';
-      // Refresh points/rank/team after a successful check-in
-      async function refreshProfilePoints() {
-        const { data: { user } } = await sb.auth.getUser();
-        const { data: prof, error } = await sb
-          .from('profiles')
-          .select('points_total, rank, team_name')
-          .eq('id', user.id)
-          .single();
-      
-        if (!error && prof) {
-          $('#pointsTotal').textContent = (prof.points_total ?? 0);
-          $('#rank').textContent        = (prof.rank ?? '—');
-          $('#team').textContent        = prof.team_name || '—';
-        }
-      }
+  // ⬇️ Moved OUT of showCheckinError so it’s globally callable
+  async function refreshProfilePoints() {
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return;
+    const { data: prof, error } = await sb
+      .from('profiles')
+      .select('points_total, rank, team_name')
+      .eq('id', user.id)
+      .single();
+    if (!error && prof) {
+      $('#pointsTotal').textContent = (prof.points_total ?? 0);
+      $('#rank').textContent        = (prof.rank ?? '—');
+      $('#team').textContent        = prof.team_name || '—';
     }
-    
+  }
 
+  function todayRow(ev) {
+    const already = !!ev.user_checked_in;
+    const when = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
+    const badge = ev.points ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>` : '';
+    const action = already
+      ? `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`
+      : `<button class="checkinBtn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95" data-id="${ev.id}">Check in</button>`;
 
-    function todayRow(ev) {
-      const already = !!ev.user_checked_in;
-      const when = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
-      const badge = ev.points ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>` : '';
-      const action = already
-        ? `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`
-        : `<button class="checkinBtn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95" data-id="${ev.id}">Check in</button>`;
-    
-      return `
-        <div class="py-4" id="event-${ev.id}">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div class="min-w-0">
-              <div class="font-ui text-base font-semibold text-ink">${escapeHtml(ev.title)} ${badge}</div>
-              <div class="mt-0.5 text-sm text-ink/70 font-ui">${when} · ${escapeHtml(ev.location || 'TBA')}</div>
-            </div>
-            <div class="flex items-center gap-3">
-              ${action}
-              <a class="font-ui text-sm text-aggieBlue hover:underline" href="events.html#upcoming">More</a>
-            </div>
+    return `
+      <div class="py-4" id="event-${ev.id}">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="min-w-0">
+            <div class="font-ui text-base font-semibold text-ink">${escapeHtml(ev.title)} ${badge}</div>
+            <div class="mt-0.5 text-sm text-ink/70 font-ui">${when} · ${escapeHtml(ev.location || 'TBA')}</div>
           </div>
-        </div>`;
+          <div class="flex items-center gap-3">
+            ${action}
+            <a class="font-ui text-sm text-aggieBlue hover:underline" href="events.html#upcoming">More</a>
+          </div>
+        </div>
+      </div>`;
+  }
+
+  async function ensureAuthed() {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) {
+      window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html';
+      return null;
     }
+    return session;
+  }
 
+  // ========= Boot =========
+  (async () => {
+    // Header interactions
+    $('#mobileMenuBtn')?.addEventListener('click', () => toggle($('#mobileMenu')));
+    $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
+    $('#yearText').textContent = new Date().getFullYear();
 
-    async function ensureAuthed() {
-      // 'sb' is provided by auth-config.js: const sb = window.supabase.createClient(...)
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) {
-        window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html';
-        return null;
+    // Auth
+    const session = await ensureAuthed(); if (!session) return;
+    const { data: { user } } = await sb.auth.getUser();
+    $('#acctName').textContent = user?.user_metadata?.display_name || user?.email || 'Account';
+    const doLogout = async () => { await sb.auth.signOut(); window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; };
+    $('#logoutBtn')?.addEventListener('click', doLogout);
+    $('#logoutBtnMobile')?.addEventListener('click', doLogout);
+
+    // If Supabase restores a session slightly later, keep header/data fresh
+    sb.auth.onAuthStateChange(async (_event, sess) => {
+      if (sess?.user) {
+        $('#acctName').textContent = sess.user.user_metadata?.display_name || sess.user.email || 'Account';
+        await refreshProfilePoints();
       }
-      return session;
-    }
+    });
 
-    // ========= Boot =========
-    (async () => {
-      // Header interactions
-      $('#mobileMenuBtn')?.addEventListener('click', () => toggle($('#mobileMenu')));
-      $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
-      $('#yearText').textContent = new Date().getFullYear();
+    // Today header (in PT)
+    const todayPT = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
+    $('#todayDate').textContent = todayPT.toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
 
-      // Auth
-      const session = await ensureAuthed(); if (!session) return;
-      const { data: { user } } = await sb.auth.getUser();
-      $('#acctName').textContent = user.user_metadata?.display_name || user.email || 'Account';
-      const doLogout = async () => { await sb.auth.signOut(); window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; };
-      $('#logoutBtn')?.addEventListener('click', doLogout);
-      $('#logoutBtnMobile')?.addEventListener('click', doLogout);
-
-      // Today header (in PT)
-      const todayPT = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
-      $('#todayDate').textContent = todayPT.toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
-
-      // ----- Load Profile from public.profiles (matches SQL) -----
+    // ----- Load Profile from public.profiles -----
+    try {
       const { data: prof, error: pErr } = await sb
         .from('profiles')
         .select('display_name, team_name, points_total, rank')
         .eq('id', user.id)
         .single();
-
       if (!pErr && prof) {
         $('#pointsTotal').textContent = (prof.points_total ?? 0);
         $('#rank').textContent        = (prof.rank ?? '—');
@@ -374,15 +333,18 @@
       } else {
         console.error('profiles error', pErr);
       }
+    } catch (e) {
+      console.error('profiles fetch crashed', e);
+    }
 
-      // ----- Load Today’s Events from public.events_today (matches SQL) -----
+    // ----- Load Today’s Events from public.events_today -----
+    const list = $('#todayList');
+    const empty = $('#todayEmpty');
+    try {
       const { data: todays, error: tErr } = await sb
         .from('events_today')
         .select('id, title, start_ts, end_ts, location, points, user_checked_in')
         .order('start_ts', { ascending: true });
-
-      const list = $('#todayList');
-      const empty = $('#todayEmpty');
 
       if (tErr) {
         console.error('events_today error', tErr);
@@ -391,19 +353,18 @@
         const rows = (todays || []).map(todayRow).join('');
         list.innerHTML = rows;
         empty.classList.toggle('hidden', (todays || []).length > 0);
-      
+
         // Wire up Check in buttons -> RPC public.checkin(uuid, lat, lng, accuracy)
         $$('.checkinBtn').forEach(btn => {
           btn.addEventListener('click', async (e) => {
             const el = e.currentTarget;
             const id = el?.dataset.id;
             if (!id) { alert('Check-in misconfigured: missing event id.'); return; }
-      
+
             el.disabled = true;
             const original = el.textContent;
             el.textContent = 'Checking…';
-      
-            // Get geolocation (required)
+
             const getPosition = () => new Promise((resolve, reject) => {
               if (!('geolocation' in navigator)) return reject(new Error('Geolocation not available'));
               navigator.geolocation.getCurrentPosition(
@@ -412,19 +373,15 @@
                 { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
               );
             });
-      
+
             try {
               const pos = await getPosition();
               const { latitude, longitude, accuracy } = pos.coords;
-      
+
               const { error } = await sb.rpc('checkin', {
-                p_event_id: id,
-                p_lat: latitude,
-                p_lng: longitude,
-                p_accuracy: accuracy
+                p_event_id: id, p_lat: latitude, p_lng: longitude, p_accuracy: accuracy
               });
-      
-              // Show RED toast on error, stop there
+
               if (error) {
                 console.error('checkin error', error);
                 el.disabled = false;
@@ -432,8 +389,7 @@
                 toast(showCheckinError(error), { variant: 'error' });
                 return;
               }
-      
-              // Success UI + refresh points
+
               el.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
               toast('Checked in — have fun! 🎉', { variant: 'success', timeout: 2500 });
               await refreshProfilePoints();
@@ -445,8 +401,8 @@
             }
           });
         });
-      
-        // If navigated like index.html?event=<uuid>#today, focus that specific card
+
+        // Deep-link focus: index.html?event=<uuid>#today
         (function focusDeepLinkedEvent() {
           const params = new URLSearchParams(location.search);
           const focusId = params.get('event');
@@ -454,16 +410,18 @@
           const target = document.getElementById(`event-${focusId}`);
           if (!target) return;
           target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          // brief visual focus
-          target.classList.add('ring-2', 'ring-aggieGold', 'rounded-xl');
-          setTimeout(() => target.classList.remove('ring-2', 'ring-aggieGold'), 2500);
+          target.classList.add('ring-2','ring-aggieGold','rounded-xl');
+          setTimeout(() => target.classList.remove('ring-2','ring-aggieGold'), 2500);
         })();
       }
+    } catch (e) {
+      console.error('events_today fetch crashed', e);
+      list.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">Could not load today’s events.</div>`;
+      empty.classList.add('hidden');
+    }
+  })();
+</script>
 
-        
-      }
-    })();
-  </script>
   <!-- Toast root -->
   <div id="toast-root" class="fixed inset-0 pointer-events-none z-[1000]">
     <div class="absolute top-4 right-4 space-y-3"></div>

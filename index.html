@@ -309,7 +309,7 @@
             const original = el.textContent;
             el.textContent = 'Checking…';
 
-            const { error } = await sb.rpc('checkin', { event_id: id });
+            const { error } = await sb.rpc('checkin', { p_event_id: id });
 
             if (error) {
               console.error('checkin error', error);

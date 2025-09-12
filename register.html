@@ -1,47 +1,165 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
   <title>Register – Aggie Points</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <!-- Fonts (Raleway, Montserrat, Merriweather) -->
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
+
+  <!-- Tailwind CDN + Theme -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            aggieBlue: "#022851",
+            aggieGold: "#FFBF00",
+            aggieBg:   "#F7F7F7",
+            ink:       "#333333",
+          },
+          fontFamily: {
+            heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
+            ui:      ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
+            body:    ["Merriweather", "Georgia", "serif"],
+          },
+          boxShadow: {
+            soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
+          }
+        }
+      }
+    }
+  </script>
   <style>
-    body { font-family: Arial, sans-serif; margin: 30px; max-width: 420px; }
-    input, select, button { width: 100%; padding: 10px; margin: 6px 0; }
-    #msg { margin-top: 10px; font-weight: 600; }
+    :root { --aggie-blue:#022851; --aggie-gold:#FFBF00; }
+    .card { transition: transform .15s ease, box-shadow .15s ease; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
   </style>
 </head>
-<body>
-  <h2>Create your account</h2>
 
-  <input type="email" id="email" placeholder="UC Davis email" autocomplete="email" required />
-  <input type="password" id="password" placeholder="Password (min 6 chars)" autocomplete="new-password" required />
-  <input type="text" id="name" placeholder="Full name" required />
-  <input type="text" id="student_id" placeholder="Student ID" required />
+<body class="min-h-screen bg-aggieBg text-ink font-body">
+  <!-- Header -->
+  <header class="bg-aggieBlue text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between py-3">
+        <a href="index.html" class="flex items-center">
+          <span class="font-ui text-xl font-semibold tracking-wide">Aggie Points</span>
+        </a>
+        <nav class="hidden md:flex items-center gap-8 font-ui">
+          <a href="index.html" class="hover:text-aggieGold">Home</a>
+          <a href="events.html" class="hover:text-aggieGold">All Events</a>
+          <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
+          <a href="login.html" class="hover:text-aggieGold">Log in</a>
+        </nav>
+      </div>
+    </div>
+  </header>
 
-  <label>Team</label>
-  <select id="team">
-    <option>Baseball</option><option>Men’s Basketball</option><option>Women’s Basketball</option>
-    <option>Beach Volleyball</option><option>Men’s Cross Country</option><option>Women’s Cross Country</option>
-    <option>Equestrian</option><option>Field Hockey</option><option>Football</option>
-    <option>Men’s Golf</option><option>Women’s Golf</option><option>Gymnastics</option>
-    <option>Lacrosse</option><option>Men’s Soccer</option><option>Women’s Soccer</option>
-    <option>Softball</option><option>Swim & Dive</option><option>Men’s Tennis</option><option>Women’s Tennis</option>
-    <option>Men’s Track & Field</option><option>Women’s Track & Field</option><option>Volleyball</option>
-    <option>Men’s Water Polo</option><option>Women’s Water Polo</option>
-  </select>
+  <!-- Page Header -->
+  <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">Create your account</h1>
+      <p class="mt-1 font-ui text-white/90">Use your @ucdavis.edu email to register.</p>
+    </div>
+  </section>
 
-  <label>Graduation Year</label>
-  <select id="year"><option>2025</option><option>2026</option><option>2027</option><option>2028</option><option>2029</option><option>2030</option></select>
+  <!-- Form Card -->
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+    <div class="mx-auto w-full max-w-xl card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+      <form class="p-6" onsubmit="return false;">
+        <div class="grid grid-cols-1 gap-4">
+          <label class="block">
+            <span class="font-ui text-sm uppercase tracking-wide text-ink/60">UC Davis email</span>
+            <input id="email" type="email" autocomplete="email" required
+                   class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue"
+                   placeholder="you@ucdavis.edu" />
+          </label>
 
-  <button id="registerBtn" type="button">Register</button>
-  <p id="msg"></p>
-  <p><small>Already have an account? <a href="login.html">Log in</a></small></p>
+          <label class="block">
+            <span class="font-ui text-sm uppercase tracking-wide text-ink/60">Password</span>
+            <input id="password" type="password" autocomplete="new-password" required
+                   class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue"
+                   placeholder="Minimum 6 characters" />
+          </label>
 
+          <label class="block">
+            <span class="font-ui text-sm uppercase tracking-wide text-ink/60">Full name</span>
+            <input id="name" type="text" required
+                   class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue"
+                   placeholder="First Last" />
+          </label>
+
+          <label class="block">
+            <span class="font-ui text-sm uppercase tracking-wide text-ink/60">Student ID</span>
+            <input id="student_id" type="text" required
+                   class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue"
+                   placeholder="e.g. 123456789" />
+          </label>
+
+          <label class="block">
+            <span class="font-ui text-sm uppercase tracking-wide text-ink/60">Team</span>
+            <select id="team" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue">
+              <option>Baseball</option><option>Men’s Basketball</option><option>Women’s Basketball</option>
+              <option>Beach Volleyball</option><option>Men’s Cross Country</option><option>Women’s Cross Country</option>
+              <option>Equestrian</option><option>Field Hockey</option><option>Football</option>
+              <option>Men’s Golf</option><option>Women’s Golf</option><option>Gymnastics</option>
+              <option>Lacrosse</option><option>Men’s Soccer</option><option>Women’s Soccer</option>
+              <option>Softball</option><option>Swim & Dive</option><option>Men’s Tennis</option><option>Women’s Tennis</option>
+              <option>Men’s Track & Field</option><option>Women’s Track & Field</option><option>Volleyball</option>
+              <option>Men’s Water Polo</option><option>Women’s Water Polo</option>
+            </select>
+          </label>
+
+          <label class="block">
+            <span class="font-ui text-sm uppercase tracking-wide text-ink/60">Graduation Year</span>
+            <select id="year" class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue">
+              <option>2025</option><option>2026</option><option>2027</option>
+              <option selected>2028</option><option>2029</option><option>2030</option>
+            </select>
+          </label>
+
+          <button id="registerBtn" type="button"
+                  class="mt-2 inline-flex items-center justify-center rounded-lg bg-aggieGold px-4 py-2 font-ui font-semibold text-aggieBlue hover:brightness-95">
+            Register
+          </button>
+
+          <p id="msg" class="font-ui text-sm"></p>
+          <p class="font-ui text-sm text-ink/70">
+            Already have an account? <a class="text-aggieBlue hover:underline" href="login.html">Log in</a>
+          </p>
+        </div>
+      </form>
+    </div>
+  </main>
+
+  <!-- Footer -->
+  <footer class="border-t border-gray-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-sm font-ui text-ink/60">
+      © <span id="yearText"></span> Aggie Points.
+    </div>
+  </footer>
+
+  <!-- Supabase + App config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
-  <script>
-    redirectIfLoggedIn();
 
+  <script>
+    // Year
+    document.getElementById('yearText').textContent = new Date().getFullYear();
+
+    // If your auth-config.js exposes redirectIfLoggedIn(), use it; otherwise quick check:
+    (async () => {
+      if (typeof redirectIfLoggedIn === 'function') {
+        redirectIfLoggedIn();
+      } else {
+        const { data: { session } } = await sb.auth.getSession();
+        if (session) window.location.href = typeof APP_HOME !== 'undefined' ? APP_HOME : 'index.html';
+      }
+    })();
+
+    // Elements
     const emailEl = document.getElementById("email");
     const passEl  = document.getElementById("password");
     const nameEl  = document.getElementById("name");
@@ -50,6 +168,15 @@
     const yearEl  = document.getElementById("year");
     const btn     = document.getElementById("registerBtn");
     const msgEl   = document.getElementById("msg");
+
+    // Tiny helpers (so prior calls work)
+    function setDisabled(el, v){ if(el){ el.disabled = !!v; el.classList.toggle('opacity-60', !!v); } }
+    function clear(el){ if(el){ el.textContent = ""; el.className = "font-ui text-sm"; } }
+    function show(el, text, ok=false){
+      if(!el) return;
+      el.textContent = text;
+      el.className = "font-ui text-sm " + (ok ? "text-green-700" : "text-red-700");
+    }
 
     btn.addEventListener("click", onRegister);
 
@@ -67,28 +194,34 @@
       if (!/@ucdavis\.edu$/i.test(email)) { show(msgEl, "Registration requires a UC Davis email (@ucdavis.edu)."); setDisabled(btn, false); return; }
       if (!email || !password || !name || !student_id) { show(msgEl, "Please fill in all fields."); setDisabled(btn, false); return; }
       if (password.length < 6) { show(msgEl, "Password must be at least 6 characters."); setDisabled(btn, false); return; }
-    
+
       try {
-        // Sign up with metadata that the DB trigger will use to create the profile row
+        // Sign up with metadata used by DB trigger public.handle_new_user()
         const { error: signUpErr } = await sb.auth.signUp({
           email,
           password,
           options: {
-            data: { name, student_id, team, year }   // <- goes to auth.users.raw_user_meta_data
+            data: { name, student_id, team, year } // -> auth.users.raw_user_meta_data
           }
         });
         if (signUpErr) throw signUpErr;
 
-        // No auto sign-in; just send them to login
         show(msgEl, "Account created! Please log in.", true);
         setTimeout(() => (window.location.href = "login.html"), 800);
       } catch (e) {
-        show(msgEl, e?.message || "Registration failed.");
+        // Friendly error mapping
+        const msg = e?.message || "Registration failed.";
+        if (/User already registered/i.test(msg)) {
+          show(msgEl, "That email is already registered. Try logging in.");
+        } else if (/password/i.test(msg) && /length/i.test(msg)) {
+          show(msgEl, "Password must be at least 6 characters.");
+        } else {
+          show(msgEl, msg);
+        }
       } finally {
         setDisabled(btn, false);
       }
     }
-
   </script>
 </body>
 </html>

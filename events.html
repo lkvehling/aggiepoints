@@ -280,9 +280,9 @@
       catch { return new Set(); }
     }
 
-    // Row renderer (supports forced Closed state)
+    // Row renderer (supports forced Closed / checked overrides / compact past style)
     function eventRow(ev, opts = {}) {
-      const { forceClosed = false } = opts;
+      const { forceClosed = false, checkedOverride = null, compact = false } = opts;
       const today   = isTodayPT(ev.start_ts);
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
       const isLocalChecked = getCheckedSet().has(ev.id);
@@ -292,34 +292,39 @@
         : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)}`;
 
       const pts = ev.points
-        ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>`
+        ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 ${compact?'text-[11px]':'text-xs'} font-ui text-aggieBlue">+${ev.points} pts</span>`
         : '';
 
+      // badge helpers
+      const checkedBadge = `<span class="inline-flex items-center rounded-lg bg-green-100 text-green-700 ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} font-ui">Checked in</span>`;
+      const closedBadge  = `<span class="inline-flex items-center rounded-lg bg-gray-200 text-gray-700 ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} font-ui">Closed</span>`;
+      const notOpenBadge = `<span class="inline-flex items-center rounded-lg bg-gray-200 text-gray-700 ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} font-ui">Not Open Yet</span>`;
+
       let action;
-      if (forceClosed) {
-        action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`;
+      if (checkedOverride === true) {
+        action = checkedBadge; // explicit override (used by Past Events)
+      } else if (forceClosed) {
+        action = closedBadge;
       } else if (isLocalChecked) {
-        action = `<span class="px-3 py-1.5 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
+        action = checkedBadge;
       } else if (today && canNow) {
         action = `<button
-          class="checkin-btn px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95"
+          class="checkin-btn ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95"
           data-event-id="${ev.id}"
           data-event-name="${escapeHtml(ev.title)}"
           data-event-points="${ev.points ?? ''}">
           Check in
         </button>`;
       } else if (today) {
-        action = nowPT() > closeAtPT(ev.end_ts)
-          ? `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`
-          : `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not Open Yet</span>`;
+        action = nowPT() > closeAtPT(ev.end_ts) ? closedBadge : notOpenBadge;
       } else {
-        action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not Open Yet</span>`;
+        action = notOpenBadge;
       }
 
       const hasLoc = !!(ev.location && ev.location.trim());
       const locHTML = hasLoc ? `
-        <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
-          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <p class="font-ui ${compact?'text-[12px]':'text-sm'} text-aggieBlue mt-0.5 flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="${compact?'w-3.5 h-3.5':'w-4 h-4'} shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10c0 7-7.5 10.5-7.5 10.5S4.5 17 4.5 10a7.5 7.5 0 1115 0z" />
           </svg>
@@ -334,10 +339,10 @@
                  data-location="${escapeHtml(ev.location||'').toLowerCase()}">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="min-w-0">
-              <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate">
+              <h3 class="font-ui text-ink ${compact?'text-[15px]':'text-base md:text-lg'} font-semibold leading-tight truncate">
                 ${escapeHtml(ev.title)} ${pts}
               </h3>
-              <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5">${timeLine}</p>
+              <p class="font-ui ${compact?'text-[13px]':'text-sm md:text-base'} text-ink/80 mt-0.5">${timeLine}</p>
               ${locHTML}
             </div>
             <div class="shrink-0">
@@ -355,7 +360,7 @@
       `;
     }
 
-    // Reconcile local vs server truth
+    // Reconcile local vs server truth (kept for main sections; past section sets badges server-side)
     async function reconcileCheckedInsFromServer() {
       try {
         const slots = Array.from(document.querySelectorAll('.checkin-slot[data-event-id]'));
@@ -472,8 +477,12 @@
       $('#monthRangeText').textContent = formatThisMonthLabel();
 
       // Render helper
-      function renderListInto(listEl, rows, { forceClosed = false } = {}) {
-        listEl.innerHTML = (rows || []).map(ev => eventRow(ev, { forceClosed })).join('');
+      function renderListInto(listEl, rows, { forceClosed = false, compact = false, checkedSet = null } = {}) {
+        listEl.innerHTML = (rows || []).map(ev => eventRow(ev, {
+          forceClosed,
+          compact,
+          checkedOverride: checkedSet ? checkedSet.has(ev.id) : null
+        })).join('');
         initCheckinButtons();
       }
 
@@ -513,20 +522,46 @@
       let pastOpen = false;
 
       async function loadPastEvents() {
-        // last 60 days, most recent first
         const nowISO = new Date().toISOString();
-        const sinceISO = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
-        const { data, error } = await sb
+        const sinceISO = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(); // last 60 days
+        // 1) Fetch past events
+        const { data: eventsData, error: eventsErr } = await sb
           .from('events')
           .select('id,title,start_ts,end_ts,location,points')
           .lt('end_ts', nowISO)
           .gte('end_ts', sinceISO)
           .order('start_ts', { ascending: false });
+        if (eventsErr) { uiError(pastListEl, eventsErr); toggle(pastEmptyEl, true); return; }
 
-        if (error) { uiError(pastListEl, error); toggle(pastEmptyEl, true); return; }
+        const rows = (eventsData || []).filter(ev => isPast(ev.end_ts));
+        if (!rows.length) {
+          pastListEl.innerHTML = '';
+          toggle(pastEmptyEl, true);
+          pastLoaded = true;
+          return;
+        }
 
-        const rows = (data || []).filter(ev => isPast(ev.end_ts));
-        renderListInto(pastListEl, rows, { forceClosed: true });
+        // 2) Fetch which of these the current user checked into
+        let checkedSet = new Set();
+        try {
+          const { data: { user } } = await sb.auth.getUser();
+          if (user) {
+            const ids = rows.map(r => r.id);
+            const { data: chk, error: chkErr } = await sb
+              .from('checkins')
+              .select('event_id')
+              .eq('user_id', user.id)
+              .in('event_id', ids);
+            if (!chkErr && Array.isArray(chk)) {
+              checkedSet = new Set(chk.map(c => c.event_id));
+            }
+          }
+        } catch (e) {
+          console.warn('past checkins fetch error', e);
+        }
+
+        // 3) Render compact cards, Closed by default, green if checked
+        renderListInto(pastListEl, rows, { forceClosed: true, compact: true, checkedSet });
         toggle(pastEmptyEl, rows.length === 0);
         pastLoaded = true;
       }
@@ -552,7 +587,6 @@
           { list: weekListEl, empty: weekEmptyEl },
           { list: monthListEl, empty: null },
           { list: upcomingListEl, empty: upcomingEmptyEl },
-          // include past only if loaded/open to avoid surprising users
           ...(pastLoaded ? [{ list: pastListEl, empty: pastEmptyEl }] : []),
         ];
 

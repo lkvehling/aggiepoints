@@ -111,14 +111,12 @@
 
   <!-- Main Content -->
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-    <!-- STACKED layout (rows) -->
     <div class="grid grid-cols-1 gap-6">
       <!-- This Week -->
       <section id="week" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
           <div class="flex items-baseline justify-between mb-2">
             <h2 class="font-ui text-xl font-semibold text-aggieBlue">This Week</h2>
-            <!-- NEW: rolling 7-day range label -->
             <p id="weekRangeText" class="font-ui text-sm text-ink/60"></p>
           </div>
           <div id="weekList" class="space-y-4"></div>
@@ -131,11 +129,9 @@
         <div class="p-6">
           <div class="flex items-baseline justify-between mb-2">
             <h2 class="font-ui text-xl font-semibold text-aggieBlue">This Month</h2>
-            <!-- NEW: month name/year label -->
             <p id="monthRangeText" class="font-ui text-sm text-ink/60"></p>
           </div>
           <div id="monthList" class="space-y-4"></div>
-          <!-- intentionally no empty label for Month -->
         </div>
       </section>
 
@@ -144,10 +140,27 @@
         <div class="p-6">
           <div class="flex items-baseline justify-between mb-2">
             <h2 class="font-ui text-xl font-semibold text-aggieBlue">All Upcoming</h2>
-            <!-- (no date range label for this one) -->
           </div>
           <div id="upcomingList" class="space-y-4"></div>
           <div id="upcomingEmpty" class="hidden font-ui text-ink/60">No upcoming events.</div>
+        </div>
+      </section>
+
+      <!-- Past Events (collapsed by default) -->
+      <section id="past" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+        <div class="p-6">
+          <div class="flex items-center justify-between">
+            <div>
+              <h2 class="font-ui text-xl font-semibold text-aggieBlue">Past Events</h2>
+              <p class="font-ui text-sm text-ink/60">Most recent first. Collapsed by default.</p>
+            </div>
+            <button id="togglePastBtn"
+              class="font-ui px-3 py-1.5 rounded-lg bg-aggieBlue text-white hover:brightness-110">
+              Show past events
+            </button>
+          </div>
+          <div id="pastList" class="space-y-4 mt-4 hidden"></div>
+          <div id="pastEmpty" class="hidden font-ui text-ink/60 mt-4">No past events found.</div>
         </div>
       </section>
     </div>
@@ -163,7 +176,6 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
-  <!-- Shared check-in module (same file used on Home) -->
   <script src="checkin.js"></script>
 
   <script>
@@ -178,14 +190,11 @@
     const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
     const fmtDT = (ts) => new Date(ts).toLocaleString([], { timeZone: TZ, month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
     const fmtHM = (dt) => dt.toLocaleTimeString([], { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
-    
-    // Same-day heading format: "Fri, Sep 12 · 12:09 PM–11:59 PM"
     const sameDayTitle = (start_ts, end_ts) => {
       const d = toPT(start_ts);
       const left = d.toLocaleDateString([], { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric' });
       return `${left} · ${fmtHM(toPT(start_ts))}–${fmtHM(toPT(end_ts))}`;
     };
-    
     const isTodayPT = (ts) => {
       const d = toPT(ts), n = nowPT();
       return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
@@ -205,13 +214,12 @@
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
-    // NEW: Google Maps link builder (clickable location)
     function mapsLink(locationText) {
       if (!locationText) return null;
       return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
     }
 
-    // Simple themed toast (same look as Home)
+    // Toast
     function toast(message, { variant = 'info', timeout = 3500 } = {}) {
       const root = document.querySelector('#toast-root > div');
       if (!root) return alert(message);
@@ -240,7 +248,6 @@
       document.head.appendChild(style);
     })();
 
-    // Error text mapping (same as Home)
     function showCheckinError(err) {
       const code = err?.code;
       const details = err?.details || '';
@@ -267,14 +274,15 @@
       el.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">${msg}</div>`;
     }
 
-    // Read the same cache used by checkin.js
+    // Local "checked" cache
     function getCheckedSet() {
       try { return new Set(JSON.parse(localStorage.getItem('aggie_checked_in_ids') || '[]')); }
       catch { return new Set(); }
     }
 
-    // === Row renderer (boxed card) ===
-    function eventRow(ev) {
+    // Row renderer (supports forced Closed state)
+    function eventRow(ev, opts = {}) {
+      const { forceClosed = false } = opts;
       const today   = isTodayPT(ev.start_ts);
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
       const isLocalChecked = getCheckedSet().has(ev.id);
@@ -288,7 +296,9 @@
         : '';
 
       let action;
-      if (isLocalChecked) {
+      if (forceClosed) {
+        action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`;
+      } else if (isLocalChecked) {
         action = `<span class="px-3 py-1.5 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
       } else if (today && canNow) {
         action = `<button
@@ -345,7 +355,7 @@
       `;
     }
 
-    // === Reconcile local "checked" cache against server truth and fix UI ===
+    // Reconcile local vs server truth
     async function reconcileCheckedInsFromServer() {
       try {
         const slots = Array.from(document.querySelectorAll('.checkin-slot[data-event-id]'));
@@ -403,7 +413,7 @@
       }
     }
 
-    // ===== NEW: Section date labels =====
+    // Date labels
     function ordinal(n) {
       const s = ["th","st","nd","rd"], v = n % 100;
       return s[(v-20)%10] || s[v] || s[0];
@@ -413,7 +423,7 @@
       copy.setHours(0,0,0,0);
       return copy;
     }
-    // Rolling 7-day range starting today (per your example: "September 13–20th, 2025")
+    // Rolling 7-day range starting today
     function formatThisWeekRangeLabel() {
       const today = startOfDayPT(nowPT());
       const end = new Date(today); end.setDate(end.getDate() + 7);
@@ -434,7 +444,10 @@
       return `${monthFull} ${now.getFullYear()}`;
     }
 
-    // ===== Page boot =====
+    // Past filter
+    const isPast = (end_ts) => nowPT() > closeAtPT(end_ts);
+
+    // Page boot
     (async () => {
       // Header UI
       $('#mobileMenuBtn')?.addEventListener('click', () => { const m = $('#mobileMenu'); if (m) m.classList.toggle('hidden'); });
@@ -443,7 +456,7 @@
 
       // Account label
       try {
-        const { data: { user } } = await sb.auth.getUser();
+        const { data: { user} } = await sb.auth.getUser();
         if (user) $('#acctName').textContent = user.user_metadata?.display_name || user.email || 'Account';
         sb.auth.onAuthStateChange((_evt, sess) => {
           if (sess?.user) $('#acctName').textContent = sess.user.user_metadata?.display_name || sess.user.email || 'Account';
@@ -454,74 +467,82 @@
       $('#logoutBtn')?.addEventListener('click', doLogout);
       $('#logoutBtnMobile')?.addEventListener('click', doLogout);
 
-      // NEW: Set section labels
+      // Set section labels
       $('#weekRangeText').textContent  = formatThisWeekRangeLabel();
       $('#monthRangeText').textContent = formatThisMonthLabel();
 
-      // ===== Fetch & render lists =====
-      function renderListInto(listEl, rows) {
-        listEl.innerHTML = (rows || []).map(eventRow).join('');
+      // Render helper
+      function renderListInto(listEl, rows, { forceClosed = false } = {}) {
+        listEl.innerHTML = (rows || []).map(ev => eventRow(ev, { forceClosed })).join('');
         initCheckinButtons();
       }
 
+      // Load a view and hide past events
       async function loadSection(viewName, listEl, emptyEl) {
         const { data, error } = await sb
           .from(viewName)
           .select('id,title,start_ts,end_ts,location,points')
           .order('start_ts', { ascending: true });
+
         if (error) { uiError(listEl, error); toggle(emptyEl, true); return []; }
-        renderListInto(listEl, data || []);
-        toggle(emptyEl, (data || []).length === 0);
+
+        const rows = (data || []).filter(ev => !isPast(ev.end_ts));
+        renderListInto(listEl, rows);
+        toggle(emptyEl, rows.length === 0);
+
         if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
         await reconcileCheckedInsFromServer();
-        return data || [];
+
+        return rows;
       }
 
       const weekListEl = $('#weekList'), weekEmptyEl = $('#weekEmpty');
-      const monthListEl = $('#monthList'); // no empty element by design
+      const monthListEl = $('#monthList');
       const upcomingListEl = $('#upcomingList'), upcomingEmptyEl = $('#upcomingEmpty');
 
       // Load base views
-      const weekRows    = await loadSection('events_this_week', weekListEl, weekEmptyEl);
+      await loadSection('events_this_week', weekListEl, weekEmptyEl);
       await loadSection('events_this_month_excl_week', monthListEl, null);
-      const upcomingRows = await loadSection('events_upcoming', upcomingListEl, upcomingEmptyEl);
+      await loadSection('events_upcoming', upcomingListEl, upcomingEmptyEl);
 
-      // ===== NEW: Ensure TODAY appears in "This Week" and "All Upcoming", but not "This Month" =====
-      // We fetch today's events and merge them in if a backend view omitted them for any reason.
-      let todayRows = [];
-      try {
-        const { data: tData, error: tErr } = await sb
-          .from('events_today')
+      // ---- Past Events (lazy load, collapsed) ----
+      const pastListEl = $('#pastList');
+      const pastEmptyEl = $('#pastEmpty');
+      const togglePastBtn = $('#togglePastBtn');
+      let pastLoaded = false;
+      let pastOpen = false;
+
+      async function loadPastEvents() {
+        // last 60 days, most recent first
+        const nowISO = new Date().toISOString();
+        const sinceISO = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
+        const { data, error } = await sb
+          .from('events')
           .select('id,title,start_ts,end_ts,location,points')
-          .order('start_ts', { ascending: true });
-        if (!tErr && Array.isArray(tData)) todayRows = tData;
-      } catch {}
+          .lt('end_ts', nowISO)
+          .gte('end_ts', sinceISO)
+          .order('start_ts', { ascending: false });
 
-      if (todayRows.length) {
-        const byId = (arr) => new Set(arr.map(e => e.id));
-        // Merge into week
-        const weekIds = byId(weekRows);
-        const mergedWeek = [...weekRows];
-        todayRows.forEach(e => { if (!weekIds.has(e.id)) mergedWeek.unshift(e); });
-        renderListInto(weekListEl, mergedWeek);
-        toggle(weekEmptyEl, mergedWeek.length === 0);
+        if (error) { uiError(pastListEl, error); toggle(pastEmptyEl, true); return; }
 
-        // Merge into upcoming
-        const upIds = byId(upcomingRows);
-        const mergedUpcoming = [...upcomingRows];
-        todayRows.forEach(e => { if (!upIds.has(e.id)) mergedUpcoming.unshift(e); });
-        renderListInto(upcomingListEl, mergedUpcoming);
-        toggle(upcomingEmptyEl, mergedUpcoming.length === 0);
-
-        // DO NOT touch monthListEl (must exclude today by requirement)
-        if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
-        await reconcileCheckedInsFromServer();
+        const rows = (data || []).filter(ev => isPast(ev.end_ts));
+        renderListInto(pastListEl, rows, { forceClosed: true });
+        toggle(pastEmptyEl, rows.length === 0);
+        pastLoaded = true;
       }
 
-      // ===== Search (client-side across all sections) =====
+      togglePastBtn.addEventListener('click', async () => {
+        pastOpen = !pastOpen;
+        toggle(pastListEl, pastOpen);
+        togglePastBtn.textContent = pastOpen ? 'Hide past events' : 'Show past events';
+        if (pastOpen && !pastLoaded) {
+          await loadPastEvents();
+        }
+      });
+
+      // Search (affects loaded sections; won’t auto-open Past)
       const searchInput = $('#searchInput');
       const searchHint = $('#searchHint');
-
       const params = new URLSearchParams(location.search);
       const initialQ = params.get('q'); if (initialQ) searchInput.value = initialQ;
 
@@ -531,6 +552,8 @@
           { list: weekListEl, empty: weekEmptyEl },
           { list: monthListEl, empty: null },
           { list: upcomingListEl, empty: upcomingEmptyEl },
+          // include past only if loaded/open to avoid surprising users
+          ...(pastLoaded ? [{ list: pastListEl, empty: pastEmptyEl }] : []),
         ];
 
         let totalShown = 0;
@@ -564,7 +587,7 @@
     })();
   </script>
 
-  <!-- Toast root (for themed notices) -->
+  <!-- Toast root -->
   <div id="toast-root" class="fixed inset-0 pointer-events-none z-[1000]">
     <div class="absolute top-4 right-4 space-y-3"></div>
   </div>

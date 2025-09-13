@@ -111,23 +111,29 @@
           <h2 class="font-ui text-lg font-semibold text-aggieBlue mb-3">Your Summary</h2>
       
           <div class="space-y-3">
-            <!-- Keep big points number -->
+            <!-- Big points number -->
             <div>
               <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Total Points</div>
               <div id="pointsTotal" class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">—</div>
             </div>
-      
-            <!-- Smaller ranks -->
-            <div>
-              <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Individual Rank</div>
-              <div class="mt-1 text-xl font-heading font-extrabold text-aggieBlue"><span id="individualRank">—</span></div>
-            </div>
-      
-            <div>
-              <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Team Rank</div>
-              <div class="mt-1 text-xl font-heading font-extrabold text-aggieBlue"><span id="teamRank">—</span></div>
+          
+            <!-- Side-by-side ranks -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Individual Rank</div>
+                <div class="mt-1 text-xl font-heading font-extrabold text-aggieBlue">
+                  <span id="individualRank">—</span>
+                </div>
+              </div>
+              <div>
+                <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Team Rank</div>
+                <div class="mt-1 text-xl font-heading font-extrabold text-aggieBlue">
+                  <span id="teamRank">—</span>
+                </div>
+              </div>
             </div>
           </div>
+
       
           <div class="mt-5 flex gap-3">
             <a href="leaderboard.html" class="px-4 py-2 rounded-lg bg-aggieBlue text-white font-ui hover:bg-aggieBlue/90">Leaderboards</a>

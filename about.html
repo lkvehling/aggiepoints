@@ -213,30 +213,40 @@
   <script src="auth-config.js"></script>
 
   <script>
-    const $  = (s) => document.querySelector(s);
-    const toggle = (el) => el.classList.toggle('hidden');
+  const $  = (s) => document.querySelector(s);
+  const toggle = (el) => el.classList.toggle('hidden');
 
-    // Header interactions + year
-    $('#mobileMenuBtn')?.addEventListener('click', () => toggle($('#mobileMenu')));
-    $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
-    $('#yearText').textContent = new Date().getFullYear();
+  // Header interactions + year
+  $('#mobileMenuBtn')?.addEventListener('click', () => toggle($('#mobileMenu')));
+  $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
+  $('#yearText').textContent = new Date().getFullYear();
 
-    // Optional: populate account name if signed in
-    (async () => {
-      if (!window.supabase || !window.sb) return;
-      const { data: { user } } = await sb.auth.getUser();
-      if (user) {
-        const name = user.user_metadata?.display_name || user.email || 'Account';
-        const el = document.getElementById('acctName');
-        if (el) el.textContent = name;
-      }
-      const doLogout = async () => { 
-        await sb.auth.signOut(); 
-        window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; 
-      };
-      document.getElementById('logoutBtn')?.addEventListener('click', doLogout);
-      document.getElementById('logoutBtnMobile')?.addEventListener('click', doLogout);
-    })();
-  </script>
+  (async () => {
+    // If supabase or client isn't ready, bail quietly
+    if (!window.supabase) return;
+    // Use the global `sb` created in auth-config.js (const sb = ...).
+    // Avoid checking window.sb because top-level const is not on window.
+    if (typeof sb === 'undefined') return;
+
+    // Get session and user
+    const { data: { session } } = await sb.auth.getSession();
+    const user = session?.user ?? null;
+
+    // Update header label
+    const name = user?.user_metadata?.display_name || user?.email || 'Account';
+    const acctEl = document.getElementById('acctName');
+    if (acctEl) acctEl.textContent = name;
+
+    // Logout handlers (only if logged in; harmless otherwise)
+    const doLogout = async () => {
+      await sb.auth.signOut();
+      const dest = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html';
+      window.location.href = dest;
+    };
+    document.getElementById('logoutBtn')?.addEventListener('click', doLogout);
+    document.getElementById('logoutBtnMobile')?.addEventListener('click', doLogout);
+  })();
+</script>
+
 </body>
 </html>

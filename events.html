@@ -117,7 +117,8 @@
       <section id="week" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
           <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">This Week</h2>
-          <div id="weekList" class="divide-y divide-gray-100"></div>
+          <!-- changed from divide-y to space-y to accommodate boxed rows -->
+          <div id="weekList" class="space-y-4"></div>
           <div id="weekEmpty" class="hidden font-ui text-ink/60">No events this week.</div>
         </div>
       </section>
@@ -126,7 +127,7 @@
       <section id="month" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
           <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">This Month</h2>
-          <div id="monthList" class="divide-y divide-gray-100"></div>
+          <div id="monthList" class="space-y-4"></div>
           <!-- intentionally no empty label for Month -->
         </div>
       </section>
@@ -135,7 +136,7 @@
       <section id="upcoming" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
           <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">All Upcoming</h2>
-          <div id="upcomingList" class="divide-y divide-gray-100"></div>
+          <div id="upcomingList" class="space-y-4"></div>
           <div id="upcomingEmpty" class="hidden font-ui text-ink/60">No upcoming events.</div>
         </div>
       </section>
@@ -268,13 +269,13 @@
       catch { return new Set(); }
     }
 
-    // Row renderer — UI updated to match Settings + Maps link
+    // Row renderer — wrapped in a "box" card like Settings
     function eventRow(ev) {
       const today   = isTodayPT(ev.start_ts);
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
       const isLocalChecked = getCheckedSet().has(ev.id);
 
-      // Time line (separate from name; matches Settings typography)
+      // Time line
       const timeLine = today
         ? sameDayTitle(ev.start_ts, ev.end_ts)
         : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)}`;
@@ -302,7 +303,7 @@
         action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
       }
 
-      // Location line: clickable link w/ pin; hide if missing
+      // Location line
       const hasLoc = !!(ev.location && ev.location.trim());
       const locHTML = hasLoc ? `
         <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
@@ -315,34 +316,35 @@
           </a>
         </p>` : '';
 
+      // BOXED CARD WRAPPER (only change requested)
       return `
-      <div class="py-4"
-           data-title="${escapeHtml(ev.title).toLowerCase()}"
-           data-location="${escapeHtml(ev.location||'').toLowerCase()}">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div class="min-w-0">
-            <!-- Name -->
-            <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate">
-              ${escapeHtml(ev.title)} ${pts}
-            </h3>
-            <!-- Date & time -->
-            <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5">${timeLine}</p>
-            <!-- Location (clickable) -->
-            ${locHTML}
+        <article class="rounded-2xl border border-aggieBlue/10 bg-white p-4 shadow-soft"
+                 data-title="${escapeHtml(ev.title).toLowerCase()}"
+                 data-location="${escapeHtml(ev.location||'').toLowerCase()}">
+          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <div class="min-w-0">
+              <!-- Name -->
+              <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate">
+                ${escapeHtml(ev.title)} ${pts}
+              </h3>
+              <!-- Date & time -->
+              <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5">${timeLine}</p>
+              <!-- Location (clickable) -->
+              ${locHTML}
+            </div>
+            <div class="shrink-0">
+              <span class="checkin-slot"
+                    data-event-id="${ev.id}"
+                    data-title-full="${escapeHtml(ev.title)}"
+                    data-points="${ev.points ?? ''}"
+                    data-start="${ev.start_ts}"
+                    data-end="${ev.end_ts}">
+                ${action}
+              </span>
+            </div>
           </div>
-          <div class="shrink-0">
-            <span class="checkin-slot"
-                  data-event-id="${ev.id}"
-                  data-title-full="${escapeHtml(ev.title)}"
-                  data-points="${ev.points ?? ''}"
-                  data-start="${ev.start_ts}"
-                  data-end="${ev.end_ts}">
-              ${action}
-            </span>
-          </div>
-        </div>
-      </div>
-    `;
+        </article>
+      `;
     }
 
     // === Reconcile local "checked" cache against server truth and fix UI ===
@@ -465,8 +467,6 @@
       $('#logoutBtnMobile')?.addEventListener('click', doLogout);
 
       // ===== Fetch & render lists =====
-      const COLS = 'id,title,start_ts,end_ts,location,points';
-
       async function loadSection(viewName, listEl, emptyEl) {
         const { data, error } = await sb
           .from(viewName)
@@ -484,7 +484,6 @@
       
         return data || [];
       }
-
 
       const weekListEl = $('#weekList'), weekEmptyEl = $('#weekEmpty');
       const monthListEl = $('#monthList'); // no empty element by design

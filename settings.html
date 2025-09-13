@@ -211,168 +211,179 @@
   <script src="auth-config.js"></script>
 
   <script>
-    // ===== Utilities =====
-    const $ = (sel) => document.querySelector(sel);
-    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
-    const toggle = (el) => el.classList.toggle("hidden");
-    const esc = (s) => String(s ?? "")
-      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-      .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+  // ===== Utilities =====
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const toggle = (el) => el.classList.toggle("hidden");
+  const esc = (s) => String(s ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#39;");
 
-    const fmtDateRange = (startISO, endISO) => {
-      const s = new Date(startISO);
-      const e = new Date(endISO);
-      const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "short" });
-      const mdFmt = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
-      const tmFmt = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
-      const sameDay = s.toDateString() === e.toDateString();
-      const left = `${dayFmt.format(s)}, ${mdFmt.format(s)} · ${tmFmt.format(s)}`;
-      const right = sameDay ? tmFmt.format(e) : `${dayFmt.format(e)}, ${mdFmt.format(e)} · ${tmFmt.format(e)}`;
-      return `${left}–${right}`;
+  const fmtDateRange = (startISO, endISO) => {
+    const s = new Date(startISO);
+    const e = new Date(endISO);
+    const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+    const mdFmt = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+    const tmFmt = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+    const sameDay = s.toDateString() === e.toDateString();
+    const left = `${dayFmt.format(s)}, ${mdFmt.format(s)} · ${tmFmt.format(s)}`;
+    const right = sameDay ? tmFmt.format(e) : `${dayFmt.format(e)}, ${mdFmt.format(e)} · ${tmFmt.format(e)}`;
+    return `${left}–${right}`;
+  };
+
+  // Header UI
+  $("#mobileMenuBtn")?.addEventListener("click", () => toggle($("#mobileMenu")));
+  $("#acctBtn")?.addEventListener("click", () => toggle($("#acctMenu")));
+  $("#year").textContent = new Date().getFullYear();
+
+  // Password UI toggle
+  $("#togglePwd")?.addEventListener("click", () => toggle($("#pwdPanel")));
+  $("#showPwd")?.addEventListener("click", () => {
+    const inp = $("#newPassword");
+    if (!inp) return;
+    const type = inp.getAttribute("type") === "password" ? "text" : "password";
+    inp.setAttribute("type", type);
+    $("#showPwd").textContent = type === "password" ? "Show" : "Hide";
+  });
+
+  // ===== Boot/Auth (guarded) =====
+  (async () => {
+    // Make sure Supabase client is available
+    if (!window.supabase || typeof sb === "undefined") {
+      console.warn("Supabase client not available on settings.html");
+      return;
+    }
+
+    const { data: { session } } = await sb.auth.getSession();
+    const user = session?.user ?? null;
+
+    // Update header label even before redirect logic
+    const acctEl = document.getElementById("acctName");
+    acctEl.textContent = user?.user_metadata?.display_name || user?.email || "Account";
+
+    // Wire logout buttons regardless (harmless if not logged in)
+    const doLogout = async () => {
+      await sb.auth.signOut();
+      window.location.href = (typeof LOGIN_PAGE !== "undefined" && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
     };
+    $("#logoutBtn")?.addEventListener("click", doLogout);
+    $("#logoutBtnMobile")?.addEventListener("click", doLogout);
 
-    // Header UI
-    $("#mobileMenuBtn")?.addEventListener("click", () => toggle($("#mobileMenu")));
-    $("#acctBtn")?.addEventListener("click", () => toggle($("#acctMenu")));
-    $("#year").textContent = new Date().getFullYear();
+    // Enforce login
+    if (!session) {
+      window.location.href = (typeof LOGIN_PAGE !== "undefined" && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
+      return;
+    }
 
-    // Password UI toggle
-    $("#togglePwd")?.addEventListener("click", () => toggle($("#pwdPanel")));
-    $("#showPwd")?.addEventListener("click", () => {
-      const inp = $("#newPassword");
-      if (!inp) return;
-      const type = inp.getAttribute("type") === "password" ? "text" : "password";
-      inp.setAttribute("type", type);
-      $("#showPwd").textContent = type === "password" ? "Show" : "Hide";
+    // With a session: load profile + check-ins, then wire forms
+    await loadProfile(user);
+    await loadCheckins(user);
+    wireForms(user);
+  })();
+
+  async function loadProfile(user) {
+    const { data: profile, error } = await sb.from("profiles")
+      .select("display_name, team_name, grad_year")
+      .eq("id", user.id).single();
+    if (error) console.warn("profiles load error", error);
+
+    $("#displayName").value = profile?.display_name ?? user.user_metadata?.display_name ?? "";
+    $("#email").value = user.email ?? "";
+    $("#team").value = profile?.team_name ?? "";
+    $("#gradYear").value = profile?.grad_year ?? "";
+  }
+
+  async function loadCheckins(user) {
+    const list = $("#checkinsList");
+    const none = $("#noCheckins");
+    const countEl = $("#checkinsCount");
+    list.innerHTML = "";
+
+    const { data: checkins, error: cErr } = await sb
+      .from("checkins")
+      .select("event_id, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (cErr) { console.warn("checkins load error", cErr); none.classList.remove("hidden"); return; }
+
+    if (!checkins?.length) {
+      none.classList.remove("hidden");
+      countEl.textContent = "";
+      return;
+    }
+
+    const eventIds = [...new Set(checkins.map(c => c.event_id))];
+    const { data: events, error: eErr } = await sb
+      .from("events")
+      .select("id, name, start_time, end_time, points, location")
+      .in("id", eventIds);
+    if (eErr) { console.warn("events load error", eErr); none.classList.remove("hidden"); return; }
+
+    const eventsById = Object.fromEntries((events || []).map(e => [e.id, e]));
+    let rendered = 0;
+
+    for (const chk of checkins) {
+      const ev = eventsById[chk.event_id];
+      if (!ev) continue;
+
+      const tmpl = document.getElementById("checkinCardTmpl").content.cloneNode(true);
+      tmpl.querySelector("[data-date]").textContent = fmtDateRange(ev.start_time, ev.end_time);
+      tmpl.querySelector("[data-name]").textContent = esc(ev.name);
+      tmpl.querySelector("[data-location]").textContent = ev.location ? `Location: ${esc(ev.location)}` : "";
+      tmpl.querySelector("[data-points]").textContent = typeof ev.points === "number" ? `+${ev.points} pts` : "";
+
+      list.appendChild(tmpl);
+      rendered++;
+    }
+
+    countEl.textContent = rendered ? `${rendered} total` : "";
+    none.classList.toggle("hidden", rendered > 0);
+  }
+
+  function wireForms(user) {
+    $("#accountForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const btn = $("#saveProfileBtn");
+      const msg = $("#accountMsg");
+      btn.disabled = true; msg.textContent = "Saving…";
+
+      const display_name = $("#displayName").value.trim();
+      const team_name = $("#team").value.trim();
+      const grad_year_val = $("#gradYear").value ? parseInt($("#gradYear").value, 10) : null;
+
+      const { error } = await sb.from("profiles").upsert({
+        id: user.id,
+        display_name,
+        team_name,
+        grad_year: grad_year_val
+      }, { onConflict: "id" });
+
+      if (!error && display_name) {
+        await sb.auth.updateUser({ data: { display_name } }).catch(()=>{});
+        $("#acctName").textContent = display_name;
+      }
+
+      btn.disabled = false;
+      msg.textContent = error ? "Save failed. Try again." : "Saved!";
+      setTimeout(() => msg.textContent = "", 2500);
     });
 
-    // ===== Boot/Auth =====
-    (async () => {
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) { window.location.href = LOGIN_PAGE || "login.html"; return; }
+    $("#passwordForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const pwd = $("#newPassword").value;
+      const btn = $("#savePwdBtn");
+      const msg = $("#pwdMsg");
+      if (!pwd || pwd.length < 8) { msg.textContent = "Use at least 8 characters."; return; }
 
-      const { data: { user } } = await sb.auth.getUser();
-      $("#acctName").textContent = user.user_metadata?.display_name || user.email || "Account";
+      btn.disabled = true; msg.textContent = "Updating…";
+      const { error } = await sb.auth.updateUser({ password: pwd });
+      btn.disabled = false;
+      msg.textContent = error ? "Password update failed." : "Password updated!";
+      if (!error) { $("#newPassword").value = ""; }
+      setTimeout(() => msg.textContent = "", 2500);
+    });
+  }
+</script>
 
-      const doLogout = async () => { await sb.auth.signOut(); window.location.href = LOGIN_PAGE || "login.html"; };
-      $("#logoutBtn")?.addEventListener("click", doLogout);
-      $("#logoutBtnMobile")?.addEventListener("click", doLogout);
-
-      // Load profile + checkins
-      await loadProfile(user);
-      await loadCheckins(user);
-
-      // Wire up forms
-      wireForms(user);
-    })();
-
-    async function loadProfile(user) {
-      const { data: profile, error } = await sb.from("profiles")
-        .select("display_name, team_name, grad_year")
-        .eq("id", user.id).single();
-      if (error) console.warn("profiles load error", error);
-
-      $("#displayName").value = profile?.display_name ?? user.user_metadata?.display_name ?? "";
-      $("#email").value = user.email ?? "";
-      $("#team").value = profile?.team_name ?? "";
-      $("#gradYear").value = profile?.grad_year ?? "";
-    }
-
-    async function loadCheckins(user) {
-      const list = $("#checkinsList");
-      const none = $("#noCheckins");
-      const countEl = $("#checkinsCount");
-      list.innerHTML = "";
-
-      // 1) Grab user's checkins (most recent first)
-      const { data: checkins, error: cErr } = await sb
-        .from("checkins")
-        .select("event_id, created_at")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false });
-      if (cErr) { console.warn("checkins load error", cErr); none.classList.remove("hidden"); return; }
-
-      if (!checkins?.length) {
-        none.classList.remove("hidden");
-        countEl.textContent = "";
-        return;
-      }
-
-      // 2) Fetch event details in a single query
-      const eventIds = [...new Set(checkins.map(c => c.event_id))];
-      const { data: events, error: eErr } = await sb
-        .from("events")
-        .select("id, name, start_time, end_time, points, location")
-        .in("id", eventIds);
-      if (eErr) { console.warn("events load error", eErr); none.classList.remove("hidden"); return; }
-
-      const eventsById = Object.fromEntries((events || []).map(e => [e.id, e]));
-      let rendered = 0;
-
-      // 3) Render cards in the same order as checkins (latest first)
-      for (const chk of checkins) {
-        const ev = eventsById[chk.event_id];
-        if (!ev) continue;
-
-        const tmpl = document.getElementById("checkinCardTmpl").content.cloneNode(true);
-        tmpl.querySelector("[data-date]").textContent = fmtDateRange(ev.start_time, ev.end_time);
-        tmpl.querySelector("[data-name]").textContent = esc(ev.name);
-        tmpl.querySelector("[data-location]").textContent = ev.location ? `Location: ${esc(ev.location)}` : "";
-        tmpl.querySelector("[data-points"]).textContent = typeof ev.points === "number" ? `+${ev.points} pts` : "";
-
-        list.appendChild(tmpl);
-        rendered++;
-      }
-
-      countEl.textContent = rendered ? `${rendered} total` : "";
-      none.classList.toggle("hidden", rendered > 0);
-    }
-
-    function wireForms(user) {
-      // Save profile (display_name, team_name, grad_year)
-      $("#accountForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const btn = $("#saveProfileBtn");
-        const msg = $("#accountMsg");
-        btn.disabled = true; msg.textContent = "Saving…";
-
-        const display_name = $("#displayName").value.trim();
-        const team_name = $("#team").value.trim();
-        const grad_year_val = $("#gradYear").value ? parseInt($("#gradYear").value, 10) : null;
-
-        const { error } = await sb.from("profiles").upsert({
-          id: user.id,
-          display_name,
-          team_name,
-          grad_year: grad_year_val
-        }, { onConflict: "id" });
-
-        if (!error && display_name) {
-          await sb.auth.updateUser({ data: { display_name } }).catch(()=>{});
-          $("#acctName").textContent = display_name;
-        }
-
-        btn.disabled = false;
-        msg.textContent = error ? "Save failed. Try again." : "Saved!";
-        setTimeout(() => msg.textContent = "", 2500);
-      });
-
-      // Password update
-      $("#passwordForm").addEventListener("submit", async (e) => {
-        e.preventDefault();
-        const pwd = $("#newPassword").value;
-        const btn = $("#savePwdBtn");
-        const msg = $("#pwdMsg");
-        if (!pwd || pwd.length < 8) { msg.textContent = "Use at least 8 characters."; return; }
-
-        btn.disabled = true; msg.textContent = "Updating…";
-        const { error } = await sb.auth.updateUser({ password: pwd });
-        btn.disabled = false;
-        msg.textContent = error ? "Password update failed." : "Password updated!";
-        if (!error) { $("#newPassword").value = ""; }
-        setTimeout(() => msg.textContent = "", 2500);
-      });
-    }
-  </script>
 </body>
 </html>

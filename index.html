@@ -1,4 +1,4 @@
-<!doctype html> 
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -101,10 +101,7 @@
 
   <!-- Main Content -->
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-
-    <!-- Grid: mobile order - Your Points (1), Today's Events (2), Quick Links (3) -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
       <!-- Your Points (Summary) -->
       <section class="lg:col-span-1 order-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-4">
@@ -158,7 +155,6 @@
           </ul>
         </div>
       </section>
-
     </div>
   </main>
 
@@ -246,13 +242,17 @@
     return err?.message || 'Check-in failed. Please try again.';
   }
 
-  // ===== Summary wiring (labels if present, numeric fallback) =====
+  // ===== Summary wiring (label-aware, safe fallbacks) =====
   function applySummary(prof) {
-    const pts = prof?.points_total ?? 0;
+    const pts = (prof?.points_total ?? prof?.points ?? 0) | 0;
 
-    // Prefer label fields (e.g., "T1"); fall back to numeric; then "—"
+    // Prefer *_label, then numeric, then "—"
     const ind = prof?.rank_label ?? (prof?.rank != null ? String(prof.rank) : '—');
-    const tr  = prof?.team_rank_label ?? (prof?.team_rank != null ? String(prof.team_rank) : '—');
+
+    // Team rank may not exist in some profile views
+    const tr  = prof?.team_rank_label ??
+                (prof?.team_rank != null ? String(prof.team_rank) :
+                 (prof?.team_rank_num != null ? String(prof.team_rank_num) : '—'));
 
     $('#pointsTotal')?.textContent    = pts;
     $('#individualRank')?.textContent = ind;
@@ -264,24 +264,36 @@
   }
 
   async function refreshProfilePoints() {
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
+    try {
+      const { data: { user } } = await sb.auth.getUser();
+      if (!user) return;
 
-    const { data: prof, error } = await sb
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single();
+      const { data: prof, error } = await sb
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
 
-    if (!error && prof) applySummary(prof);
+      if (!error && prof) applySummary(prof);
+      else if (error) console.error('profiles error', error);
+    } catch (e) {
+      console.error('profiles fetch crashed', e);
+    }
   }
 
-  // ===== Today list (unchanged except for boxed rows) =====
+  // ===== Today list =====
   function todayRow(ev) {
+    // Accept either `title` or `name` from the view
+    const title = (ev.title ?? ev.name ?? '').toString();
     const already = !!ev.user_checked_in;
-    const whenLine = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
-    const badge = ev.points
-      ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>`
+
+    const start = ev.start_ts ?? ev.start_time ?? ev.start ?? ev.start_at;
+    const end   = ev.end_ts   ?? ev.end_time   ?? ev.end   ?? ev.end_at;
+
+    const whenLine = `${fmtDate(start)} · ${fmtTime(start)}–${fmtTime(end)}`;
+    const pts = (ev.points ?? ev.point_value ?? ev.score ?? null);
+    const badge = pts
+      ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${pts} pts</span>`
       : '';
 
     const action = already
@@ -289,20 +301,20 @@
       : `<button
            class="checkin-btn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95"
            data-event-id="${ev.id}"
-           data-event-name="${escapeHtml(ev.title)}"
-           data-event-points="${ev.points ?? ''}">
+           data-event-name="${escapeHtml(title)}"
+           data-event-points="${pts ?? ''}">
            Check in
          </button>`;
 
-    const hasLoc = !!(ev.location && ev.location.trim());
-    const locHTML = hasLoc ? `
+    const loc = (ev.location ?? ev.venue ?? ev.place ?? '').toString().trim();
+    const locHTML = loc ? `
       <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
         <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10c0 7-7.5 10.5-7.5 10.5S4.5 17 4.5 10a7.5 7.5 0 1115 0z" />
         </svg>
-        <a href="${mapsLink(ev.location)}" target="_blank" rel="noopener noreferrer" class="truncate hover:underline" aria-label="Open ${escapeHtml(ev.location)} in Google Maps">
-          ${escapeHtml(ev.location)}
+        <a href="${mapsLink(loc)}" target="_blank" rel="noopener noreferrer" class="truncate hover:underline" aria-label="Open ${escapeHtml(loc)} in Google Maps">
+          ${escapeHtml(loc)}
         </a>
       </p>` : '';
 
@@ -311,7 +323,7 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div class="min-w-0">
             <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate">
-              ${escapeHtml(ev.title)} ${badge}
+              ${escapeHtml(title)} ${badge}
             </h3>
             <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5">${whenLine}</p>
             ${locHTML}
@@ -323,6 +335,24 @@
         </div>
       </article>`;
   }
+
+  // Safe no-ops for shared module hooks if missing
+  const initCheckinButtonsSafe = () => {
+    if (typeof window.initCheckinButtons === 'function') {
+      window.initCheckinButtons();
+    } else {
+      // Graceful fallback: wire basic click -> toast
+      $$('.checkin-btn').forEach(btn => {
+        btn.addEventListener('click', () => toast('Check-in module not loaded.', {variant:'warn'}));
+      });
+    }
+  };
+
+  const syncCheckedInUISafe = () => {
+    if (typeof window.syncCheckedInUI === 'function') {
+      window.syncCheckedInUI();
+    }
+  };
 
   async function ensureAuthed() {
     const { data: { session } } = await sb.auth.getSession();
@@ -348,7 +378,7 @@
     $('#logoutBtn')?.addEventListener('click', doLogout);
     $('#logoutBtnMobile')?.addEventListener('click', doLogout);
 
-    // Keep header/data fresh on auth state changes
+    // Keep header/data fresh on auth changes
     sb.auth.onAuthStateChange(async (_event, sess) => {
       if (sess?.user) {
         $('#acctName').textContent = sess.user.user_metadata?.display_name || sess.user.email || 'Account';
@@ -356,14 +386,14 @@
       }
     });
 
-    // Fill summary immediately on first load
+    // Fill summary immediately
     await refreshProfilePoints();
 
-    // Today header (in PT)
+    // Today header (PT)
     const todayPT = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
     $('#todayDate').textContent = todayPT.toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
 
-    // ----- Load Profile from public.profiles (initial paint, same fields) -----
+    // Load Profile again (one-shot, same fields; safe if earlier call failed)
     try {
       const { data: prof, error: pErr } = await sb
         .from('profiles')
@@ -372,31 +402,32 @@
         .single();
 
       if (!pErr && prof) applySummary(prof);
-      else console.error('profiles error', pErr);
+      else if (pErr) console.error('profiles error', pErr);
     } catch (e) {
       console.error('profiles fetch crashed', e);
     }
 
-    // ----- Load Today’s Events from public.events_today -----
+    // Load Today’s Events from public.events_today (field-name tolerant)
     const list = $('#todayList');
     const empty = $('#todayEmpty');
     try {
       const { data: todays, error: tErr } = await sb
         .from('events_today')
-        .select('id, title, start_ts, end_ts, location, points, user_checked_in')
+        .select('id, title, name, start_ts, start_time, end_ts, end_time, location, venue, points, user_checked_in')
         .order('start_ts', { ascending: true });
 
       if (tErr) {
         console.error('events_today error', tErr);
         list.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">Could not load today’s events.</div>`;
+        empty.classList.add('hidden'); // Hide empty if it's an error
       } else {
         const rows = (todays || []).map(todayRow).join('');
         list.innerHTML = rows;
         empty.classList.toggle('hidden', (todays || []).length > 0);
 
-        // Wire buttons using shared module
-        initCheckinButtons();
-        if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
+        // Wire buttons using shared module (safe)
+        initCheckinButtonsSafe();
+        syncCheckedInUISafe();
 
         // Deep-link focus: index.html?event=<uuid>#today
         (function focusDeepLinkedEvent() {

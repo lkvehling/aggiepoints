@@ -116,8 +116,11 @@
       <!-- This Week -->
       <section id="week" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
-          <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">This Week</h2>
-          <!-- changed from divide-y to space-y to accommodate boxed rows -->
+          <div class="flex items-baseline justify-between mb-2">
+            <h2 class="font-ui text-xl font-semibold text-aggieBlue">This Week</h2>
+            <!-- NEW: rolling 7-day range label -->
+            <p id="weekRangeText" class="font-ui text-sm text-ink/60"></p>
+          </div>
           <div id="weekList" class="space-y-4"></div>
           <div id="weekEmpty" class="hidden font-ui text-ink/60">No events this week.</div>
         </div>
@@ -126,7 +129,11 @@
       <!-- This Month -->
       <section id="month" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
-          <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">This Month</h2>
+          <div class="flex items-baseline justify-between mb-2">
+            <h2 class="font-ui text-xl font-semibold text-aggieBlue">This Month</h2>
+            <!-- NEW: month name/year label -->
+            <p id="monthRangeText" class="font-ui text-sm text-ink/60"></p>
+          </div>
           <div id="monthList" class="space-y-4"></div>
           <!-- intentionally no empty label for Month -->
         </div>
@@ -135,7 +142,10 @@
       <!-- All Upcoming -->
       <section id="upcoming" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
-          <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">All Upcoming</h2>
+          <div class="flex items-baseline justify-between mb-2">
+            <h2 class="font-ui text-xl font-semibold text-aggieBlue">All Upcoming</h2>
+            <!-- (no date range label for this one) -->
+          </div>
           <div id="upcomingList" class="space-y-4"></div>
           <div id="upcomingEmpty" class="hidden font-ui text-ink/60">No upcoming events.</div>
         </div>
@@ -263,19 +273,12 @@
       catch { return new Set(); }
     }
 
-    // === Local cache reader (used by eventRow to honor cross-tab state) ===
-    function getCheckedSet() {
-      try { return new Set(JSON.parse(localStorage.getItem('aggie_checked_in_ids') || '[]')); }
-      catch { return new Set(); }
-    }
-
-    // Row renderer — wrapped in a "box" card like Settings
+    // === Row renderer (boxed card) ===
     function eventRow(ev) {
       const today   = isTodayPT(ev.start_ts);
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
       const isLocalChecked = getCheckedSet().has(ev.id);
 
-      // Time line
       const timeLine = today
         ? sameDayTitle(ev.start_ts, ev.end_ts)
         : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)}`;
@@ -303,7 +306,6 @@
         action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not Open Yet</span>`;
       }
 
-      // Location line
       const hasLoc = !!(ev.location && ev.location.trim());
       const locHTML = hasLoc ? `
         <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
@@ -316,20 +318,16 @@
           </a>
         </p>` : '';
 
-      // BOXED CARD WRAPPER (only change requested)
       return `
         <article class="rounded-2xl border border-aggieBlue/10 bg-white p-4 shadow-soft"
                  data-title="${escapeHtml(ev.title).toLowerCase()}"
                  data-location="${escapeHtml(ev.location||'').toLowerCase()}">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="min-w-0">
-              <!-- Name -->
               <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate">
                 ${escapeHtml(ev.title)} ${pts}
               </h3>
-              <!-- Date & time -->
               <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5">${timeLine}</p>
-              <!-- Location (clickable) -->
               ${locHTML}
             </div>
             <div class="shrink-0">
@@ -350,73 +348,36 @@
     // === Reconcile local "checked" cache against server truth and fix UI ===
     async function reconcileCheckedInsFromServer() {
       try {
-        // Gather event IDs on the page
         const slots = Array.from(document.querySelectorAll('.checkin-slot[data-event-id]'));
         const eventIds = [...new Set(slots.map(s => s.getAttribute('data-event-id')).filter(Boolean))];
         if (!eventIds.length) return;
-    
-        // Current user
         const { data: { user } } = await sb.auth.getUser();
         if (!user) return;
-    
-        // Which of these events are actually checked in (server truth)?
         const { data: rows, error } = await sb
           .from('checkins')
           .select('event_id')
           .eq('user_id', user.id)
           .in('event_id', eventIds);
-    
         if (error) { console.warn('reconcile error', error); return; }
-    
         const serverSet = new Set((rows || []).map(r => r.event_id));
-    
-        // Local cache helpers (same key used by checkin.js)
         const LS_KEY = 'aggie_checked_in_ids';
         const getLocal = () => {
           try { return new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]')); }
           catch { return new Set(); }
         };
         const saveLocal = (set) => localStorage.setItem(LS_KEY, JSON.stringify([...set]));
-    
         const localSet = getLocal();
-    
-        // Time helpers to rebuild correct control if not checked server-side
-        const TZ = 'America/Los_Angeles';
-        const WINDOW_BEFORE_MIN = 20;
-        const WINDOW_CLOSE_MIN  = 10;
-        const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
-        const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
-        const isTodayPT = (ts) => {
-          const d = toPT(ts), n = nowPT();
-          return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
-        };
-        const isCheckinWindow = (start_ts, end_ts) => {
-          const start = toPT(start_ts);
-          const end   = toPT(end_ts);
-          const open  = new Date(start.getTime() - WINDOW_BEFORE_MIN * 60 * 1000);
-          const close = new Date(end.getTime()   - WINDOW_CLOSE_MIN  * 60 * 1000);
-          const now   = nowPT();
-          return now >= open && now <= close;
-        };
-        const isClosed = (end_ts) => {
-          const end   = toPT(end_ts);
-          const close = new Date(end.getTime() - WINDOW_CLOSE_MIN * 60 * 1000);
-          return nowPT() > close;
-        };
-    
-        // For anything the local cache says "checked" but server does NOT:
+
+        const isClosed = (end_ts) => nowPT() > new Date(toPT(end_ts).getTime() - WINDOW_CLOSE_MIN * 60 * 1000);
+
         localSet.forEach(id => {
           if (!serverSet.has(id)) {
-            // 1) Remove from cache
             localSet.delete(id);
-    
-            // 2) Fix UI in place for this event id
             document.querySelectorAll(`.checkin-slot[data-event-id="${id}"]`).forEach(slot => {
               const start = slot.getAttribute('data-start');
               const end   = slot.getAttribute('data-end');
               const title = slot.getAttribute('data-title-full') || '';
               const pts   = slot.getAttribute('data-points') || '';
-    
               let html;
               if (start && end && isTodayPT(start) && isCheckinWindow(start, end)) {
                 html = `<button
@@ -431,19 +392,46 @@
               } else {
                 html = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not Open Yet</span>`;
               }
-    
               slot.innerHTML = html;
             });
           }
         });
-    
-        // 3) Save cleaned cache and rewire any restored buttons
         saveLocal(localSet);
         if (typeof window.initCheckinButtons === 'function') window.initCheckinButtons();
-    
       } catch (e) {
         console.warn('reconcile exception', e);
       }
+    }
+
+    // ===== NEW: Section date labels =====
+    function ordinal(n) {
+      const s = ["th","st","nd","rd"], v = n % 100;
+      return s[(v-20)%10] || s[v] || s[0];
+    }
+    function startOfDayPT(d) {
+      const copy = new Date(d);
+      copy.setHours(0,0,0,0);
+      return copy;
+    }
+    // Rolling 7-day range starting today (per your example: "September 13–20th, 2025")
+    function formatThisWeekRangeLabel() {
+      const today = startOfDayPT(nowPT());
+      const end = new Date(today); end.setDate(end.getDate() + 7);
+      const sameMonth = today.getMonth() === end.getMonth();
+      const sameYear = today.getFullYear() === end.getFullYear();
+      if (sameMonth && sameYear) {
+        const monthFull = today.toLocaleString('en-US', { timeZone: TZ, month: 'long' });
+        return `${monthFull} ${today.getDate()}–${end.getDate()}${ordinal(end.getDate())}, ${today.getFullYear()}`;
+      } else {
+        const left = today.toLocaleString('en-US', { timeZone: TZ, month: 'short', day: 'numeric' });
+        const rightMonth = end.toLocaleString('en-US', { timeZone: TZ, month: 'short' });
+        return `${left} – ${rightMonth} ${end.getDate()}${ordinal(end.getDate())}, ${end.getFullYear()}`;
+      }
+    }
+    function formatThisMonthLabel() {
+      const now = nowPT();
+      const monthFull = now.toLocaleString('en-US', { timeZone: TZ, month: 'long' });
+      return `${monthFull} ${now.getFullYear()}`;
     }
 
     // ===== Page boot =====
@@ -453,7 +441,7 @@
       $('#acctBtn')?.addEventListener('click', () => { const m = $('#acctMenu'); if (m) m.classList.toggle('hidden'); });
       $('#yearText').textContent = new Date().getFullYear();
 
-      // Account label (best-effort)
+      // Account label
       try {
         const { data: { user } } = await sb.auth.getUser();
         if (user) $('#acctName').textContent = user.user_metadata?.display_name || user.email || 'Account';
@@ -466,22 +454,26 @@
       $('#logoutBtn')?.addEventListener('click', doLogout);
       $('#logoutBtnMobile')?.addEventListener('click', doLogout);
 
+      // NEW: Set section labels
+      $('#weekRangeText').textContent  = formatThisWeekRangeLabel();
+      $('#monthRangeText').textContent = formatThisMonthLabel();
+
       // ===== Fetch & render lists =====
+      function renderListInto(listEl, rows) {
+        listEl.innerHTML = (rows || []).map(eventRow).join('');
+        initCheckinButtons();
+      }
+
       async function loadSection(viewName, listEl, emptyEl) {
         const { data, error } = await sb
           .from(viewName)
           .select('id,title,start_ts,end_ts,location,points')
           .order('start_ts', { ascending: true });
-      
         if (error) { uiError(listEl, error); toggle(emptyEl, true); return []; }
-      
-        listEl.innerHTML = (data || []).map(eventRow).join('');
+        renderListInto(listEl, data || []);
         toggle(emptyEl, (data || []).length === 0);
-      
-        initCheckinButtons();
         if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
         await reconcileCheckedInsFromServer();
-      
         return data || [];
       }
 
@@ -489,15 +481,47 @@
       const monthListEl = $('#monthList'); // no empty element by design
       const upcomingListEl = $('#upcomingList'), upcomingEmptyEl = $('#upcomingEmpty');
 
-      await loadSection('events_this_week', weekListEl, weekEmptyEl);
+      // Load base views
+      const weekRows    = await loadSection('events_this_week', weekListEl, weekEmptyEl);
       await loadSection('events_this_month_excl_week', monthListEl, null);
-      await loadSection('events_upcoming', upcomingListEl, upcomingEmptyEl);
+      const upcomingRows = await loadSection('events_upcoming', upcomingListEl, upcomingEmptyEl);
+
+      // ===== NEW: Ensure TODAY appears in "This Week" and "All Upcoming", but not "This Month" =====
+      // We fetch today's events and merge them in if a backend view omitted them for any reason.
+      let todayRows = [];
+      try {
+        const { data: tData, error: tErr } = await sb
+          .from('events_today')
+          .select('id,title,start_ts,end_ts,location,points')
+          .order('start_ts', { ascending: true });
+        if (!tErr && Array.isArray(tData)) todayRows = tData;
+      } catch {}
+
+      if (todayRows.length) {
+        const byId = (arr) => new Set(arr.map(e => e.id));
+        // Merge into week
+        const weekIds = byId(weekRows);
+        const mergedWeek = [...weekRows];
+        todayRows.forEach(e => { if (!weekIds.has(e.id)) mergedWeek.unshift(e); });
+        renderListInto(weekListEl, mergedWeek);
+        toggle(weekEmptyEl, mergedWeek.length === 0);
+
+        // Merge into upcoming
+        const upIds = byId(upcomingRows);
+        const mergedUpcoming = [...upcomingRows];
+        todayRows.forEach(e => { if (!upIds.has(e.id)) mergedUpcoming.unshift(e); });
+        renderListInto(upcomingListEl, mergedUpcoming);
+        toggle(upcomingEmptyEl, mergedUpcoming.length === 0);
+
+        // DO NOT touch monthListEl (must exclude today by requirement)
+        if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
+        await reconcileCheckedInsFromServer();
+      }
 
       // ===== Search (client-side across all sections) =====
       const searchInput = $('#searchInput');
       const searchHint = $('#searchHint');
 
-      // seed from ?q=
       const params = new URLSearchParams(location.search);
       const initialQ = params.get('q'); if (initialQ) searchInput.value = initialQ;
 
@@ -522,7 +546,6 @@
             row.classList.toggle('hidden', !match);
             if (match) shown++;
           });
-          // During search: show empty only if nothing matched in that section
           if (empty) toggle(empty, term ? (shown === 0) : (rows.length === 0));
           totalShown += shown;
         });

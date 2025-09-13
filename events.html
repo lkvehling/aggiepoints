@@ -92,7 +92,7 @@
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
       <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">All Events</h1>
-      <p class="mt-1 font-ui text-white/90">Plan ahead. If an event is today and in the check-in window, you can check in from Home.</p>
+      <p class="mt-1 font-ui text-white/90">Plan ahead. If an event is today and in the check-in window, you can check in from here or from Home.</p>
 
       <!-- Search bar -->
       <div class="mt-6">
@@ -152,6 +152,8 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
+  <!-- Shared check-in module (same file used on Home) -->
+  <script src="checkin.js"></script>
 
   <script>
     // ===== Helpers =====
@@ -192,6 +194,52 @@
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
+    // Simple themed toast (same look as Home)
+    function toast(message, { variant = 'info', timeout = 3500 } = {}) {
+      const root = document.querySelector('#toast-root > div');
+      if (!root) return alert(message);
+      const variants = {
+        success: 'bg-green-100 text-green-900 ring-1 ring-green-300',
+        error:   'bg-red-100 text-red-900 ring-1 ring-red-300',
+        info:    'bg-aggieBlue/10 text-aggieBlue ring-1 ring-aggieBlue/30',
+        warn:    'bg-yellow-100 text-yellow-900 ring-1 ring-yellow-300'
+      };
+      const cls = variants[variant] || variants.info;
+      const el = document.createElement('div');
+      el.setAttribute('role','status');
+      el.className = 'pointer-events-auto max-w-sm w-[360px] rounded-2xl shadow-soft px-4 py-3 font-ui text-sm backdrop-blur flex items-start gap-3 ' + cls;
+      el.innerHTML = `
+        <div class="shrink-0 pt-0.5">${variant==='success'?'✅':variant==='warn'?'⚠️':variant==='info'?'ℹ️':'❌'}</div>
+        <div class="min-w-0 leading-snug">${message}</div>
+        <button class="ml-auto shrink-0 opacity-70 hover:opacity-100" aria-label="Close">✕</button>
+      `;
+      el.querySelector('button').addEventListener('click', () => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); });
+      root.appendChild(el);
+      if (timeout > 0) setTimeout(() => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); }, timeout);
+    }
+    (function injectToastAnim(){
+      const style = document.createElement('style');
+      style.textContent = `@keyframes toast-fade-out { to { opacity: 0; transform: translateY(-4px); } } .animate-fade-out { animation: toast-fade-out .15s ease forwards; }`;
+      document.head.appendChild(style);
+    })();
+
+    // Error text mapping (same as Home)
+    function showCheckinError(err) {
+      const code = err?.code;
+      const details = err?.details || '';
+      if (code === '22P02' || /invalid input syntax for type uuid/i.test(details)) return 'Invalid event id. Please refresh and try again.';
+      if (code === '23503' || /foreign key/i.test(details))               return 'This event no longer exists. Please refresh the page.';
+      if (code === 'PGRST301' || code === '401' || /JWT|auth/i.test(details)) return 'You must be signed in to check in.';
+      if (/Missing required input parameter: event_id/i.test(details))    return 'Check-in misconfigured (missing event id). Please contact an admin.';
+      if (code === '42501')                                               return 'You do not have permission to check in to this event.';
+      if (/outside_geofence/i.test(details))                              return 'You must be at the venue to check in.';
+      if (/outside_time_window/i.test(details))                           return 'This event is not currently active (20 min before start → 10 min before end).';
+      if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please allow location access and try again.';
+      if (/low_accuracy/i.test(details))                                  return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled.';
+      if (/missing_accuracy/i.test(details))                              return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
+      return err?.message || 'Check-in failed. Please try again.';
+    }
+
     function uiError(el, err) {
       const msg = [
         'Could not load events.',
@@ -202,7 +250,7 @@
       el.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">${msg}</div>`;
     }
 
-    // Row renderer — safe "Check in" logic
+    // Row renderer — now supports *direct* check-in when today && within window
     function eventRow(ev) {
       const today   = isTodayPT(ev.start_ts);
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
@@ -221,7 +269,14 @@
 
       let action;
       if (today && canNow) {
-        action = `<a href="index.html?event=${encodeURIComponent(ev.id)}#today" class="px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95">Check in</a>`;
+        // DIRECT CHECK-IN on Events page (shared module)
+        action = `<button
+          class="checkin-btn px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95"
+          data-event-id="${ev.id}"
+          data-event-name="${escapeHtml(ev.title)}"
+          data-event-points="${ev.points ?? ''}">
+          Check in
+        </button>`;
       } else if (today) {
         action = nowPT() > closeAtPT(ev.end_ts)
           ? `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`
@@ -277,6 +332,10 @@
         listEl.innerHTML = (data || []).map(eventRow).join('');
         // Show the empty message ONLY when there are zero rows
         toggle(emptyEl, (data || []).length === 0);
+
+        // Wire any check-in buttons rendered in this section
+        initCheckinButtons();
+
         return data || [];
       }
 
@@ -335,5 +394,10 @@
       searchInput.addEventListener('input', (e) => applySearch(e.target.value));
     })();
   </script>
+
+  <!-- Toast root (for themed notices) -->
+  <div id="toast-root" class="fixed inset-0 pointer-events-none z-[1000]">
+    <div class="absolute top-4 right-4 space-y-3"></div>
+  </div>
 </body>
 </html>

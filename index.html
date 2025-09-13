@@ -281,7 +281,7 @@
   
     const { data: prof, error } = await sb
       .from('profiles')
-      .select('.select('points_total, rank, team_rank, individual_is_tied, team_is_tied')
+      .select('points_total, rank, team_rank, individual_is_tied, team_is_tied')
       .eq('id', user.id)
       .single();
   

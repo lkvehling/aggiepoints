@@ -107,32 +107,35 @@
 
       <!-- Your Points (Summary) -->
       <section class="lg:col-span-1 order-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-        <div class="p-4">
+        <div class="p-4"> <!-- smaller padding -->
           <h2 class="font-ui text-lg font-semibold text-aggieBlue mb-3">Your Summary</h2>
-
+      
           <div class="space-y-3">
+            <!-- Keep big points number -->
             <div>
               <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Total Points</div>
               <div id="pointsTotal" class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">—</div>
             </div>
-
+      
+            <!-- Smaller ranks -->
             <div>
               <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Individual Rank</div>
               <div class="mt-1 text-xl font-heading font-extrabold text-aggieBlue"><span id="individualRank">—</span></div>
             </div>
-
+      
             <div>
               <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Team Rank</div>
               <div class="mt-1 text-xl font-heading font-extrabold text-aggieBlue"><span id="teamRank">—</span></div>
             </div>
           </div>
-
+      
           <div class="mt-5 flex gap-3">
             <a href="leaderboard.html" class="px-4 py-2 rounded-lg bg-aggieBlue text-white font-ui hover:bg-aggieBlue/90">Leaderboards</a>
             <a href="events.html" class="px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95">All Events</a>
           </div>
         </div>
       </section>
+
 
       <!-- Today's Events -->
       <section id="today" class="lg:col-span-2 order-2 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
@@ -142,6 +145,7 @@
             <div class="text-sm font-ui text-ink/60"><span id="todayDate">—</span></div>
           </div>
 
+          <!-- CHANGED: use space between boxed rows -->
           <div id="todayList" class="mt-4 space-y-4"></div>
           <div id="todayEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No events today.</div>
         </div>
@@ -172,11 +176,11 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
-  <!-- shared check-in module -->
+  <!-- NEW: shared check-in module used by both Home and Events -->
   <script src="checkin.js"></script>
 
   <script>
-  // ========= Helpers =========
+  // ========= Helpers (match SQL) =========
   const $  = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
   const toggle = (el) => el.classList.toggle('hidden');
@@ -188,6 +192,7 @@
   const fmtDate = (ts) => new Date(ts).toLocaleDateString([], {timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
   const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], {timeZone:TZ, hour:'numeric', minute:'2-digit'});
 
+  // Google Maps link for location text
   function mapsLink(locationText) {
     if (!locationText) return null;
     return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
@@ -246,37 +251,39 @@
     return err?.message || 'Check-in failed. Please try again.';
   }
 
-  // ===== Summary wiring (labels if present, numeric fallback) =====
   function applySummary(prof) {
     const pts = prof?.points_total ?? 0;
-
-    // Prefer label fields (e.g., "T1"); fall back to numeric; then "—"
+  
+    // Prefer label fields (e.g., "T1") if present; fall back to numbers
     const ind = prof?.rank_label ?? (prof?.rank != null ? String(prof.rank) : '—');
     const tr  = prof?.team_rank_label ?? (prof?.team_rank != null ? String(prof.team_rank) : '—');
-
-    $('#pointsTotal')?.textContent    = pts;
-    $('#individualRank')?.textContent = ind;
-    $('#teamRank')?.textContent       = tr;
-
-    // Back-compat (if old ids exist anywhere)
-    $('#rank')?.textContent = ind;
-    $('#team')?.textContent = tr;
+  
+    const $id = (s) => document.querySelector(s);
+    $id('#pointsTotal')    && ($id('#pointsTotal').textContent    = pts);
+    $id('#individualRank') && ($id('#individualRank').textContent = ind);
+    $id('#teamRank')       && ($id('#teamRank').textContent       = tr);
+  
+    // Back-compat if old IDs still exist anywhere
+    $id('#rank') && ($id('#rank').textContent = ind);
+    $id('#team') && ($id('#team').textContent = tr);
   }
+
 
   async function refreshProfilePoints() {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return;
-
+  
     const { data: prof, error } = await sb
       .from('profiles')
-      .select('display_name, points_total, rank, team_rank, rank_label, team_rank_label, team_name')
+      .select('points_total, rank, team_rank, rank_label, team_rank_label, team_name')
       .eq('id', user.id)
       .single();
-
+  
     if (!error && prof) applySummary(prof);
   }
 
-  // ===== Today list (unchanged except for boxed rows) =====
+
+  // UPDATED: wrap each event in a boxed card (only change)
   function todayRow(ev) {
     const already = !!ev.user_checked_in;
     const whenLine = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
@@ -355,27 +362,26 @@
         await refreshProfilePoints();
       }
     });
-
-    // Fill summary immediately on first load
     await refreshProfilePoints();
 
     // Today header (in PT)
     const todayPT = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
     $('#todayDate').textContent = todayPT.toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
 
-    // ----- Load Profile from public.profiles (initial paint, same fields) -----
+    // ----- Load Profile from public.profiles -----
     try {
       const { data: prof, error: pErr } = await sb
         .from('profiles')
         .select('display_name, points_total, rank, team_rank, rank_label, team_rank_label, team_name')
         .eq('id', user.id)
         .single();
-
+    
       if (!pErr && prof) applySummary(prof);
       else console.error('profiles error', pErr);
     } catch (e) {
       console.error('profiles fetch crashed', e);
     }
+
 
     // ----- Load Today’s Events from public.events_today -----
     const list = $('#todayList');
@@ -416,7 +422,7 @@
       empty.classList.add('hidden');
     }
   })();
-  </script>
+</script>
 
   <!-- Toast root -->
   <div id="toast-root" class="fixed inset-0 pointer-events-none z-[1000]">

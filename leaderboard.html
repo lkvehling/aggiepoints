@@ -106,34 +106,26 @@
 
     <!-- Left column: My summary -->
     <aside class="space-y-6 lg:col-span-1">
-      <!-- My Points (compact for mobile) -->
+      <!-- My Points (compact, aligned labels) -->
       <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <div class="flex items-start justify-between">
-          <div class="min-w-0">
-            <h2 class="font-ui text-xs tracking-wide uppercase text-aggieBlue/80">Your Summary</h2>
+          <h2 class="font-ui text-xs tracking-wide uppercase text-aggieBlue/80">Your Summary</h2>
+          <div class="rounded-xl bg-aggieGold/20 text-aggieBlue px-3 py-1.5 font-ui text-xs font-semibold">Season</div>
+        </div>
 
-            <!-- Points emphasized, with label -->
-            <div class="mt-1">
-              <div class="font-ui text-[11px] text-ink/60">Points</div>
-              <div class="flex items-end gap-3">
-                <span id="myPoints" class="font-heading text-4xl sm:text-5xl font-extrabold text-aggieBlue leading-none">—</span>
-              </div>
-            </div>
+        <!-- Labels left, values right -->
+        <div class="mt-2 grid grid-cols-[auto,1fr] gap-x-3 gap-y-1.5 items-end">
+          <!-- Points -->
+          <div class="font-ui text-[12px] uppercase tracking-wide text-aggieBlue/80">Points</div>
+          <div id="myPoints" class="font-heading text-4xl sm:text-5xl font-extrabold text-aggieBlue leading-none">—</div>
 
-            <!-- Rank + Team smaller and clearly labeled -->
-            <div class="mt-2 space-y-0.5 text-sm font-ui text-ink/80">
-              <div id="myRank" class="flex items-center gap-2">
-                <span class="inline-flex items-center rounded-md bg-aggieBlue/5 px-2 py-0.5 text-[12px] font-semibold text-aggieBlue">Rank</span>
-                <span id="myRankVal">—</span>
-              </div>
-              <div id="myTeam" class="flex items-center gap-2">
-                <span class="inline-flex items-center rounded-md bg-aggieGold/20 px-2 py-0.5 text-[12px] font-semibold text-aggieBlue">Team</span>
-                <span id="myTeamVal">—</span>
-              </div>
-            </div>
-          </div>
+          <!-- Rank -->
+          <div class="font-ui text-[12px] uppercase tracking-wide text-aggieBlue/80">Rank</div>
+          <div id="myRankVal" class="font-ui text-base sm:text-lg font-semibold text-ink/90 leading-tight">—</div>
 
-          <div class="rounded-xl bg-aggieGold/20 text-aggieBlue px-3 py-2 font-ui text-xs font-semibold">Season</div>
+          <!-- Team -->
+          <div class="font-ui text-[12px] uppercase tracking-wide text-aggieBlue/80">Team</div>
+          <div id="myTeamVal" class="font-ui text-base sm:text-lg text-ink/90 leading-tight">—</div>
         </div>
 
         <div class="mt-4 grid grid-cols-2 gap-3">

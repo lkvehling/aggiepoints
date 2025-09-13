@@ -40,7 +40,8 @@
     }
     .card { transition: transform .15s ease, box-shadow .15s ease; }
     .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
-    .label { @apply block text-sm font-ui font-semibold text-aggieBlue mb-1; }
+    /* CHANGED: font-semibold -> font-bold for labels */
+    .label { @apply block text-sm font-ui font-bold text-aggieBlue mb-1; }
     .input { @apply w-full rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieGold/60; }
   </style>
 </head>
@@ -118,7 +119,8 @@
 
         <div class="sm:col-span-2">
           <label class="label">Email:</label>
-          <input id="email" type="email" class="input" placeholder="you@example.com" disabled />
+          <!-- CHANGED: disabled -> readonly, and forced white bg / normal opacity -->
+          <input id="email" type="email" class="input bg-white text-ink opacity-100" placeholder="you@example.com" readonly aria-readonly="true" />
         </div>
 
         <div class="sm:col-span-2">

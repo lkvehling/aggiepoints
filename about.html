@@ -1,12 +1,12 @@
-<!doctype html> 
+<!doctype html>
 <html lang="en">
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Aggie Points — About</title>
 
-  <!-- Fonts (Raleway, Montserrat) -->
-  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
+  <!-- Fonts (Raleway, Montserrat, Merriweather) -->
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
 
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -23,230 +23,68 @@
           fontFamily: {
             heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
             ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
-            body: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"], /* no-serif body */
+            body: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
           },
-          boxShadow: {
-            soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
-          }
-        }
-      }
-    }
+        },
+      },
+    };
   </script>
-
-  <style>
-    :root { --aggie-blue:#022851; --aggie-gold:#FFBF00; }
-    .card { transition: transform .15s ease, box-shadow .15s ease; }
-    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
-  </style>
 </head>
-<body class="min-h-screen bg-aggieBg text-ink font-ui">
+<body class="font-ui bg-aggieBg text-ink min-h-screen flex flex-col">
 
-  <!-- Header / Nav -->
-  <header class="bg-aggieBlue text-white">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between py-3">
-        <a href="index.html" class="flex items-center">
-          <span class="font-ui text-xl font-semibold tracking-wide">Aggie Points</span>
-        </a>
-
-        <nav class="hidden md:flex items-center gap-8 font-ui">
-          <a href="index.html" class="hover:text-aggieGold">Home</a>
-          <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
-          <a href="events.html" class="hover:text-aggieGold">All Events</a>
-          <a href="about.html" class="hover:text-aggieGold">About</a>
-
-          <!-- Account dropdown -->
-          <div class="relative">
-            <button id="acctBtn" class="hover:text-aggieGold flex items-center gap-2">
-              <span id="acctName" class="font-medium">Account</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
-            <div id="acctMenu" class="absolute right-0 mt-2 w-44 bg-white text-ink rounded-lg shadow-soft py-2 hidden">
-              <a href="settings.html" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
-              <button id="logoutBtn" class="w-full text-left block px-4 py-2 hover:bg-gray-100">Log out</button>
-            </div>
-          </div>
-        </nav>
-
-        <!-- Mobile menu button -->
-        <button id="mobileMenuBtn" class="md:hidden inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10">
-          <span class="sr-only">Open main menu</span>
-          <svg class="h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" fill="none">
-            <path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round" />
-          </svg>
+  <!-- NAVBAR -->
+  <nav class="bg-aggieBlue text-white px-4 py-3 flex justify-between items-center">
+    <a href="index.html" class="font-heading font-bold text-lg">Aggie Points</a>
+    <!-- Account dropdown -->
+    <div class="relative">
+      <button id="accountToggle" type="button" class="flex items-center gap-2">
+        Account
+        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+      <div id="accountMenu" class="hidden absolute right-0 mt-2 w-48 rounded-2xl bg-white shadow-lg">
+        <a href="settings.html" class="block px-4 py-2 text-sm text-aggieBlue hover:bg-aggieBg">Settings</a>
+        <button id="logoutBtn" type="button" class="block w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-aggieBg">
+          Logout
         </button>
       </div>
     </div>
+  </nav>
 
-    <!-- Mobile menu -->
-    <div id="mobileMenu" class="md:hidden hidden border-t border-white/10">
-      <div class="space-y-1 px-4 pb-4 pt-2 font-ui">
-        <a href="index.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Home</a>
-        <a href="leaderboard.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Leaderboard</a>
-        <a href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
-        <a href="about.html" class="block px-3 py-2 rounded-md hover:bg-white/10">About</a>
-        <a href="settings.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Settings</a>
-        <button id="logoutBtnMobile" class="w-full text-left block px-3 py-2 rounded-md hover:bg-white/10">Log out</button>
-      </div>
-    </div>
-  </header>
+  <!-- MAIN CONTENT -->
+  <main class="flex-1 max-w-3xl mx-auto p-6">
+    <h1 class="font-heading text-3xl text-aggieBlue mb-4">About Aggie Points</h1>
+    <p class="font-body text-base leading-relaxed mb-4">
+      Aggie Points is a student engagement and reward system that encourages attendance at UC Davis events,
+      from athletics to cultural activities. By checking in at events, you earn points for yourself and your team.
+    </p>
 
-  <!-- Page Header -->
-  <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">About Aggie Points</h1>
-      <p class="mt-1 font-ui text-white/90">What it is, how to earn, and what’s coming next.</p>
-    </div>
-  </section>
+    <h2 class="font-heading text-2xl text-aggieBlue mt-6 mb-2">SAAC Events</h2>
+    <p class="font-body text-base leading-relaxed mb-4">
+      SAAC (Student-Athlete Advisory Committee) events are worth +10 points each.
+    </p>
 
-  <!-- Main Content -->
-  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+    <h2 class="font-heading text-2xl text-aggieBlue mt-6 mb-2">SARG Events</h2>
+    <p class="font-body text-base leading-relaxed mb-4">
+      SARG events include AAPI, AGS, Aggie Mentor, and other student resource group events. Attending these
+      events earns you +15 points.
+    </p>
 
-    <!-- What are Aggie Points -->
-    <section class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-      <div class="p-6 sm:p-8">
-        <h2 class="font-heading text-2xl sm:text-3xl font-extrabold text-aggieBlue">What are Aggie Points?</h2>
-        <p class="mt-3 text-lg leading-relaxed">
-          Aggie Points recognize and reward UC Davis student-athletes for supporting fellow Aggies and engaging
-          with SAAC initiatives. Check in at eligible events to earn points for <span class="font-semibold">you</span> and your
-          <span class="font-semibold">team</span>, climb the leaderboards, and build Aggie pride.
-        </p>
-      </div>
-    </section>
-
-    <!-- Points Breakdown -->
-    <section class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <!-- Card: Athletic Games -->
-      <div class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-        <div class="p-6">
-          <div class="flex items-center justify-between">
-            <h3 class="font-ui text-xl font-semibold text-aggieBlue">Athletic Home Games</h3>
-            <span class="inline-flex items-center rounded-lg bg-aggieBlue text-white px-3 py-1 font-ui font-semibold">+10</span>
-          </div>
-          <p class="mt-2 text-ink/80">Attend a UC Davis home game and check in during the event window.</p>
-        </div>
-      </div>
-
-      <!-- Card: SAAC Events -->
-      <div class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-        <div class="p-6">
-          <div class="flex items-center justify-between">
-            <h3 class="font-ui text-xl font-semibold text-aggieBlue">SAAC Events</h3>
-            <span class="inline-flex items-center rounded-lg bg-aggieGold text-aggieBlue px-3 py-1 font-ui font-semibold">+15</span>
-          </div>
-          <p class="mt-2 text-ink/80">Participate in SAAC-hosted events and check in to earn points.</p>
-        </div>
-      </div>
-
-      <!-- Card: SARG Events -->
-      <div class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-        <div class="p-6">
-          <div class="flex items-center justify-between">
-            <h3 class="font-ui text-xl font-semibold text-aggieBlue">SARG Events</h3>
-            <span class="inline-flex items-center rounded-lg bg-aggieGold text-aggieBlue px-3 py-1 font-ui font-semibold">+15</span>
-          </div>
-          <p class="mt-2 text-ink/80">
-            Attend SARG events such as <span class="font-semibold">AAPI</span>, <span class="font-semibold">AGS</span>, and <span class="font-semibold">Aggie Mentor</span> programs to earn points.
-          </p>
-        </div>
-      </div>
-    </section>
-
-    <!-- Quick Reference Table -->
-    <section class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-      <div class="p-6">
-        <h3 class="font-ui text-lg font-semibold text-aggieBlue">Points Scale — Quick Reference</h3>
-        <div class="mt-4 overflow-x-auto">
-          <table class="min-w-full border border-gray-200 rounded-lg overflow-hidden">
-            <thead class="bg-aggieBlue text-white font-ui">
-              <tr>
-                <th class="text-left px-4 py-3">Event Type</th>
-                <th class="text-left px-4 py-3">Points</th>
-                <th class="text-left px-4 py-3">How to Earn</th>
-              </tr>
-            </thead>
-            <tbody class="divide-y divide-gray-200">
-              <tr class="bg-white">
-                <td class="px-4 py-3">UC Davis Athletic Home Games</td>
-                <td class="px-4 py-3 font-semibold">+10</td>
-                <td class="px-4 py-3">Attend and check in during the event window</td>
-              </tr>
-              <tr class="bg-white">
-                <td class="px-4 py-3">SAAC Events</td>
-                <td class="px-4 py-3 font-semibold">+15</td>
-                <td class="px-4 py-3">Attend SAAC-hosted event and check in</td>
-              </tr>
-              <tr class="bg-white">
-                <td class="px-4 py-3">SARG Events (AAPI, AGS, Aggie Mentor, etc.)</td>
-                <td class="px-4 py-3 font-semibold">+15</td>
-                <td class="px-4 py-3">Attend qualifying SARG event and check in</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- Coming Soon -->
-    <section class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-      <div class="p-6 sm:p-8">
-        <h3 class="font-heading text-2xl font-extrabold text-aggieBlue">Coming Soon: Challenges &amp; Bonus Points</h3>
-        <p class="mt-2 leading-relaxed">
-          In the works: <span class="font-semibold">special challenges</span> that unlock
-          <span class="font-semibold text-aggieBlue">bonus points</span> — think themed check-ins, team spirit activities,
-          and multi-event streaks. Watch this page and the home screen for announcements.
-        </p>
-      </div>
-    </section>
-
+    <h2 class="font-heading text-2xl text-aggieBlue mt-6 mb-2">Get Involved</h2>
+    <p class="font-body text-base leading-relaxed">
+      Explore upcoming events on the Events page, check in to participate, and track your progress
+      on the Leaderboard. Every check-in helps your team climb the rankings!
+    </p>
   </main>
 
-  <!-- Footer -->
-  <footer class="border-t border-gray-200">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-sm font-ui text-ink/60">
-      © <span id="yearText"></span> Aggie Points. UC Davis-inspired theme.
-    </div>
+  <!-- FOOTER -->
+  <footer class="bg-white text-center py-4 border-t border-gray-200">
+    <p class="text-sm text-gray-500">&copy; 2025 Aggie Points</p>
   </footer>
 
-  <!-- Supabase (kept for consistency with theme) -->
+  <!-- SCRIPTS -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="auth-config.js"></script>
-
-  <script>
-  const $  = (s) => document.querySelector(s);
-  const toggle = (el) => el.classList.toggle('hidden');
-
-  // Header interactions + year
-  $('#mobileMenuBtn')?.addEventListener('click', () => toggle($('#mobileMenu')));
-  $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
-  $('#yearText').textContent = new Date().getFullYear();
-
-  (async () => {
-    // If supabase or client isn't ready, bail quietly
-    if (!window.supabase) return;
-    // Use the global `sb` created in auth-config.js (const sb = ...).
-    // Avoid checking window.sb because top-level const is not on window.
-    if (typeof sb === 'undefined') return;
-
-    // Get session and user
-    const { data: { session } } = await sb.auth.getSession();
-    const user = session?.user ?? null;
-
-    // Update header label
-    const name = user?.user_metadata?.display_name || user?.email || 'Account';
-    const acctEl = document.getElementById('acctName');
-    if (acctEl) acctEl.textContent = name;
-
-    // Logout handlers (only if logged in; harmless otherwise)
-    const doLogout = async () => {
-      await sb.auth.signOut();
-      const dest = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html';
-      window.location.href = dest;
-    };
-    document.getElementById('logoutBtn')?.addEventListener('click', doLogout);
-    document.getElementById('logoutBtnMobile')?.addEventListener('click', doLogout);
-  })();
-</script>
-
+  <script src="auth-config.js?v=2025-09-13"></script>
 </body>
 </html>

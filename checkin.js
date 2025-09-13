@@ -24,13 +24,19 @@
   }
 
   // Mark any button for eventId as "Checked in"
+  // checkin.js — REPLACE markCheckedInUI with this:
   function markCheckedInUI(eventId) {
-    $$('.checkin-btn[data-event-id]').forEach(btn => {
-      if (btn.getAttribute('data-event-id') === eventId) {
-        btn.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
-      }
+    // Preferred: replace explicit slot (works even if the page rendered a gray label)
+    document.querySelectorAll(`.checkin-slot[data-event-id="${eventId}"]`).forEach(slot => {
+      slot.innerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
+    });
+  
+    // Back-compat: also replace any button if present
+    document.querySelectorAll(`.checkin-btn[data-event-id="${eventId}"]`).forEach(btn => {
+      btn.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
     });
   }
+
 
   // Public: scan page and mark already-checked events based on localStorage
   function syncCheckedInUI() {

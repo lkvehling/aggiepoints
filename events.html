@@ -194,6 +194,12 @@
       .replace(/&/g,'&amp;').replace(/</g,'&lt;')
       .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
+    // NEW: Google Maps link builder (clickable location)
+    function mapsLink(locationText) {
+      if (!locationText) return null;
+      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
+    }
+
     // Simple themed toast (same look as Home)
     function toast(message, { variant = 'info', timeout = 3500 } = {}) {
       const root = document.querySelector('#toast-root > div');
@@ -262,31 +268,25 @@
       catch { return new Set(); }
     }
 
-    // Row renderer — now supports *direct* check-in when today && within window
+    // Row renderer — UI updated to match Settings + Maps link
     function eventRow(ev) {
       const today   = isTodayPT(ev.start_ts);
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
-      const isLocalChecked = getCheckedSet().has(ev.id); // ← NEW
-    
-      // Heading: if today, show time range; else show title
-      const heading = today ? sameDayTitle(ev.start_ts, ev.end_ts) : escapeHtml(ev.title);
-    
-      // Subline: if today, "Event Name · Location"; else date range + location
-      const whenLine = today
-        ? `${escapeHtml(ev.title)} · ${escapeHtml(ev.location || 'TBA')}`
-        : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)} · ${escapeHtml(ev.location || 'TBA')}`;
-    
+      const isLocalChecked = getCheckedSet().has(ev.id);
+
+      // Time line (separate from name; matches Settings typography)
+      const timeLine = today
+        ? sameDayTitle(ev.start_ts, ev.end_ts)
+        : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)}`;
+
       const pts = ev.points
         ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>`
         : '';
-    
+
       let action;
-    
       if (isLocalChecked) {
-        // Always show checked state if we’ve already checked in somewhere else
         action = `<span class="px-3 py-1.5 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
       } else if (today && canNow) {
-        // Direct check-in button (wired by checkin.js)
         action = `<button
           class="checkin-btn px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95"
           data-event-id="${ev.id}"
@@ -301,15 +301,34 @@
       } else {
         action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
       }
-    
+
+      // Location line: clickable link w/ pin; hide if missing
+      const hasLoc = !!(ev.location && ev.location.trim());
+      const locHTML = hasLoc ? `
+        <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10c0 7-7.5 10.5-7.5 10.5S4.5 17 4.5 10a7.5 7.5 0 1115 0z" />
+          </svg>
+          <a href="${mapsLink(ev.location)}" target="_blank" rel="noopener noreferrer" class="truncate hover:underline" aria-label="Open ${escapeHtml(ev.location)} in Google Maps">
+            ${escapeHtml(ev.location)}
+          </a>
+        </p>` : '';
+
       return `
       <div class="py-4"
            data-title="${escapeHtml(ev.title).toLowerCase()}"
            data-location="${escapeHtml(ev.location||'').toLowerCase()}">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div class="min-w-0">
-            <div class="font-ui text-base font-semibold text-ink">${heading} ${pts}</div>
-            <div class="mt-0.5 text-sm text-ink/70 font-ui">${whenLine}</div>
+            <!-- Name -->
+            <h3 class="font-heading text-aggieBlue text-lg md:text-xl font-semibold leading-tight truncate">
+              ${escapeHtml(ev.title)} ${pts}
+            </h3>
+            <!-- Date & time -->
+            <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5">${timeLine}</p>
+            <!-- Location (clickable) -->
+            ${locHTML}
           </div>
           <div class="shrink-0">
             <span class="checkin-slot"

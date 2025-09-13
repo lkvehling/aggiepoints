@@ -280,7 +280,7 @@
       catch { return new Set(); }
     }
 
-    // Row renderer (supports forced Closed / checked overrides / compact past style)
+    // Row renderer — POINTS MOVED TO MIDDLE LINE & LARGER (matches index.html)
     function eventRow(ev, opts = {}) {
       const { forceClosed = false, checkedOverride = null, compact = false } = opts;
       const today   = isTodayPT(ev.start_ts);
@@ -291,8 +291,9 @@
         ? sameDayTitle(ev.start_ts, ev.end_ts)
         : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)}`;
 
-      const pts = ev.points
-        ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 ${compact?'text-[11px]':'text-xs'} font-ui text-aggieBlue">+${ev.points} pts</span>`
+      // Points badge styling: big on normal cards, slightly smaller for compact
+      const pointsHTML = (typeof ev.points === 'number')
+        ? `<span class="inline-flex items-center rounded-full bg-aggieGold/20 ${compact ? 'px-2 py-0.5 text-[12px]' : 'px-2.5 py-1 text-sm md:text-base'} font-ui font-semibold text-aggieBlue">+${ev.points} pts</span>`
         : '';
 
       // badge helpers
@@ -340,9 +341,15 @@
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
             <div class="min-w-0">
               <h3 class="font-ui text-ink ${compact?'text-[15px]':'text-base md:text-lg'} font-semibold leading-tight truncate">
-                ${escapeHtml(ev.title)} ${pts}
+                ${escapeHtml(ev.title)}
               </h3>
-              <p class="font-ui ${compact?'text-[13px]':'text-sm md:text-base'} text-ink/80 mt-0.5">${timeLine}</p>
+
+              <!-- Middle line: time + BIG points (matches index.html) -->
+              <div class="mt-0.5 flex items-center justify-start gap-3">
+                <p class="font-ui ${compact?'text-[13px]':'text-sm md:text-base'} text-ink/80">${timeLine}</p>
+                ${pointsHTML}
+              </div>
+
               ${locHTML}
             </div>
             <div class="shrink-0">

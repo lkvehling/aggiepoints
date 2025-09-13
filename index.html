@@ -107,16 +107,14 @@
 
       <!-- Your Points (Summary) -->
       <section class="lg:col-span-1 order-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-        <div class="p-4"> <!-- smaller padding -->
+        <div class="p-4">
           <h2 class="font-ui text-lg font-semibold text-aggieBlue mb-3">Your Summary</h2>
-      
           <div class="space-y-3">
             <!-- Big points number -->
             <div>
               <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Total Points</div>
               <div id="pointsTotal" class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">—</div>
             </div>
-          
             <!-- Side-by-side ranks -->
             <div class="grid grid-cols-2 gap-4">
               <div>
@@ -134,14 +132,12 @@
             </div>
           </div>
 
-      
           <div class="mt-5 flex gap-3">
             <a href="leaderboard.html" class="px-4 py-2 rounded-lg bg-aggieBlue text-white font-ui hover:bg-aggieBlue/90">Leaderboards</a>
             <a href="events.html" class="px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95">All Events</a>
           </div>
         </div>
       </section>
-
 
       <!-- Today's Events -->
       <section id="today" class="lg:col-span-2 order-2 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
@@ -151,7 +147,6 @@
             <div class="text-sm font-ui text-ink/60"><span id="todayDate">—</span></div>
           </div>
 
-          <!-- CHANGED: use space between boxed rows -->
           <div id="todayList" class="mt-4 space-y-4"></div>
           <div id="todayEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No events today.</div>
         </div>
@@ -182,11 +177,11 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
-  <!-- NEW: shared check-in module used by both Home and Events -->
+  <!-- shared check-in module -->
   <script src="checkin.js"></script>
 
   <script>
-  // ========= Helpers (match SQL) =========
+  // ========= Helpers =========
   const $  = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
   const toggle = (el) => el.classList.toggle('hidden');
@@ -259,59 +254,78 @@
 
   function applySummary(prof) {
     const pts = prof?.points_total ?? 0;
-  
-    // Prefer label fields (e.g., "T1") if present; fall back to numbers
+
     const ind = prof?.rank_label ?? (prof?.rank != null ? String(prof.rank) : '—');
     const tr  = prof?.team_rank_label ?? (prof?.team_rank != null ? String(prof.team_rank) : '—');
-  
+
     const $id = (s) => document.querySelector(s);
     $id('#pointsTotal')    && ($id('#pointsTotal').textContent    = pts);
     $('#individualRank').textContent = (prof.rank == null)
-    ? '—'
-    : (prof.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
-  
-  $('#teamRank').textContent = (prof.team_rank == null)
-    ? '—'
-    : (prof.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
+      ? '—'
+      : (prof.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
+    $('#teamRank').textContent = (prof.team_rank == null)
+      ? '—'
+      : (prof.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
 
-  
     // Back-compat if old IDs still exist anywhere
     $id('#rank') && ($id('#rank').textContent = ind);
     $id('#team') && ($id('#team').textContent = tr);
   }
 
-
   async function refreshProfilePoints() {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return;
-  
+
     const { data: prof, error } = await sb
       .from('profiles')
       .select('points_total, rank, team_rank, individual_is_tied, team_is_tied')
       .eq('id', user.id)
       .single();
-  
+
     if (!error && prof) applySummary(prof);
   }
 
+  // --- Open/Closed helper (mirror backend window: -20m to +10m) ---
+  function isOpenNow(ev) {
+    const now = new Date().toLocaleString('en-US', { timeZone: TZ });
+    const nowDate = new Date(now).getTime();
 
-  // UPDATED: wrap each event in a boxed card (only change)
+    const start = new Date(new Date(ev.start_ts).toLocaleString('en-US', { timeZone: TZ })).getTime();
+    const end   = new Date(new Date(ev.end_ts).toLocaleString('en-US', { timeZone: TZ })).getTime();
+
+    const openFrom = start - 20 * 60 * 1000; // 20 minutes before start
+    const openTo   = end   - 10 * 60 * 1000; // 10 minutes before end
+    return nowDate >= openFrom && nowDate <= openTo;
+  }
+
+  // Event card renderer (points moved to middle line; no "More" link; closed state supported)
   function todayRow(ev) {
-    const already = !!ev.user_checked_in;
-    const whenLine = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
-    const badge = ev.points
-      ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>`
-      : '';
+    const checkedIn = !!ev.user_checked_in;
+    const open = isOpenNow(ev);
 
-    const action = already
-      ? `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`
-      : `<button
-           class="checkin-btn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95"
-           data-event-id="${ev.id}"
-           data-event-name="${escapeHtml(ev.title)}"
-           data-event-points="${ev.points ?? ''}">
-           Check in
-         </button>`;
+    const whenLine = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
+
+    // BIGGER points badge on the middle (date/time) line
+    const pointsHTML = typeof ev.points === 'number' ? `
+      <span class="inline-flex items-center rounded-full bg-aggieGold/20 px-2.5 py-1 text-sm md:text-base font-ui font-semibold text-aggieBlue">
+        +${ev.points} pts
+      </span>` : '';
+
+    let actionHTML = '';
+    if (checkedIn) {
+      actionHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">✓ Checked in</span>`;
+    } else if (open) {
+      actionHTML = `<button
+        class="checkin-btn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95"
+        data-event-id="${ev.id}"
+        data-event-name="${escapeHtml(ev.title)}"
+        data-event-points="${ev.points ?? ''}">
+        Check in
+      </button>`;
+    } else {
+      /* Closed pill (used previously) */
+      actionHTML = `<span class="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`;
+    }
 
     const hasLoc = !!(ev.location && ev.location.trim());
     const locHTML = hasLoc ? `
@@ -330,14 +344,20 @@
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div class="min-w-0">
             <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate">
-              ${escapeHtml(ev.title)} ${badge}
+              ${escapeHtml(ev.title)}
             </h3>
-            <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5">${whenLine}</p>
+
+            <!-- Middle line with time + BIG points -->
+            <div class="mt-0.5 flex items-center justify-start gap-3">
+              <p class="font-ui text-sm md:text-base text-ink/80">${whenLine}</p>
+              ${pointsHTML}
+            </div>
+
             ${locHTML}
           </div>
+
           <div class="flex items-center gap-3">
-            ${action}
-            <a class="font-ui text-sm text-aggieBlue hover:underline" href="events.html#upcoming">More</a>
+            ${actionHTML}
           </div>
         </div>
       </article>`;
@@ -380,22 +400,20 @@
     const todayPT = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
     $('#todayDate').textContent = todayPT.toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
 
-    // ----- Load Profile from public.profiles -----
+    // Load Profile
     try {
       const { data: prof, error: pErr } = await sb
         .from('profiles')
         .select('display_name, points_total, rank, team_rank, individual_is_tied, team_is_tied')
         .eq('id', user.id)
         .single();
-    
       if (!pErr && prof) applySummary(prof);
       else console.error('profiles error', pErr);
     } catch (e) {
       console.error('profiles fetch crashed', e);
     }
 
-
-    // ----- Load Today’s Events from public.events_today -----
+    // ----- Load Today’s Events (expects ALL today) -----
     const list = $('#todayList');
     const empty = $('#todayEmpty');
     try {
@@ -412,8 +430,8 @@
         list.innerHTML = rows;
         empty.classList.toggle('hidden', (todays || []).length > 0);
 
-        // Wire buttons using shared module
-        initCheckinButtons();
+        // Wire buttons
+        if (typeof window.initCheckinButtons === 'function') initCheckinButtons();
         if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
 
         // Deep-link focus: index.html?event=<uuid>#today
@@ -434,7 +452,7 @@
       empty.classList.add('hidden');
     }
   })();
-</script>
+  </script>
 
   <!-- Toast root -->
   <div id="toast-root" class="fixed inset-0 pointer-events-none z-[1000]">

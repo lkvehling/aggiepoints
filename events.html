@@ -250,26 +250,37 @@
       el.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">${msg}</div>`;
     }
 
+    // Read the same cache used by checkin.js
+    function getCheckedSet() {
+      try { return new Set(JSON.parse(localStorage.getItem('aggie_checked_in_ids') || '[]')); }
+      catch { return new Set(); }
+    }
+
     // Row renderer — now supports *direct* check-in when today && within window
     function eventRow(ev) {
       const today   = isTodayPT(ev.start_ts);
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
-
+      const isLocalChecked = getCheckedSet().has(ev.id); // ← NEW
+    
       // Heading: if today, show time range; else show title
       const heading = today ? sameDayTitle(ev.start_ts, ev.end_ts) : escapeHtml(ev.title);
-
+    
       // Subline: if today, "Event Name · Location"; else date range + location
       const whenLine = today
         ? `${escapeHtml(ev.title)} · ${escapeHtml(ev.location || 'TBA')}`
         : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)} · ${escapeHtml(ev.location || 'TBA')}`;
-
+    
       const pts = ev.points
         ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>`
         : '';
-
+    
       let action;
-      if (today && canNow) {
-        // DIRECT CHECK-IN on Events page (shared module)
+    
+      if (isLocalChecked) {
+        // Always show checked state if we’ve already checked in somewhere else
+        action = `<span class="px-3 py-1.5 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
+      } else if (today && canNow) {
+        // Direct check-in button (wired by checkin.js)
         action = `<button
           class="checkin-btn px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95"
           data-event-id="${ev.id}"
@@ -284,7 +295,7 @@
       } else {
         action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
       }
-
+    
       return `
         <div class="py-4" data-title="${escapeHtml(ev.title).toLowerCase()}" data-location="${escapeHtml(ev.location||'').toLowerCase()}">
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
@@ -292,7 +303,11 @@
               <div class="font-ui text-base font-semibold text-ink">${heading} ${pts}</div>
               <div class="mt-0.5 text-sm text-ink/70 font-ui">${whenLine}</div>
             </div>
-            <div class="shrink-0">${action}</div>
+            <div class="shrink-0">
+              <span class="checkin-slot" data-event-id="${ev.id}">
+                ${action}
+              </span>
+            </div>
           </div>
         </div>
       `;
@@ -335,7 +350,8 @@
 
         // Wire any check-in buttons rendered in this section
         initCheckinButtons();
-        syncCheckedInUI();
+        if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
+
 
 
         return data || [];

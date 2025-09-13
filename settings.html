@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Aggie Points — Settings</title>
 
-  <!-- Fonts (Equivalents): Raleway (headings), Montserrat (UI), Merriweather (body) -->
-  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
+  <!-- Fonts (Raleway = headings, Montserrat = UI/body) -->
+  <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
 
   <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
@@ -23,7 +23,7 @@
           fontFamily: {
             heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
             ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
-            body: ["Merriweather", "Georgia", "serif"],
+            body: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"], /* no feet */
           },
           boxShadow: {
             soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
@@ -58,7 +58,7 @@
           <a href="index.html" class="hover:text-aggieGold">Home</a>
           <a href="events.html" class="hover:text-aggieGold">All Events</a>
           <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
-          <a href="about.html" class="hover:text-aggieGold text-aggieGold">About</a>
+          <a href="about.html" class="hover:text-aggieGold">About</a>
 
           <!-- Account dropdown -->
           <div class="relative">
@@ -100,7 +100,7 @@
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
       <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">Settings</h1>
-      <p class="mt-1 font-ui text-white/90">Manage your account details, team, and graduation year.</p>
+      <p class="mt-1 font-ui text-white/90">Manage your account details and see your check-ins.</p>
     </div>
   </section>
 
@@ -112,26 +112,23 @@
 
       <form id="accountForm" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="sm:col-span-2">
-          <label class="label">Display Name</label>
+          <label class="label">Display Name:</label>
           <input id="displayName" type="text" class="input" placeholder="Your name" />
         </div>
 
         <div class="sm:col-span-2">
-          <label class="label">Email</label>
-          <div class="flex gap-2">
-            <input id="email" type="email" class="input" placeholder="you@example.com" />
-            <button type="button" id="saveEmail" class="rounded-xl bg-aggieGold text-aggieBlue px-4 py-2 font-ui font-semibold hover:brightness-95">Update</button>
-          </div>
-          <p class="mt-1 text-xs font-ui text-ink/60">We’ll send a verification link if your email changes.</p>
+          <label class="label">Email:</label>
+          <input id="email" type="email" class="input bg-gray-50" placeholder="you@example.com" disabled />
+          <p class="mt-1 text-xs font-ui text-ink/60">Email changes are handled by an admin.</p>
         </div>
 
         <div>
-          <label class="label">Team</label>
+          <label class="label">Team:</label>
           <input id="team" type="text" class="input" placeholder="Team name" />
         </div>
 
         <div>
-          <label class="label">Graduation Year</label>
+          <label class="label">Graduation Year:</label>
           <input id="gradYear" type="number" inputmode="numeric" min="1900" max="2100" class="input" placeholder="2027" />
         </div>
 
@@ -142,7 +139,41 @@
       </form>
     </section>
 
-    <!-- Password (hidden until opened) -->
+    <!-- Check-ins -->
+    <section class="card rounded-2xl bg-white shadow-soft p-6">
+      <div class="flex items-center justify-between">
+        <h2 class="font-ui text-lg font-semibold text-aggieBlue">Your Check-ins</h2>
+        <span id="checkinsCount" class="font-ui text-sm text-ink/60"></span>
+      </div>
+
+      <div id="checkinsList" class="mt-4 grid grid-cols-1 gap-4">
+        <!-- Populated by JS -->
+      </div>
+
+      <template id="checkinCardTmpl">
+        <article class="rounded-2xl border border-aggieBlue/10 bg-white p-4 shadow-soft">
+          <div class="flex items-start justify-between gap-4">
+            <div>
+              <p class="font-ui text-sm text-ink/70" data-date></p>
+              <h3 class="mt-1 font-heading text-lg font-semibold text-aggieBlue" data-name></h3>
+              <p class="mt-1 font-ui text-sm text-ink/70" data-location></p>
+            </div>
+            <div class="flex flex-col items-end gap-2">
+              <span class="inline-flex items-center rounded-full bg-green-100 text-green-800 text-xs font-ui px-2 py-1">
+                ✓ Checked in
+              </span>
+              <span class="inline-flex items-center rounded-full bg-aggieGold/15 text-aggieBlue text-xs font-ui px-2 py-1" data-points></span>
+            </div>
+          </div>
+        </article>
+      </template>
+
+      <div id="noCheckins" class="hidden mt-2 text-sm font-ui text-ink/60">
+        No check-ins yet. When you check in to events, they’ll appear here.
+      </div>
+    </section>
+
+    <!-- Security -->
     <section class="card rounded-2xl bg-white shadow-soft p-6">
       <div class="flex items-center justify-between">
         <h2 class="font-ui text-lg font-semibold text-aggieBlue">Security</h2>
@@ -153,7 +184,7 @@
         <p class="font-ui text-sm text-ink/70 mb-3">For your security, we can’t show your current password. Set a new one below.</p>
         <form id="passwordForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
-            <label class="label">New Password</label>
+            <label class="label">New Password:</label>
             <div class="flex gap-2">
               <input id="newPassword" type="password" class="input" placeholder="••••••••" />
               <button type="button" id="showPwd" class="rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui hover:bg-aggieBlue/5">Show</button>
@@ -182,10 +213,23 @@
   <script>
     // ===== Utilities =====
     const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
     const toggle = (el) => el.classList.toggle("hidden");
     const esc = (s) => String(s ?? "")
       .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
       .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+
+    const fmtDateRange = (startISO, endISO) => {
+      const s = new Date(startISO);
+      const e = new Date(endISO);
+      const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+      const mdFmt = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+      const tmFmt = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+      const sameDay = s.toDateString() === e.toDateString();
+      const left = `${dayFmt.format(s)}, ${mdFmt.format(s)} · ${tmFmt.format(s)}`;
+      const right = sameDay ? tmFmt.format(e) : `${dayFmt.format(e)}, ${mdFmt.format(e)} · ${tmFmt.format(e)}`;
+      return `${left}–${right}`;
+    };
 
     // Header UI
     $("#mobileMenuBtn")?.addEventListener("click", () => toggle($("#mobileMenu")));
@@ -214,8 +258,10 @@
       $("#logoutBtn")?.addEventListener("click", doLogout);
       $("#logoutBtnMobile")?.addEventListener("click", doLogout);
 
-      // Load profile
+      // Load profile + checkins
       await loadProfile(user);
+      await loadCheckins(user);
+
       // Wire up forms
       wireForms(user);
     })();
@@ -230,6 +276,56 @@
       $("#email").value = user.email ?? "";
       $("#team").value = profile?.team_name ?? "";
       $("#gradYear").value = profile?.grad_year ?? "";
+    }
+
+    async function loadCheckins(user) {
+      const list = $("#checkinsList");
+      const none = $("#noCheckins");
+      const countEl = $("#checkinsCount");
+      list.innerHTML = "";
+
+      // 1) Grab user's checkins (most recent first)
+      const { data: checkins, error: cErr } = await sb
+        .from("checkins")
+        .select("event_id, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false });
+      if (cErr) { console.warn("checkins load error", cErr); none.classList.remove("hidden"); return; }
+
+      if (!checkins?.length) {
+        none.classList.remove("hidden");
+        countEl.textContent = "";
+        return;
+      }
+
+      // 2) Fetch event details in a single query
+      const eventIds = [...new Set(checkins.map(c => c.event_id))];
+      const { data: events, error: eErr } = await sb
+        .from("events")
+        .select("id, name, start_time, end_time, points, location")
+        .in("id", eventIds);
+      if (eErr) { console.warn("events load error", eErr); none.classList.remove("hidden"); return; }
+
+      const eventsById = Object.fromEntries((events || []).map(e => [e.id, e]));
+      let rendered = 0;
+
+      // 3) Render cards in the same order as checkins (latest first)
+      for (const chk of checkins) {
+        const ev = eventsById[chk.event_id];
+        if (!ev) continue;
+
+        const tmpl = document.getElementById("checkinCardTmpl").content.cloneNode(true);
+        tmpl.querySelector("[data-date]").textContent = fmtDateRange(ev.start_time, ev.end_time);
+        tmpl.querySelector("[data-name]").textContent = esc(ev.name);
+        tmpl.querySelector("[data-location]").textContent = ev.location ? `Location: ${esc(ev.location)}` : "";
+        tmpl.querySelector("[data-points"]).textContent = typeof ev.points === "number" ? `+${ev.points} pts` : "";
+
+        list.appendChild(tmpl);
+        rendered++;
+      }
+
+      countEl.textContent = rendered ? `${rendered} total` : "";
+      none.classList.toggle("hidden", rendered > 0);
     }
 
     function wireForms(user) {
@@ -251,7 +347,6 @@
           grad_year: grad_year_val
         }, { onConflict: "id" });
 
-        // Optionally reflect name in auth metadata (for header)
         if (!error && display_name) {
           await sb.auth.updateUser({ data: { display_name } }).catch(()=>{});
           $("#acctName").textContent = display_name;
@@ -262,22 +357,7 @@
         setTimeout(() => msg.textContent = "", 2500);
       });
 
-      // Email update (separate)
-      $("#saveEmail").addEventListener("click", async () => {
-        const el = $("#email");
-        const btn = $("#saveEmail");
-        const msg = $("#accountMsg");
-        const newEmail = el.value.trim();
-        if (!newEmail) { msg.textContent = "Enter a valid email."; return; }
-        btn.disabled = true; msg.textContent = "Updating email…";
-
-        const { error } = await sb.auth.updateUser({ email: newEmail });
-        btn.disabled = false;
-        msg.textContent = error ? "Email update failed." : "Check your inbox to verify the new email.";
-        setTimeout(() => msg.textContent = "", 3000);
-      });
-
-      // Password update (hidden until opened)
+      // Password update
       $("#passwordForm").addEventListener("submit", async (e) => {
         e.preventDefault();
         const pwd = $("#newPassword").value;

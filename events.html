@@ -161,20 +161,20 @@
     const $$ = (s) => Array.from(document.querySelectorAll(s));
     const toggle = (el, show) => { if (!el) return; el.classList[show ? 'remove' : 'add']('hidden'); };
     const TZ = 'America/Los_Angeles';
-
+    
     // Time helpers
     const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
     const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
     const fmtDT = (ts) => new Date(ts).toLocaleString([], { timeZone: TZ, month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
     const fmtHM = (dt) => dt.toLocaleTimeString([], { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
-
+    
     // Same-day heading format: "Fri, Sep 12 · 12:09 PM–11:59 PM"
     const sameDayTitle = (start_ts, end_ts) => {
       const d = toPT(start_ts);
       const left = d.toLocaleDateString([], { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric' });
       return `${left} · ${fmtHM(toPT(start_ts))}–${fmtHM(toPT(end_ts))}`;
     };
-
+    
     const isTodayPT = (ts) => {
       const d = toPT(ts), n = nowPT();
       return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
@@ -256,6 +256,12 @@
       catch { return new Set(); }
     }
 
+    // === Local cache reader (used by eventRow to honor cross-tab state) ===
+    function getCheckedSet() {
+      try { return new Set(JSON.parse(localStorage.getItem('aggie_checked_in_ids') || '[]')); }
+      catch { return new Set(); }
+    }
+
     // Row renderer — now supports *direct* check-in when today && within window
     function eventRow(ev) {
       const today   = isTodayPT(ev.start_ts);
@@ -297,20 +303,126 @@
       }
     
       return `
-        <div class="py-4" data-title="${escapeHtml(ev.title).toLowerCase()}" data-location="${escapeHtml(ev.location||'').toLowerCase()}">
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-            <div class="min-w-0">
-              <div class="font-ui text-base font-semibold text-ink">${heading} ${pts}</div>
-              <div class="mt-0.5 text-sm text-ink/70 font-ui">${whenLine}</div>
-            </div>
-            <div class="shrink-0">
-              <span class="checkin-slot" data-event-id="${ev.id}">
-                ${action}
-              </span>
-            </div>
+      <div class="py-4"
+           data-title="${escapeHtml(ev.title).toLowerCase()}"
+           data-location="${escapeHtml(ev.location||'').toLowerCase()}">
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div class="min-w-0">
+            <div class="font-ui text-base font-semibold text-ink">${heading} ${pts}</div>
+            <div class="mt-0.5 text-sm text-ink/70 font-ui">${whenLine}</div>
+          </div>
+          <div class="shrink-0">
+            <span class="checkin-slot"
+                  data-event-id="${ev.id}"
+                  data-title-full="${escapeHtml(ev.title)}"
+                  data-points="${ev.points ?? ''}"
+                  data-start="${ev.start_ts}"
+                  data-end="${ev.end_ts}">
+              ${action}
+            </span>
           </div>
         </div>
-      `;
+      </div>
+    `;
+    }
+
+    // === Reconcile local "checked" cache against server truth and fix UI ===
+    async function reconcileCheckedInsFromServer() {
+      try {
+        // Gather event IDs on the page
+        const slots = Array.from(document.querySelectorAll('.checkin-slot[data-event-id]'));
+        const eventIds = [...new Set(slots.map(s => s.getAttribute('data-event-id')).filter(Boolean))];
+        if (!eventIds.length) return;
+    
+        // Current user
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+    
+        // Which of these events are actually checked in (server truth)?
+        const { data: rows, error } = await sb
+          .from('checkins')
+          .select('event_id')
+          .eq('user_id', user.id)
+          .in('event_id', eventIds);
+    
+        if (error) { console.warn('reconcile error', error); return; }
+    
+        const serverSet = new Set((rows || []).map(r => r.event_id));
+    
+        // Local cache helpers (same key used by checkin.js)
+        const LS_KEY = 'aggie_checked_in_ids';
+        const getLocal = () => {
+          try { return new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]')); }
+          catch { return new Set(); }
+        };
+        const saveLocal = (set) => localStorage.setItem(LS_KEY, JSON.stringify([...set]));
+    
+        const localSet = getLocal();
+    
+        // Time helpers to rebuild correct control if not checked server-side
+        const TZ = 'America/Los_Angeles';
+        const WINDOW_BEFORE_MIN = 20;
+        const WINDOW_CLOSE_MIN  = 10;
+        const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
+        const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
+        const isTodayPT = (ts) => {
+          const d = toPT(ts), n = nowPT();
+          return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+        };
+        const isCheckinWindow = (start_ts, end_ts) => {
+          const start = toPT(start_ts);
+          const end   = toPT(end_ts);
+          const open  = new Date(start.getTime() - WINDOW_BEFORE_MIN * 60 * 1000);
+          const close = new Date(end.getTime()   - WINDOW_CLOSE_MIN  * 60 * 1000);
+          const now   = nowPT();
+          return now >= open && now <= close;
+        };
+        const isClosed = (end_ts) => {
+          const end   = toPT(end_ts);
+          const close = new Date(end.getTime() - WINDOW_CLOSE_MIN * 60 * 1000);
+          return nowPT() > close;
+        };
+    
+        // For anything the local cache says "checked" but server does NOT:
+        localSet.forEach(id => {
+          if (!serverSet.has(id)) {
+            // 1) Remove from cache
+            localSet.delete(id);
+    
+            // 2) Fix UI in place for this event id
+            document.querySelectorAll(`.checkin-slot[data-event-id="${id}"]`).forEach(slot => {
+              const start = slot.getAttribute('data-start');
+              const end   = slot.getAttribute('data-end');
+              const title = slot.getAttribute('data-title-full') || '';
+              const pts   = slot.getAttribute('data-points') || '';
+    
+              let html;
+              if (start && end && isTodayPT(start) && isCheckinWindow(start, end)) {
+                html = `<button
+                  class="checkin-btn px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95"
+                  data-event-id="${id}"
+                  data-event-name="${title}"
+                  data-event-points="${pts}">
+                  Check in
+                </button>`;
+              } else if (start && end && isTodayPT(start) && isClosed(end)) {
+                html = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`;
+              } else {
+                html = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
+              }
+    
+              slot.innerHTML = html;
+            });
+          }
+        });
+    
+        // 3) Save cleaned cache and rewire any restored buttons
+        saveLocal(localSet);
+        if (typeof window.initCheckinButtons === 'function') window.initCheckinButtons();
+    
+      } catch (e) {
+        console.warn('reconcile exception', e);
+      }
     }
 
     // ===== Page boot =====
@@ -339,23 +451,21 @@
       async function loadSection(viewName, listEl, emptyEl) {
         const { data, error } = await sb
           .from(viewName)
-          .select(COLS)
+          .select('id,title,start_ts,end_ts,location,points')
           .order('start_ts', { ascending: true });
-
+      
         if (error) { uiError(listEl, error); toggle(emptyEl, true); return []; }
-
+      
         listEl.innerHTML = (data || []).map(eventRow).join('');
-        // Show the empty message ONLY when there are zero rows
         toggle(emptyEl, (data || []).length === 0);
-
-        // Wire any check-in buttons rendered in this section
+      
         initCheckinButtons();
         if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
-
-
-
+        await reconcileCheckedInsFromServer();
+      
         return data || [];
       }
+
 
       const weekListEl = $('#weekList'), weekEmptyEl = $('#weekEmpty');
       const monthListEl = $('#monthList'); // no empty element by design

@@ -298,9 +298,9 @@
       } else if (today) {
         action = nowPT() > closeAtPT(ev.end_ts)
           ? `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`
-          : `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
+          : `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not Open Yet</span>`;
       } else {
-        action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
+        action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not Open Yet</span>`;
       }
 
       // Location line
@@ -429,7 +429,7 @@
               } else if (start && end && isTodayPT(start) && isClosed(end)) {
                 html = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`;
               } else {
-                html = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
+                html = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not Open Yet</span>`;
               }
     
               slot.innerHTML = html;

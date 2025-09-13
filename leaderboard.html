@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Aggie Points — Leaderboard</title>
 
-  <!-- Fonts (Equivalents): Raleway (headings), Montserrat (UI), Merriweather (body) -->
+  <!-- Fonts (Raleway = headings, Montserrat = UI/body, Merriweather optional body) -->
   <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
 
   <!-- Tailwind CDN -->
@@ -23,11 +23,9 @@
           fontFamily: {
             heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
             ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
-            body: ["Merriweather", "Georgia", "serif"],
+            body: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"], /* no feet for tables */
           },
-          boxShadow: {
-            soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
-          }
+          boxShadow: { soft: "0 6px 24px rgba(2, 40, 81, 0.08)" }
         }
       }
     }
@@ -40,7 +38,7 @@
     }
     .card { transition: transform .15s ease, box-shadow .15s ease; }
     .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
-    .tbl thead th { text-transform: uppercase; font-size: .75rem; letter-spacing: .04em; color: #022851; }
+    .tbl thead th { letter-spacing: .02em; }
   </style>
 </head>
 <body class="min-h-screen bg-aggieBg text-ink font-body">
@@ -97,38 +95,55 @@
 
   <!-- Page Header -->
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
       <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">Leaderboard</h1>
       <p class="mt-1 font-ui text-white/90">See top individuals and teams.</p>
     </div>
   </section>
 
   <!-- Content -->
-  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8 grid grid-cols-1 lg:grid-cols-3 gap-6">
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
     <!-- Left column: My summary -->
     <aside class="space-y-6 lg:col-span-1">
-      <!-- My Points -->
-      <section class="card rounded-2xl bg-white shadow-soft p-6">
+      <!-- My Points (compact for mobile) -->
+      <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <div class="flex items-start justify-between">
-          <div>
-            <h2 class="font-ui text-sm tracking-wide uppercase text-aggieBlue/80">Your Summary</h2>
-            <div class="mt-2 flex items-end gap-3">
-              <span id="myPoints" class="font-heading text-5xl font-extrabold text-aggieBlue">—</span>
-              <span id="myRank" class="font-ui text-sm text-ink/70">Rank —</span>
+          <div class="min-w-0">
+            <h2 class="font-ui text-xs tracking-wide uppercase text-aggieBlue/80">Your Summary</h2>
+
+            <!-- Points emphasized, with label -->
+            <div class="mt-1">
+              <div class="font-ui text-[11px] text-ink/60">Points</div>
+              <div class="flex items-end gap-3">
+                <span id="myPoints" class="font-heading text-4xl sm:text-5xl font-extrabold text-aggieBlue leading-none">—</span>
+              </div>
             </div>
-            <p id="myTeam" class="mt-1 font-ui text-sm text-ink/70">Team —</p>
+
+            <!-- Rank + Team smaller and clearly labeled -->
+            <div class="mt-2 space-y-0.5 text-sm font-ui text-ink/80">
+              <div id="myRank" class="flex items-center gap-2">
+                <span class="inline-flex items-center rounded-md bg-aggieBlue/5 px-2 py-0.5 text-[12px] font-semibold text-aggieBlue">Rank</span>
+                <span id="myRankVal">—</span>
+              </div>
+              <div id="myTeam" class="flex items-center gap-2">
+                <span class="inline-flex items-center rounded-md bg-aggieGold/20 px-2 py-0.5 text-[12px] font-semibold text-aggieBlue">Team</span>
+                <span id="myTeamVal">—</span>
+              </div>
+            </div>
           </div>
+
           <div class="rounded-xl bg-aggieGold/20 text-aggieBlue px-3 py-2 font-ui text-xs font-semibold">Season</div>
         </div>
-        <div class="mt-5 grid grid-cols-2 gap-3">
-          <a href="events.html" class="rounded-xl border border-aggieBlue/10 px-4 py-3 text-center font-ui hover:border-aggieBlue/30">Find Events</a>
-          <a href="index.html#today" class="rounded-xl bg-aggieGold text-aggieBlue px-4 py-3 text-center font-ui font-semibold hover:brightness-95">Check in</a>
+
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <a href="events.html" class="rounded-xl border border-aggieBlue/10 px-4 py-2.5 text-center font-ui hover:border-aggieBlue/30">Find Events</a>
+          <a href="index.html#today" class="rounded-xl bg-aggieGold text-aggieBlue px-4 py-2.5 text-center font-ui font-semibold hover:brightness-95">Check in</a>
         </div>
       </section>
 
       <!-- Search individuals -->
-      <section class="card rounded-2xl bg-white shadow-soft p-6">
+      <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <h3 class="font-ui text-base font-semibold text-aggieBlue">Search Individuals</h3>
         <div class="mt-3 flex items-center gap-2">
           <input id="searchInput" type="search" placeholder="Search by name or team…" class="w-full rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieGold/60" />
@@ -140,7 +155,7 @@
     <!-- Right column: Leaderboards -->
     <section class="lg:col-span-2 space-y-6">
       <!-- Top Individuals -->
-      <div class="card rounded-2xl bg-white shadow-soft p-6">
+      <div class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <div class="flex items-center justify-between">
           <h3 class="font-ui text-lg font-semibold text-aggieBlue">Top 10 Individuals</h3>
           <span id="indCount" class="font-ui text-sm text-ink/60"></span>
@@ -148,12 +163,12 @@
 
         <div class="mt-4 overflow-x-auto">
           <table class="tbl min-w-full">
-            <thead>
+            <thead class="font-ui">
               <tr class="text-left border-b border-gray-200">
-                <th class="py-3 px-4">#</th>
-                <th class="py-3 px-4">Name</th>
-                <th class="py-3 px-4">Team</th>
-                <th class="py-3 px-4">Points</th>
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Rank</th>
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Name</th>
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Points</th>
               </tr>
             </thead>
             <tbody id="indBody" class="divide-y divide-gray-100"></tbody>
@@ -163,7 +178,7 @@
       </div>
 
       <!-- Top Teams (scores intentionally hidden) -->
-      <div class="card rounded-2xl bg-white shadow-soft p-6">
+      <div class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <div class="flex items-center justify-between">
           <h3 class="font-ui text-lg font-semibold text-aggieBlue">Top 5 Teams</h3>
           <span id="teamCount" class="font-ui text-sm text-ink/60"></span>
@@ -171,10 +186,10 @@
 
         <div class="mt-4 overflow-x-auto">
           <table class="tbl min-w-full">
-            <thead>
+            <thead class="font-ui">
               <tr class="text-left border-b border-gray-200">
-                <th class="py-3 px-4">#</th>
-                <th class="py-3 px-4">Team</th>
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Rank</th>
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
               </tr>
             </thead>
             <tbody id="teamBody" class="divide-y divide-gray-100"></tbody>
@@ -221,15 +236,15 @@
       $("#logoutBtn")?.addEventListener("click", doLogout);
       $("#logoutBtnMobile")?.addEventListener("click", doLogout);
 
-      // Load "My Summary" from profiles (consistent with Home)
+      // Load "My Summary" from profiles
       const { data: profile } = await sb.from("profiles")
         .select("display_name, team_name, points_total, rank")
         .eq("id", user.id).single();
 
       if (profile) {
         $("#myPoints").textContent = profile.points_total ?? 0;
-        $("#myRank").textContent = `Rank ${profile.rank ?? "—"}`;
-        $("#myTeam").textContent = profile.team_name ? `Team ${profile.team_name}` : "Team —";
+        $("#myRankVal").textContent = profile.rank ?? "—";
+        $("#myTeamVal").textContent = profile.team_name || "—";
       }
 
       // Load Top Individuals (points shown)
@@ -251,13 +266,37 @@
       });
     })();
 
+    // ===== Ranking helpers (competition ranking with T for ties) =====
+    function computeRankLabelsByValue(values) {
+      // values must be an array of numbers (e.g., points). Assumes rows are already sorted DESC by value.
+      const labels = new Array(values.length).fill("");
+      let rank = 1;
+      for (let i = 0; i < values.length; ) {
+        // find tie group [i..j)
+        let j = i + 1;
+        while (j < values.length && values[j] === values[i]) j++;
+
+        const groupSize = j - i;
+        const label = groupSize > 1 ? `T${rank}` : String(rank);
+        for (let k = i; k < j; k++) labels[k] = label;
+
+        rank += groupSize; // skip ahead by group size (competition ranking)
+        i = j;
+      }
+      return labels;
+    }
+
     // ===== Individuals =====
     let INDIVIDUALS = [];
 
     async function loadTopIndividuals() {
       const { data, error } = await sb.rpc("leaderboard_top_individuals", { limit_n: 10 });
       if (error) { console.warn("leaderboard_top_individuals", error); return; }
-      INDIVIDUALS = data || [];
+      INDIVIDUALS = (data || []).map(r => ({
+        name: r.name ?? "",
+        team: r.team ?? "",
+        points: Number(r.points ?? 0)
+      }));
       renderIndividuals(INDIVIDUALS);
     }
 
@@ -273,13 +312,16 @@
       empty.classList.add("hidden");
       $("#indCount").textContent = `${rows.length} shown`;
 
+      const pts = rows.map(r => Number(r.points ?? 0));
+      const ranks = computeRankLabelsByValue(pts);
+
       rows.forEach((r, i) => {
         body.insertAdjacentHTML("beforeend", `
           <tr class="hover:bg-aggieBlue/5">
-            <td class="py-3 px-4 font-ui">${i + 1}</td>
-            <td class="py-3 px-4 font-ui">${esc(r.name ?? "")}</td>
-            <td class="py-3 px-4 font-ui">${esc(r.team ?? "")}</td>
-            <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${r.points ?? 0}</td>
+            <td class="py-3 px-4 font-ui">${ranks[i]}</td>
+            <td class="py-3 px-4 font-ui">${esc(r.name)}</td>
+            <td class="py-3 px-4 font-ui">${esc(r.team)}</td>
+            <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${r.points}</td>
           </tr>
         `);
       });
@@ -294,7 +336,7 @@
       renderIndividuals(filtered);
     }
 
-    // ===== Teams (scores hidden) =====
+    // ===== Teams (scores hidden but used to rank) =====
     async function loadTopTeams() {
       const { start, end } = monthRangeISO();
       const { data, error } = await sb.rpc("team_score_participation_weighted", {
@@ -303,8 +345,20 @@
         limit_n: 5
       });
       if (error) { console.warn("team_score_participation_weighted", error); return; }
-      renderTeams(data || []);
+
+      // Normalize possible score field names; keep hidden in UI
+      const rows = (data || []).map(r => ({
+        team: r.team ?? r.team_name ?? "",
+        score: toNum(r.score ?? r.points ?? r.total ?? r.value ?? 0)
+      }));
+
+      // Ensure DESC by score just in case
+      rows.sort((a,b) => b.score - a.score);
+
+      renderTeams(rows);
     }
+
+    function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
 
     function renderTeams(rows) {
       const body = $("#teamBody");
@@ -318,11 +372,14 @@
       empty.classList.add("hidden");
       $("#teamCount").textContent = `${rows.length} shown`;
 
+      const vals = rows.map(r => r.score);
+      const ranks = computeRankLabelsByValue(vals);
+
       rows.forEach((r, i) => {
         body.insertAdjacentHTML("beforeend", `
           <tr class="hover:bg-aggieBlue/5">
-            <td class="py-3 px-4 font-ui">${i + 1}</td>
-            <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${esc(r.team ?? "")}</td>
+            <td class="py-3 px-4 font-ui">${ranks[i]}</td>
+            <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${esc(r.team)}</td>
           </tr>
         `);
       });

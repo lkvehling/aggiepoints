@@ -192,6 +192,12 @@
   const fmtDate = (ts) => new Date(ts).toLocaleDateString([], {timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
   const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], {timeZone:TZ, hour:'numeric', minute:'2-digit'});
 
+  // NEW: build a Google Maps search link for a human location string
+  function mapsLink(locationText) {
+    if (!locationText) return null;
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
+  }
+
   function toast(message, { variant = 'error', timeout = 4500 } = {}) {
     const root = document.querySelector('#toast-root > div');
     if (!root) return;
@@ -262,10 +268,14 @@
     }
   }
 
+  // ⬇️ UPDATED: Today's event row renderer (format matches events.html & Settings)
   function todayRow(ev) {
     const already = !!ev.user_checked_in;
-    const when = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
-    const badge = ev.points ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>` : '';
+    const whenLine = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
+    const badge = ev.points
+      ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>`
+      : '';
+
     const action = already
       ? `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`
       : `<button
@@ -276,12 +286,31 @@
            Check in
          </button>`;
 
+    // Location line with pin + clickable Google Maps (hidden if missing)
+    const hasLoc = !!(ev.location && ev.location.trim());
+    const locHTML = hasLoc ? `
+      <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
+        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10c0 7-7.5 10.5-7.5 10.5S4.5 17 4.5 10a7.5 7.5 0 1115 0z" />
+        </svg>
+        <a href="${mapsLink(ev.location)}" target="_blank" rel="noopener noreferrer" class="truncate hover:underline" aria-label="Open ${escapeHtml(ev.location)} in Google Maps">
+          ${escapeHtml(ev.location)}
+        </a>
+      </p>` : '';
+
     return `
       <div class="py-4" id="event-${ev.id}">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div class="min-w-0">
-            <div class="font-ui text-base font-semibold text-ink">${escapeHtml(ev.title)} ${badge}</div>
-            <div class="mt-0.5 text-sm text-ink/70 font-ui">${when} · ${escapeHtml(ev.location || 'TBA')}</div>
+            <!-- Name -->
+            <h3 class="font-heading text-aggieBlue text-lg md:text-xl font-semibold leading-tight truncate">
+              ${escapeHtml(ev.title)} ${badge}
+            </h3>
+            <!-- Date & time -->
+            <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5">${whenLine}</p>
+            <!-- Location (clickable) -->
+            ${locHTML}
           </div>
           <div class="flex items-center gap-3">
             ${action}
@@ -362,10 +391,9 @@
         list.innerHTML = rows;
         empty.classList.toggle('hidden', (todays || []).length > 0);
 
-        // NEW: wire buttons using shared module
+        // Wire buttons using shared module
         initCheckinButtons();
         if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
-
 
         // Deep-link focus: index.html?event=<uuid>#today
         (function focusDeepLinkedEvent() {

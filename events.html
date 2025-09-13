@@ -189,31 +189,31 @@
     const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
     const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
 
-    // --- Short "Sept. 16 1:00–2:00PM" formatting ---
-    const MONTHS_ABBR = ["Jan.","Feb.","Mar.","Apr.","May","Jun.","Jul.","Aug.","Sept.","Oct.","Nov.","Dec."];
+    // --- Compact "Sat, Sep 13 · 12:10 AM–11:59 AM" formatting ---
+    const DOW_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+    const MON_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
-    function fmtMonthDayShort(ts) {
+    function fmtMonthDayDow(ts) {
       const d = toPT(ts);
-      return `${MONTHS_ABBR[d.getMonth()]} ${d.getDate()}`;
+      return `${DOW_ABBR[d.getDay()]}, ${MON_ABBR[d.getMonth()]} ${d.getDate()}`;
     }
-    function hm12(d) {
+
+    function hm12WithMeridian(d) {
       let h = d.getHours() % 12; if (h === 0) h = 12;
       const m = String(d.getMinutes()).padStart(2, '0');
-      return `${h}:${m}`;
+      const mer = d.getHours() >= 12 ? 'PM' : 'AM';
+      return `${h}:${m} ${mer}`;
     }
-    function meridian(d) { return d.getHours() >= 12 ? 'PM' : 'AM'; }
 
-    function fmtTimeRangeShort(start_ts, end_ts) {
+    function fmtTimeRangeFull(start_ts, end_ts) {
       const s = toPT(start_ts);
       const e = toPT(end_ts);
-      const sameDay = s.toDateString() === e.toDateString();
-      const sMer = meridian(s), eMer = meridian(e);
-      if (sameDay && sMer === eMer) return `${hm12(s)}–${hm12(e)}${eMer}`;
-      return `${hm12(s)}${sMer}–${hm12(e)}${eMer}`;
+      // Always show both meridians
+      return `${hm12WithMeridian(s)}–${hm12WithMeridian(e)}`;
     }
 
-    function fmtShortEventLine(start_ts, end_ts) {
-      return `${fmtMonthDayShort(start_ts)} ${fmtTimeRangeShort(start_ts, end_ts)}`;
+    function fmtEventLine(start_ts, end_ts) {
+      return `${fmtMonthDayDow(start_ts)} · ${fmtTimeRangeFull(start_ts, end_ts)}`;
     }
 
     const isTodayPT = (ts) => {
@@ -308,7 +308,7 @@
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
       const isLocalChecked = getCheckedSet().has(ev.id);
 
-      const timeLine = fmtShortEventLine(ev.start_ts, ev.end_ts);
+      const timeLine = fmtEventLine(ev.start_ts, ev.end_ts);
 
       const pointsHTML = (typeof ev.points === 'number')
         ? `<span class="inline-flex items-center rounded-full bg-aggieGold/20 ${compact ? 'px-2 py-0.5 text-[12px]' : 'px-2.5 py-1 text-sm md:text-base'} font-ui font-semibold text-aggieBlue">+${ev.points} pts</span>`
@@ -452,6 +452,7 @@
       copy.setHours(0,0,0,0);
       return copy;
     }
+    // Rolling 7-day range starting today (as requested)
     function formatThisWeekRangeLabel() {
       const today = startOfDayPT(nowPT());
       const end = new Date(today); end.setDate(end.getDate() + 7);
@@ -474,7 +475,7 @@
 
     const isPast = (end_ts) => nowPT() > closeAtPT(end_ts);
 
-    // --- NEW: auth gate (same approach as index.html) ---
+    // --- Auth gate (mirrors index.html) ---
     async function ensureAuthed() {
       const { data: { session } } = await sb.auth.getSession();
       if (!session) {
@@ -491,7 +492,7 @@
       $('#acctBtn')?.addEventListener('click', () => { const m = $('#acctMenu'); if (m) m.classList.toggle('hidden'); });
       $('#yearText').textContent = new Date().getFullYear();
 
-      // Require auth before loading data (prevents RLS 401 + “looks logged out” issue)
+      // Require auth before loading data
       const session = await ensureAuthed(); if (!session) return;
 
       // Account label + react to auth state
@@ -612,7 +613,7 @@
 
       // Search
       const searchInput = $('#searchInput');
-      const searchHint = $('#searchHint'); // ✅ fixed stray bracket
+      const searchHint = $('#searchHint');
       const params = new URLSearchParams(location.search);
       const initialQ = params.get('q'); if (initialQ) searchInput.value = initialQ;
 

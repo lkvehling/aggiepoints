@@ -41,31 +41,28 @@
     .card { transition: transform .15s ease, box-shadow .15s ease; }
     .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
 
-    /* Use plain CSS (no @apply) so it works without a build step */
+    /* Read-only labels */
     .label {
       display: block;
-      margin-bottom: 0.25rem; /* mb-1 */
+      margin-bottom: 0.25rem;         /* mb-1 */
       font-family: Montserrat, "Helvetica Neue", Arial, sans-serif; /* font-ui */
-      font-size: 0.875rem; /* text-sm */
-      font-weight: 700; /* bold */
-      color: var(--aggie-blue); /* text-aggieBlue */
+      font-size: 0.875rem;            /* text-sm */
+      font-weight: 700;               /* bold */
+      color: var(--aggie-blue);       /* text-aggieBlue */
     }
-    .input {
-      width: 100%;
-      border-radius: 0.75rem; /* rounded-xl */
-      border: 1px solid rgba(2,40,81,0.10); /* border-aggieBlue/10 */
-      padding: 0.5rem 1rem; /* py-2 px-4 */
-      font-family: Montserrat, "Helvetica Neue", Arial, sans-serif; /* font-ui */
-      outline: none;
+    /* Read-only value style */
+    .value {
+      font-family: Montserrat, "Helvetica Neue", Arial, sans-serif;
+      font-size: 1rem;                /* text-base */
+      color: #111827;                 /* near-ink */
+      background: #fff;               /* no gray highlight */
+      border: 1px solid rgba(2,40,81,0.10);
+      border-radius: 0.75rem;         /* rounded-xl */
+      padding: 0.5rem 1rem;           /* py-2 px-4 */
     }
-    .input:focus {
-      box-shadow: 0 0 0 2px rgba(255,191,0,0.60); /* focus:ring-2 focus:ring-aggieGold/60 */
-    }
-    /* Email: readonly but not greyed out */
-    #email {
-      background: #fff !important;
-      color: #111827; /* text-ink-ish */
-      opacity: 1 !important;
+    .value.muted {
+      color: #6b7280; /* gray-500 for empty values */
+      font-style: italic;
     }
   </style>
 </head>
@@ -125,41 +122,38 @@
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
       <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">Settings</h1>
-      <p class="mt-1 font-ui text-white/90">Manage your account details and see your check-ins.</p>
+      <p class="mt-1 font-ui text-white/90">View your account details and check-ins.</p>
     </div>
   </section>
 
   <!-- Content -->
   <main class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-    <!-- Account Details -->
+    <!-- Account Details (READ-ONLY) -->
     <section class="card rounded-2xl bg-white shadow-soft p-6">
       <h2 class="font-ui text-lg font-semibold text-aggieBlue">Account Details</h2>
 
-      <form id="accountForm" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+      <!-- Keep your grid layout, but swap inputs for read-only values -->
+      <div class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="sm:col-span-2">
           <label class="label">Display Name:</label>
-          <input id="displayName" type="text" class="input" placeholder="Your name" />
+          <div id="displayNameVal" class="value muted">—</div>
         </div>
 
         <div class="sm:col-span-2">
           <label class="label">Email:</label>
-          <input id="email" type="email" class="input" placeholder="you@example.com" readonly aria-readonly="true" />
+          <div id="emailVal" class="value muted">—</div>
         </div>
 
         <div class="sm:col-span-2">
           <label class="label">Team:</label>
-          <input id="team" type="text" class="input" placeholder="Team name" />
+          <div id="teamVal" class="value muted">—</div>
         </div>
 
         <div class="sm:col-span-2">
           <label class="label">Graduation Year:</label>
-          <input id="gradYear" type="number" inputmode="numeric" min="1900" max="2100" class="input" placeholder="2027" />
+          <div id="gradYearVal" class="value muted">—</div>
         </div>
-
-        <div class="sm:col-span-2 flex items-center gap-3">
-          <span id="accountMsg" class="font-ui text-sm text-ink/60"></span>
-        </div>
-      </form>
+      </div>
     </section>
 
     <!-- Check-ins -->
@@ -173,16 +167,13 @@
         <!-- Populated by JS -->
       </div>
 
-      <!-- TEMPLATE: updated event formatting to match Events/Home -->
+      <!-- TEMPLATE: match Events/Home style -->
       <template id="checkinCardTmpl">
         <article class="rounded-2xl border border-aggieBlue/10 bg-white p-4 shadow-soft">
           <div class="flex items-start justify-between gap-4">
             <div class="min-w-0">
-              <!-- Name -->
               <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate" data-name></h3>
-              <!-- Date & time -->
               <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5" data-date></p>
-              <!-- Location (clickable) -->
               <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5" data-location-row>
                 <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
@@ -206,7 +197,7 @@
       </div>
     </section>
 
-    <!-- Security -->
+    <!-- Security (kept; not profile editing) -->
     <section class="card rounded-2xl bg-white shadow-soft p-6">
       <div class="flex items-center justify-between">
         <h2 class="font-ui text-lg font-semibold text-aggieBlue">Security</h2>
@@ -219,7 +210,7 @@
           <div class="sm:col-span-2">
             <label class="label">New Password:</label>
             <div class="flex gap-2">
-              <input id="newPassword" type="password" class="input" placeholder="••••••••" />
+              <input id="newPassword" type="password" class="value w-full" placeholder="••••••••" />
             </div>
           </div>
           <div class="sm:col-span-2 flex items-center gap-3">
@@ -245,17 +236,7 @@
   <script>
   // ===== Utilities =====
   const $ = (sel) => document.querySelector(sel);
-  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
   const toggle = (el) => el.classList.toggle("hidden");
-  const esc = (s) => String(s ?? "")
-    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;").replaceAll("'","&#39;");
-
-  // Build a Google Maps search URL from a human location
-  function mapsLink(locationText) {
-    if (!locationText) return null;
-    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
-  }
 
   const fmtDateRange = (startISO, endISO) => {
     const s = new Date(startISO);
@@ -279,7 +260,6 @@
 
   // ===== Boot/Auth (guarded) =====
   (async () => {
-    // Make sure Supabase client is available
     if (!window.supabase || typeof sb === "undefined") {
       console.warn("Supabase client not available on settings.html");
       return;
@@ -292,7 +272,7 @@
     const acctEl = document.getElementById("acctName");
     acctEl.textContent = user?.user_metadata?.display_name || user?.email || "Account";
 
-    // Wire logout buttons regardless (harmless if not logged in)
+    // Wire logout buttons regardless
     const doLogout = async () => {
       await sb.auth.signOut();
       window.location.href = (typeof LOGIN_PAGE !== "undefined" && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
@@ -306,10 +286,9 @@
       return;
     }
 
-    // With a session: load profile + check-ins, then wire forms
     await loadProfile(user);
     await loadCheckins(user);
-    wireForms(user);
+    wireSecurity(user);
   })();
 
   async function loadProfile(user) {
@@ -318,16 +297,29 @@
       .eq("id", user.id).single();
     if (error) console.warn("profiles load error", error);
 
-    $("#displayName").value = profile?.display_name ?? user.user_metadata?.display_name ?? "";
-    $("#email").value = user.email ?? "";
-    $("#team").value = profile?.team_name ?? "";
-    $("#gradYear").value = profile?.grad_year ?? "";
+    // Set read-only values (fallbacks shown muted)
+    const name = profile?.display_name ?? user.user_metadata?.display_name ?? "";
+    const email = user.email ?? "";
+    const team = profile?.team_name ?? "";
+    const grad = profile?.grad_year ?? "";
+
+    const setVal = (id, val) => {
+      const el = document.getElementById(id);
+      if (!el) return;
+      el.textContent = val || "—";
+      el.classList.toggle("muted", !val);
+    };
+
+    setVal("displayNameVal", name);
+    setVal("emailVal", email);
+    setVal("teamVal", team);
+    setVal("gradYearVal", grad);
   }
 
   async function loadCheckins(user) {
-    const list = $("#checkinsList");
-    const none = $("#noCheckins");
-    const countEl = $("#checkinsCount");
+    const list = document.getElementById("checkinsList");
+    const none = document.getElementById("noCheckins");
+    const countEl = document.getElementById("checkinsCount");
     list.innerHTML = "";
 
     const { data: checkins, error: cErr } = await sb
@@ -350,30 +342,24 @@
       .in("id", eventIds);
     if (eErr) { console.warn("events load error", eErr); none.classList.remove("hidden"); return; }
 
-    const eventsById = Object.fromEntries((events || []).map(e => [e.id, e]));
+    const byId = Object.fromEntries((events || []).map(e => [e.id, e]));
     let rendered = 0;
 
     for (const chk of checkins) {
-      const ev = eventsById[chk.event_id];
+      const ev = byId[chk.event_id];
       if (!ev) continue;
 
       const tmpl = document.getElementById("checkinCardTmpl").content.cloneNode(true);
-
-      // Name (standard size/classes)
       tmpl.querySelector("[data-name]").textContent = ev.name || "";
-
-      // Date/time (standard line)
       tmpl.querySelector("[data-date]").textContent = fmtDateRange(ev.start_time, ev.end_time);
 
-      // Points badge
-      tmpl.querySelector("[data-points]").textContent =
-        typeof ev.points === "number" ? `+${ev.points} pts` : "";
+      const pts = typeof ev.points === "number" ? `+${ev.points} pts` : "";
+      tmpl.querySelector("[data-points]").textContent = pts;
 
-      // Location → clickable Google Maps (hide row if missing)
       const row = tmpl.querySelector("[data-location-row]");
       const link = tmpl.querySelector("[data-location-link]");
       if (ev.location) {
-        link.href = mapsLink(ev.location);
+        link.href = "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(ev.location);
         link.textContent = ev.location;
         link.setAttribute("aria-label", `Open ${ev.location} in Google Maps`);
         row.classList.remove("hidden");
@@ -389,40 +375,16 @@
     none.classList.toggle("hidden", rendered > 0);
   }
 
-  function wireForms(user) {
-    $("#accountForm").addEventListener("submit", async (e) => {
+  function wireSecurity(user) {
+    document.getElementById("passwordForm")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const msg = $("#accountMsg");
-
-      const display_name = $("#displayName").value.trim();
-      const team_name = $("#team").value.trim();
-      const grad_year_val = $("#gradYear").value ? parseInt($("#gradYear").value, 10) : null;
-
-      const { error } = await sb.from("profiles").upsert({
-        id: user.id,
-        display_name,
-        team_name,
-        grad_year: grad_year_val
-      }, { onConflict: "id" });
-
-      if (!error && display_name) {
-        await sb.auth.updateUser({ data: { display_name } }).catch(()=>{});
-        $("#acctName").textContent = display_name;
-      }
-
-      msg.textContent = error ? "Save failed. Try again." : "Saved!";
-      setTimeout(() => msg.textContent = "", 2500);
-    });
-
-    $("#passwordForm").addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const pwd = $("#newPassword").value;
-      const msg = $("#pwdMsg");
+      const pwd = document.getElementById("newPassword").value;
+      const msg = document.getElementById("pwdMsg");
       if (!pwd || pwd.length < 8) { msg.textContent = "Use at least 8 characters."; return; }
 
       const { error } = await sb.auth.updateUser({ password: pwd });
       msg.textContent = error ? "Password update failed." : "Password updated!";
-      if (!error) { $("#newPassword").value = ""; }
+      if (!error) { document.getElementById("newPassword").value = ""; }
       setTimeout(() => msg.textContent = "", 2500);
     });
   }

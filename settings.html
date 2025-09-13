@@ -132,7 +132,6 @@
         </div>
 
         <div class="sm:col-span-2 flex items-center gap-3">
-          <button type="submit" class="rounded-xl bg-aggieGold text-aggieBlue px-5 py-2.5 font-ui font-semibold hover:brightness-95" id="saveProfileBtn">Save Profile</button>
           <span id="accountMsg" class="font-ui text-sm text-ink/60"></span>
         </div>
       </form>
@@ -180,13 +179,12 @@
       </div>
 
       <div id="pwdPanel" class="hidden mt-4">
-        <p class="font-ui text-sm text-ink/70 mb-3">For your security, we can’t show your current password. Set a new one below.</p>
+        <p class="font-ui text-sm text-ink/70 mb-3">For your security, we can’t show your current password. Please set a new one below.</p>
         <form id="passwordForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
             <label class="label">New Password:</label>
             <div class="flex gap-2">
               <input id="newPassword" type="password" class="input" placeholder="••••••••" />
-              <button type="button" id="showPwd" class="rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui hover:bg-aggieBlue/5">Show</button>
             </div>
           </div>
           <div class="sm:col-span-2 flex items-center gap-3">
@@ -342,7 +340,6 @@
   function wireForms(user) {
     $("#accountForm").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const btn = $("#saveProfileBtn");
       const msg = $("#accountMsg");
       btn.disabled = true; msg.textContent = "Saving…";
 
@@ -362,7 +359,7 @@
         $("#acctName").textContent = display_name;
       }
 
-      btn.disabled = false;
+  
       msg.textContent = error ? "Save failed. Try again." : "Saved!";
       setTimeout(() => msg.textContent = "", 2500);
     });
@@ -374,9 +371,9 @@
       const msg = $("#pwdMsg");
       if (!pwd || pwd.length < 8) { msg.textContent = "Use at least 8 characters."; return; }
 
-      btn.disabled = true; msg.textContent = "Updating…";
+      
       const { error } = await sb.auth.updateUser({ password: pwd });
-      btn.disabled = false;
+      
       msg.textContent = error ? "Password update failed." : "Password updated!";
       if (!error) { $("#newPassword").value = ""; }
       setTimeout(() => msg.textContent = "", 2500);

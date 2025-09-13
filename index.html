@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Aggie Points — Home</title>
+  <title>Aggie Points — All Events</title>
 
   <!-- Fonts (Raleway, Montserrat, Merriweather) -->
   <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
@@ -25,22 +25,19 @@
             ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
             body: ["Merriweather", "Georgia", "serif"],
           },
-          boxShadow: {
-            soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
-          }
+          boxShadow: { soft: "0 6px 24px rgba(2, 40, 81, 0.08)" }
         }
       }
     }
   </script>
 
   <style>
-    :root { --aggie-blue:#022851; --aggie-gold:#FFBF00; }
     .card { transition: transform .15s ease, box-shadow .15s ease; }
     .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
   </style>
 </head>
-<body class="min-h-screen bg-aggieBg text-ink font-body">
 
+<body class="min-h-screen bg-aggieBg text-ink font-body">
   <!-- Header / Nav -->
   <header class="bg-aggieBlue text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
@@ -51,7 +48,7 @@
 
         <nav class="hidden md:flex items-center gap-8 font-ui">
           <a href="index.html" class="hover:text-aggieGold">Home</a>
-          <a href="events.html" class="hover:text-aggieGold">All Events</a>
+          <a href="events.html" class="hover:text-aggieGold text-aggieGold">All Events</a>
           <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
           <a href="about.html" class="hover:text-aggieGold">About</a>
 
@@ -94,71 +91,54 @@
   <!-- Page Header -->
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">Welcome to Aggie Points</h1>
-      <p class="mt-1 font-ui text-white/90">See your points and check in to today’s events.</p>
+      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">All Events</h1>
+      <p class="mt-1 font-ui text-white/90">Plan ahead. If an event is today and in the check-in window, you can check in from here or from Home.</p>
+
+      <!-- Search bar -->
+      <div class="mt-6">
+        <div class="relative max-w-xl">
+          <input id="searchInput" type="search" placeholder="Search by title or location..."
+                 class="w-full rounded-xl bg-white/95 text-ink placeholder:text-ink/50 ring-1 ring-white/30 focus:ring-2 focus:ring-aggieGold px-4 py-3 font-ui shadow-soft" />
+          <svg class="absolute right-4 top-1/2 -translate-y-1/2 h-5 w-5 text-ink/50" viewBox="0 0 24 24" fill="none">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" stroke-width="2"/>
+            <path d="M20 20l-3.5-3.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <p id="searchHint" class="mt-2 text-sm font-ui text-white/75 hidden"></p>
+      </div>
     </div>
   </section>
 
   <!-- Main Content -->
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-
-    <!-- Grid: mobile order - Your Points (1), Today's Events (2), Quick Links (3) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-      <!-- Your Points -->
-      <section class="lg:col-span-1 order-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+    <!-- STACKED layout (rows) -->
+    <div class="grid grid-cols-1 gap-6">
+      <!-- This Week -->
+      <section id="week" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
-          <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-4">Your Points</h2>
-
-          <div class="space-y-4">
-            <div>
-              <div class="font-ui text-sm uppercase tracking-wide text-ink/60">Total Points</div>
-              <div id="pointsTotal" class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">—</div>
-            </div>
-
-            <div>
-              <div class="font-ui text-sm uppercase tracking-wide text-ink/60">Rank</div>
-              <div class="mt-1 text-2xl font-heading font-extrabold text-aggieBlue"><span id="rank">—</span></div>
-            </div>
-
-            <div>
-              <div class="font-ui text-sm uppercase tracking-wide text-ink/60">Team</div>
-              <div class="mt-1 text-2xl font-heading font-extrabold text-aggieBlue"><span id="team">—</span></div>
-            </div>
-          </div>
-
-          <div class="mt-6 flex gap-3">
-            <a href="leaderboard.html" class="px-4 py-2 rounded-lg bg-aggieBlue text-white font-ui hover:bg-aggieBlue/90">Leaderboards</a>
-            <a href="events.html" class="px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95">All Events</a>
-          </div>
+          <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">This Week</h2>
+          <div id="weekList" class="divide-y divide-gray-100"></div>
+          <div id="weekEmpty" class="hidden font-ui text-ink/60">No events this week.</div>
         </div>
       </section>
 
-      <!-- Today's Events -->
-      <section id="today" class="lg:col-span-2 order-2 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+      <!-- This Month -->
+      <section id="month" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
-          <div class="flex items-end justify-between">
-            <h2 class="font-ui text-xl font-semibold text-aggieBlue">Today’s Events</h2>
-            <div class="text-sm font-ui text-ink/60"><span id="todayDate">—</span></div>
-          </div>
-
-          <div id="todayList" class="mt-4 divide-y divide-gray-100"></div>
-          <div id="todayEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No events today.</div>
+          <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">This Month</h2>
+          <div id="monthList" class="divide-y divide-gray-100"></div>
+          <!-- intentionally no empty label for Month -->
         </div>
       </section>
 
-      <!-- Quick Links -->
-      <section class="lg:col-span-1 order-3 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+      <!-- All Upcoming -->
+      <section id="upcoming" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
         <div class="p-6">
-          <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-4">Quick Links</h2>
-          <ul class="space-y-2 font-ui">
-            <li><a href="events.html#week" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">This Week</a></li>
-            <li><a href="events.html#month" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">This Month</a></li>
-            <li><a href="events.html#upcoming" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">All Upcoming</a></li>
-          </ul>
+          <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-2">All Upcoming</h2>
+          <div id="upcomingList" class="divide-y divide-gray-100"></div>
+          <div id="upcomingEmpty" class="hidden font-ui text-ink/60">No upcoming events.</div>
         </div>
       </section>
-
     </div>
   </main>
 
@@ -172,222 +152,397 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
-  <!-- NEW: shared check-in module used by both Home and Events -->
+  <!-- Shared check-in module (same file used on Home) -->
   <script src="checkin.js"></script>
 
   <script>
-  // ========= Helpers (match SQL) =========
-  // Uses views: public.profiles (display_name, team_name, points_total, rank)
-  //             public.events_today (id, title, start_ts, end_ts, location, points, user_checked_in)
-  // RPC:        public.checkin(uuid, lat, lng, accuracy)
-
-  const $  = (s) => document.querySelector(s);
-  const $$ = (s) => Array.from(document.querySelectorAll(s));
-  const toggle = (el) => el.classList.toggle('hidden');
-  const escapeHtml = (s) => (s ?? '').toString()
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-
-  const TZ = 'America/Los_Angeles';
-  const fmtDate = (ts) => new Date(ts).toLocaleDateString([], {timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
-  const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], {timeZone:TZ, hour:'numeric', minute:'2-digit'});
-
-  function toast(message, { variant = 'error', timeout = 4500 } = {}) {
-    const root = document.querySelector('#toast-root > div');
-    if (!root) return;
-
-    const variants = {
-      success: 'bg-green-100 text-green-900 ring-1 ring-green-300',
-      error:   'bg-red-100 text-red-900 ring-1 ring-red-300',
-      info:    'bg-aggieBlue/10 text-aggieBlue ring-1 ring-aggieBlue/30',
-      warn:    'bg-yellow-100 text-yellow-900 ring-1 ring-yellow-300'
+    // ===== Helpers =====
+    const $  = (s) => document.querySelector(s);
+    const $$ = (s) => Array.from(document.querySelectorAll(s));
+    const toggle = (el, show) => { if (!el) return; el.classList[show ? 'remove' : 'add']('hidden'); };
+    const TZ = 'America/Los_Angeles';
+    
+    // Time helpers
+    const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
+    const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
+    const fmtDT = (ts) => new Date(ts).toLocaleString([], { timeZone: TZ, month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
+    const fmtHM = (dt) => dt.toLocaleTimeString([], { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
+    
+    // Same-day heading format: "Fri, Sep 12 · 12:09 PM–11:59 PM"
+    const sameDayTitle = (start_ts, end_ts) => {
+      const d = toPT(start_ts);
+      const left = d.toLocaleDateString([], { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric' });
+      return `${left} · ${fmtHM(toPT(start_ts))}–${fmtHM(toPT(end_ts))}`;
     };
-    const cls = variants[variant] || variants.info;
+    
+    const isTodayPT = (ts) => {
+      const d = toPT(ts), n = nowPT();
+      return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+    };
 
-    const el = document.createElement('div');
-    el.setAttribute('role', 'status');
-    el.className = [
-      'pointer-events-auto','max-w-sm','w-[360px]','rounded-2xl','shadow-soft',
-      'px-4','py-3','font-ui','text-sm','backdrop-blur','flex','items-start','gap-3',cls
-    ].join(' ');
-    el.innerHTML = `
-      <div class="shrink-0 pt-0.5">
-        ${variant === 'success' ? '✅' : variant === 'warn' ? '⚠️' : variant === 'info' ? 'ℹ️' : '❌'}
-      </div>
-      <div class="min-w-0 leading-snug">${message}</div>
-      <button class="ml-auto shrink-0 opacity-70 hover:opacity-100" aria-label="Close">✕</button>
-    `;
-    el.querySelector('button').addEventListener('click', () => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); });
-    root.appendChild(el);
-    if (timeout > 0) setTimeout(() => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); }, timeout);
-  }
+    // Check-in window (open 20 min before start → close 10 min before end)
+    const WINDOW_BEFORE_MIN = 20;
+    const WINDOW_CLOSE_MIN  = 10;
+    const openAtPT  = (start_ts) => new Date(toPT(start_ts).getTime() - WINDOW_BEFORE_MIN * 60 * 1000);
+    const closeAtPT = (end_ts)   => new Date(toPT(end_ts).getTime()   - WINDOW_CLOSE_MIN  * 60 * 1000);
+    const isCheckinWindow = (start_ts, end_ts) => {
+      const n = nowPT();
+      return n >= openAtPT(start_ts) && n <= closeAtPT(end_ts);
+    };
 
-  // Tiny fade-out animation
-  (function injectToastAnim(){
-    const style = document.createElement('style');
-    style.textContent = `@keyframes toast-fade-out { to { opacity: 0; transform: translateY(-4px); } } .animate-fade-out { animation: toast-fade-out .15s ease forwards; }`;
-    document.head.appendChild(style);
-  })();
+    const escapeHtml = (s) => (s ?? '').toString()
+      .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+      .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
-  function showCheckinError(err) {
-    const code = err?.code;
-    const details = err?.details || '';
-
-    if (code === '22P02' || /invalid input syntax for type uuid/i.test(details)) return 'Invalid event id. Please refresh and try again.';
-    if (code === '23503' || /foreign key/i.test(details))               return 'This event no longer exists. Please refresh the page.';
-    if (code === 'PGRST301' || code === '401' || /JWT|auth/i.test(details)) return 'You must be signed in to check in.';
-    if (/Missing required input parameter: event_id/i.test(details))    return 'Check-in misconfigured (missing event id). Please contact an admin.';
-    if (code === '42501')                                               return 'You do not have permission to check in to this event.';
-    if (/outside_geofence/i.test(details))                              return 'You must be at the venue to check in.';
-    if (/outside_time_window/i.test(details))                           return 'This event is not currently active (20 min before start → 10 min before end).';
-    if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please allow location access and try again.';
-    if (/low_accuracy/i.test(details))                                  return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled.';
-    if (/missing_accuracy/i.test(details))                               return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
-    return err?.message || 'Check-in failed. Please try again.';
-  }
-
-  // ⬇️ Globally callable for both pages
-  async function refreshProfilePoints() {
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
-    const { data: prof, error } = await sb
-      .from('profiles')
-      .select('points_total, rank, team_name')
-      .eq('id', user.id)
-      .single();
-    if (!error && prof) {
-      $('#pointsTotal').textContent = (prof.points_total ?? 0);
-      $('#rank').textContent        = (prof.rank ?? '—');
-      $('#team').textContent        = prof.team_name || '—';
+    // NEW: Google Maps link builder (clickable location)
+    function mapsLink(locationText) {
+      if (!locationText) return null;
+      return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
     }
-  }
 
-  function todayRow(ev) {
-    const already = !!ev.user_checked_in;
-    const when = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
-    const badge = ev.points ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>` : '';
-    const action = already
-      ? `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`
-      : `<button
-           class="checkin-btn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95"
-           data-event-id="${ev.id}"
-           data-event-name="${escapeHtml(ev.title)}"
-           data-event-points="${ev.points ?? ''}">
-           Check in
-         </button>`;
+    // Simple themed toast (same look as Home)
+    function toast(message, { variant = 'info', timeout = 3500 } = {}) {
+      const root = document.querySelector('#toast-root > div');
+      if (!root) return alert(message);
+      const variants = {
+        success: 'bg-green-100 text-green-900 ring-1 ring-green-300',
+        error:   'bg-red-100 text-red-900 ring-1 ring-red-300',
+        info:    'bg-aggieBlue/10 text-aggieBlue ring-1 ring-aggieBlue/30',
+        warn:    'bg-yellow-100 text-yellow-900 ring-1 ring-yellow-300'
+      };
+      const cls = variants[variant] || variants.info;
+      const el = document.createElement('div');
+      el.setAttribute('role','status');
+      el.className = 'pointer-events-auto max-w-sm w-[360px] rounded-2xl shadow-soft px-4 py-3 font-ui text-sm backdrop-blur flex items-start gap-3 ' + cls;
+      el.innerHTML = `
+        <div class="shrink-0 pt-0.5">${variant==='success'?'✅':variant==='warn'?'⚠️':variant==='info'?'ℹ️':'❌'}</div>
+        <div class="min-w-0 leading-snug">${message}</div>
+        <button class="ml-auto shrink-0 opacity-70 hover:opacity-100" aria-label="Close">✕</button>
+      `;
+      el.querySelector('button').addEventListener('click', () => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); });
+      root.appendChild(el);
+      if (timeout > 0) setTimeout(() => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); }, timeout);
+    }
+    (function injectToastAnim(){
+      const style = document.createElement('style');
+      style.textContent = `@keyframes toast-fade-out { to { opacity: 0; transform: translateY(-4px); } } .animate-fade-out { animation: toast-fade-out .15s ease forwards; }`;
+      document.head.appendChild(style);
+    })();
 
-    return `
-      <div class="py-4" id="event-${ev.id}">
+    // Error text mapping (same as Home)
+    function showCheckinError(err) {
+      const code = err?.code;
+      const details = err?.details || '';
+      if (code === '22P02' || /invalid input syntax for type uuid/i.test(details)) return 'Invalid event id. Please refresh and try again.';
+      if (code === '23503' || /foreign key/i.test(details))               return 'This event no longer exists. Please refresh the page.';
+      if (code === 'PGRST301' || code === '401' || /JWT|auth/i.test(details)) return 'You must be signed in to check in.';
+      if (/Missing required input parameter: event_id/i.test(details))    return 'Check-in misconfigured (missing event id). Please contact an admin.';
+      if (code === '42501')                                               return 'You do not have permission to check in to this event.';
+      if (/outside_geofence/i.test(details))                              return 'You must be at the venue to check in.';
+      if (/outside_time_window/i.test(details))                           return 'This event is not currently active (20 min before start → 10 min before end).';
+      if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please allow location access and try again.';
+      if (/low_accuracy/i.test(details))                                  return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled.';
+      if (/missing_accuracy/i.test(details))                              return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
+      return err?.message || 'Check-in failed. Please try again.';
+    }
+
+    function uiError(el, err) {
+      const msg = [
+        'Could not load events.',
+        err?.code ? `Code: ${err.code}` : '',
+        err?.details || err?.message || ''
+      ].filter(Boolean).join(' ');
+      console.error('events load error →', err);
+      el.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">${msg}</div>`;
+    }
+
+    // Read the same cache used by checkin.js
+    function getCheckedSet() {
+      try { return new Set(JSON.parse(localStorage.getItem('aggie_checked_in_ids') || '[]')); }
+      catch { return new Set(); }
+    }
+
+    // === Local cache reader (used by eventRow to honor cross-tab state) ===
+    function getCheckedSet() {
+      try { return new Set(JSON.parse(localStorage.getItem('aggie_checked_in_ids') || '[]')); }
+      catch { return new Set(); }
+    }
+
+    // Row renderer — UI updated to match Settings + Maps link
+    function eventRow(ev) {
+      const today   = isTodayPT(ev.start_ts);
+      const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
+      const isLocalChecked = getCheckedSet().has(ev.id);
+
+      // Time line (separate from name; matches Settings typography)
+      const timeLine = today
+        ? sameDayTitle(ev.start_ts, ev.end_ts)
+        : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)}`;
+
+      const pts = ev.points
+        ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>`
+        : '';
+
+      let action;
+      if (isLocalChecked) {
+        action = `<span class="px-3 py-1.5 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
+      } else if (today && canNow) {
+        action = `<button
+          class="checkin-btn px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95"
+          data-event-id="${ev.id}"
+          data-event-name="${escapeHtml(ev.title)}"
+          data-event-points="${ev.points ?? ''}">
+          Check in
+        </button>`;
+      } else if (today) {
+        action = nowPT() > closeAtPT(ev.end_ts)
+          ? `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`
+          : `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
+      } else {
+        action = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
+      }
+
+      // Location line: clickable link w/ pin; hide if missing
+      const hasLoc = !!(ev.location && ev.location.trim());
+      const locHTML = hasLoc ? `
+        <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
+          <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10c0 7-7.5 10.5-7.5 10.5S4.5 17 4.5 10a7.5 7.5 0 1115 0z" />
+          </svg>
+          <a href="${mapsLink(ev.location)}" target="_blank" rel="noopener noreferrer" class="truncate hover:underline" aria-label="Open ${escapeHtml(ev.location)} in Google Maps">
+            ${escapeHtml(ev.location)}
+          </a>
+        </p>` : '';
+
+      return `
+      <div class="py-4"
+           data-title="${escapeHtml(ev.title).toLowerCase()}"
+           data-location="${escapeHtml(ev.location||'').toLowerCase()}">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div class="min-w-0">
-            <div class="font-ui text-base font-semibold text-ink">${escapeHtml(ev.title)} ${badge}</div>
-            <div class="mt-0.5 text-sm text-ink/70 font-ui">${when} · ${escapeHtml(ev.location || 'TBA')}</div>
+            <!-- Name -->
+            <h3 class="font-heading text-aggieBlue text-lg md:text-xl font-semibold leading-tight truncate">
+              ${escapeHtml(ev.title)} ${pts}
+            </h3>
+            <!-- Date & time -->
+            <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5">${timeLine}</p>
+            <!-- Location (clickable) -->
+            ${locHTML}
           </div>
-          <div class="flex items-center gap-3">
-            ${action}
-            <a class="font-ui text-sm text-aggieBlue hover:underline" href="events.html#upcoming">More</a>
+          <div class="shrink-0">
+            <span class="checkin-slot"
+                  data-event-id="${ev.id}"
+                  data-title-full="${escapeHtml(ev.title)}"
+                  data-points="${ev.points ?? ''}"
+                  data-start="${ev.start_ts}"
+                  data-end="${ev.end_ts}">
+              ${action}
+            </span>
           </div>
         </div>
-      </div>`;
-  }
-
-  async function ensureAuthed() {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) {
-      window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html';
-      return null;
-    }
-    return session;
-  }
-
-  // ========= Boot =========
-  (async () => {
-    // Header interactions
-    $('#mobileMenuBtn')?.addEventListener('click', () => toggle($('#mobileMenu')));
-    $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
-    $('#yearText').textContent = new Date().getFullYear();
-
-    // Auth
-    const session = await ensureAuthed(); if (!session) return;
-    const { data: { user } } = await sb.auth.getUser();
-    $('#acctName').textContent = user?.user_metadata?.display_name || user?.email || 'Account';
-    const doLogout = async () => { await sb.auth.signOut(); window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; };
-    $('#logoutBtn')?.addEventListener('click', doLogout);
-    $('#logoutBtnMobile')?.addEventListener('click', doLogout);
-
-    // Keep header/data fresh on auth state changes
-    sb.auth.onAuthStateChange(async (_event, sess) => {
-      if (sess?.user) {
-        $('#acctName').textContent = sess.user.user_metadata?.display_name || sess.user.email || 'Account';
-        await refreshProfilePoints();
-      }
-    });
-
-    // Today header (in PT)
-    const todayPT = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
-    $('#todayDate').textContent = todayPT.toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
-
-    // ----- Load Profile from public.profiles -----
-    try {
-      const { data: prof, error: pErr } = await sb
-        .from('profiles')
-        .select('display_name, team_name, points_total, rank')
-        .eq('id', user.id)
-        .single();
-      if (!pErr && prof) {
-        $('#pointsTotal').textContent = (prof.points_total ?? 0);
-        $('#rank').textContent        = (prof.rank ?? '—');
-        $('#team').textContent        = prof.team_name || '—';
-      } else {
-        console.error('profiles error', pErr);
-      }
-    } catch (e) {
-      console.error('profiles fetch crashed', e);
+      </div>
+    `;
     }
 
-    // ----- Load Today’s Events from public.events_today -----
-    const list = $('#todayList');
-    const empty = $('#todayEmpty');
-    try {
-      const { data: todays, error: tErr } = await sb
-        .from('events_today')
-        .select('id, title, start_ts, end_ts, location, points, user_checked_in')
-        .order('start_ts', { ascending: true });
+    // === Reconcile local "checked" cache against server truth and fix UI ===
+    async function reconcileCheckedInsFromServer() {
+      try {
+        // Gather event IDs on the page
+        const slots = Array.from(document.querySelectorAll('.checkin-slot[data-event-id]'));
+        const eventIds = [...new Set(slots.map(s => s.getAttribute('data-event-id')).filter(Boolean))];
+        if (!eventIds.length) return;
+    
+        // Current user
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+    
+        // Which of these events are actually checked in (server truth)?
+        const { data: rows, error } = await sb
+          .from('checkins')
+          .select('event_id')
+          .eq('user_id', user.id)
+          .in('event_id', eventIds);
+    
+        if (error) { console.warn('reconcile error', error); return; }
+    
+        const serverSet = new Set((rows || []).map(r => r.event_id));
+    
+        // Local cache helpers (same key used by checkin.js)
+        const LS_KEY = 'aggie_checked_in_ids';
+        const getLocal = () => {
+          try { return new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]')); }
+          catch { return new Set(); }
+        };
+        const saveLocal = (set) => localStorage.setItem(LS_KEY, JSON.stringify([...set]));
+    
+        const localSet = getLocal();
+    
+        // Time helpers to rebuild correct control if not checked server-side
+        const TZ = 'America/Los_Angeles';
+        const WINDOW_BEFORE_MIN = 20;
+        const WINDOW_CLOSE_MIN  = 10;
+        const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
+        const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
+        const isTodayPT = (ts) => {
+          const d = toPT(ts), n = nowPT();
+          return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
+        };
+        const isCheckinWindow = (start_ts, end_ts) => {
+          const start = toPT(start_ts);
+          const end   = toPT(end_ts);
+          const open  = new Date(start.getTime() - WINDOW_BEFORE_MIN * 60 * 1000);
+          const close = new Date(end.getTime()   - WINDOW_CLOSE_MIN  * 60 * 1000);
+          const now   = nowPT();
+          return now >= open && now <= close;
+        };
+        const isClosed = (end_ts) => {
+          const end   = toPT(end_ts);
+          const close = new Date(end.getTime() - WINDOW_CLOSE_MIN * 60 * 1000);
+          return nowPT() > close;
+        };
+    
+        // For anything the local cache says "checked" but server does NOT:
+        localSet.forEach(id => {
+          if (!serverSet.has(id)) {
+            // 1) Remove from cache
+            localSet.delete(id);
+    
+            // 2) Fix UI in place for this event id
+            document.querySelectorAll(`.checkin-slot[data-event-id="${id}"]`).forEach(slot => {
+              const start = slot.getAttribute('data-start');
+              const end   = slot.getAttribute('data-end');
+              const title = slot.getAttribute('data-title-full') || '';
+              const pts   = slot.getAttribute('data-points') || '';
+    
+              let html;
+              if (start && end && isTodayPT(start) && isCheckinWindow(start, end)) {
+                html = `<button
+                  class="checkin-btn px-3 py-1.5 rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95"
+                  data-event-id="${id}"
+                  data-event-name="${title}"
+                  data-event-points="${pts}">
+                  Check in
+                </button>`;
+              } else if (start && end && isTodayPT(start) && isClosed(end)) {
+                html = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`;
+              } else {
+                html = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not open yet</span>`;
+              }
+    
+              slot.innerHTML = html;
+            });
+          }
+        });
+    
+        // 3) Save cleaned cache and rewire any restored buttons
+        saveLocal(localSet);
+        if (typeof window.initCheckinButtons === 'function') window.initCheckinButtons();
+    
+      } catch (e) {
+        console.warn('reconcile exception', e);
+      }
+    }
 
-      if (tErr) {
-        console.error('events_today error', tErr);
-        list.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">Could not load today’s events.</div>`;
-      } else {
-        const rows = (todays || []).map(todayRow).join('');
-        list.innerHTML = rows;
-        empty.classList.toggle('hidden', (todays || []).length > 0);
+    // ===== Page boot =====
+    (async () => {
+      // Header UI
+      $('#mobileMenuBtn')?.addEventListener('click', () => { const m = $('#mobileMenu'); if (m) m.classList.toggle('hidden'); });
+      $('#acctBtn')?.addEventListener('click', () => { const m = $('#acctMenu'); if (m) m.classList.toggle('hidden'); });
+      $('#yearText').textContent = new Date().getFullYear();
 
-        // NEW: wire buttons using shared module
+      // Account label (best-effort)
+      try {
+        const { data: { user } } = await sb.auth.getUser();
+        if (user) $('#acctName').textContent = user.user_metadata?.display_name || user.email || 'Account';
+        sb.auth.onAuthStateChange((_evt, sess) => {
+          if (sess?.user) $('#acctName').textContent = sess.user.user_metadata?.display_name || sess.user.email || 'Account';
+        });
+      } catch {}
+
+      const doLogout = async () => { await sb.auth.signOut(); window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; };
+      $('#logoutBtn')?.addEventListener('click', doLogout);
+      $('#logoutBtnMobile')?.addEventListener('click', doLogout);
+
+      // ===== Fetch & render lists =====
+      const COLS = 'id,title,start_ts,end_ts,location,points';
+
+      async function loadSection(viewName, listEl, emptyEl) {
+        const { data, error } = await sb
+          .from(viewName)
+          .select('id,title,start_ts,end_ts,location,points')
+          .order('start_ts', { ascending: true });
+      
+        if (error) { uiError(listEl, error); toggle(emptyEl, true); return []; }
+      
+        listEl.innerHTML = (data || []).map(eventRow).join('');
+        toggle(emptyEl, (data || []).length === 0);
+      
         initCheckinButtons();
         if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
-
-
-        // Deep-link focus: index.html?event=<uuid>#today
-        (function focusDeepLinkedEvent() {
-          const params = new URLSearchParams(location.search);
-          const focusId = params.get('event');
-          if (!focusId) return;
-          const target = document.getElementById(`event-${focusId}`);
-          if (!target) return;
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          target.classList.add('ring-2','ring-aggieGold','rounded-xl');
-          setTimeout(() => target.classList.remove('ring-2','ring-aggieGold'), 2500);
-        })();
+        await reconcileCheckedInsFromServer();
+      
+        return data || [];
       }
-    } catch (e) {
-      console.error('events_today fetch crashed', e);
-      list.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">Could not load today’s events.</div>`;
-      empty.classList.add('hidden');
-    }
-  })();
-</script>
 
-  <!-- Toast root -->
+
+      const weekListEl = $('#weekList'), weekEmptyEl = $('#weekEmpty');
+      const monthListEl = $('#monthList'); // no empty element by design
+      const upcomingListEl = $('#upcomingList'), upcomingEmptyEl = $('#upcomingEmpty');
+
+      await loadSection('events_this_week', weekListEl, weekEmptyEl);
+      await loadSection('events_this_month_excl_week', monthListEl, null);
+      await loadSection('events_upcoming', upcomingListEl, upcomingEmptyEl);
+
+      // ===== Search (client-side across all sections) =====
+      const searchInput = $('#searchInput');
+      const searchHint = $('#searchHint');
+
+      // seed from ?q=
+      const params = new URLSearchParams(location.search);
+      const initialQ = params.get('q'); if (initialQ) searchInput.value = initialQ;
+
+      function applySearch(q) {
+        const term = (q || '').trim().toLowerCase();
+        const sections = [
+          { list: weekListEl, empty: weekEmptyEl },
+          { list: monthListEl, empty: null },
+          { list: upcomingListEl, empty: upcomingEmptyEl },
+        ];
+
+        let totalShown = 0;
+
+        sections.forEach(({ list, empty }) => {
+          const rows = Array.from(list.querySelectorAll('[data-title]'));
+          let shown = 0;
+          rows.forEach(row => {
+            if (!term) { row.classList.remove('hidden'); shown++; return; }
+            const title = row.getAttribute('data-title') || '';
+            const loc   = row.getAttribute('data-location') || '';
+            const match = title.includes(term) || loc.includes(term);
+            row.classList.toggle('hidden', !match);
+            if (match) shown++;
+          });
+          // During search: show empty only if nothing matched in that section
+          if (empty) toggle(empty, term ? (shown === 0) : (rows.length === 0));
+          totalShown += shown;
+        });
+
+        if (term) {
+          searchHint.textContent = totalShown ? `Showing ${totalShown} matching event${totalShown===1?'':'s'}.` : `No events match “${q}”.`;
+          searchHint.classList.remove('hidden');
+        } else {
+          searchHint.textContent = '';
+          searchHint.classList.add('hidden');
+        }
+      }
+
+      applySearch(searchInput.value);
+      searchInput.addEventListener('input', (e) => applySearch(e.target.value));
+    })();
+  </script>
+
+  <!-- Toast root (for themed notices) -->
   <div id="toast-root" class="fixed inset-0 pointer-events-none z-[1000]">
     <div class="absolute top-4 right-4 space-y-3"></div>
   </div>

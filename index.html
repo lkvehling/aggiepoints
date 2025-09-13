@@ -172,6 +172,8 @@
   <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
+  <!-- NEW: shared check-in module used by both Home and Events -->
+  <script src="checkin.js"></script>
 
   <script>
   // ========= Helpers (match SQL) =========
@@ -244,7 +246,7 @@
     return err?.message || 'Check-in failed. Please try again.';
   }
 
-  // ⬇️ Moved OUT of showCheckinError so it’s globally callable
+  // ⬇️ Globally callable for both pages
   async function refreshProfilePoints() {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return;
@@ -266,7 +268,13 @@
     const badge = ev.points ? `<span class="ml-2 inline-flex items-center rounded-full bg-aggieGold/20 px-2 py-0.5 text-xs font-ui text-aggieBlue">+${ev.points} pts</span>` : '';
     const action = already
       ? `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`
-      : `<button class="checkinBtn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95" data-id="${ev.id}">Check in</button>`;
+      : `<button
+           class="checkin-btn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95"
+           data-event-id="${ev.id}"
+           data-event-name="${escapeHtml(ev.title)}"
+           data-event-points="${ev.points ?? ''}">
+           Check in
+         </button>`;
 
     return `
       <div class="py-4" id="event-${ev.id}">
@@ -307,7 +315,7 @@
     $('#logoutBtn')?.addEventListener('click', doLogout);
     $('#logoutBtnMobile')?.addEventListener('click', doLogout);
 
-    // If Supabase restores a session slightly later, keep header/data fresh
+    // Keep header/data fresh on auth state changes
     sb.auth.onAuthStateChange(async (_event, sess) => {
       if (sess?.user) {
         $('#acctName').textContent = sess.user.user_metadata?.display_name || sess.user.email || 'Account';
@@ -354,53 +362,8 @@
         list.innerHTML = rows;
         empty.classList.toggle('hidden', (todays || []).length > 0);
 
-        // Wire up Check in buttons -> RPC public.checkin(uuid, lat, lng, accuracy)
-        $$('.checkinBtn').forEach(btn => {
-          btn.addEventListener('click', async (e) => {
-            const el = e.currentTarget;
-            const id = el?.dataset.id;
-            if (!id) { alert('Check-in misconfigured: missing event id.'); return; }
-
-            el.disabled = true;
-            const original = el.textContent;
-            el.textContent = 'Checking…';
-
-            const getPosition = () => new Promise((resolve, reject) => {
-              if (!('geolocation' in navigator)) return reject(new Error('Geolocation not available'));
-              navigator.geolocation.getCurrentPosition(
-                pos => resolve(pos),
-                err => reject(err),
-                { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-              );
-            });
-
-            try {
-              const pos = await getPosition();
-              const { latitude, longitude, accuracy } = pos.coords;
-
-              const { error } = await sb.rpc('checkin', {
-                p_event_id: id, p_lat: latitude, p_lng: longitude, p_accuracy: accuracy
-              });
-
-              if (error) {
-                console.error('checkin error', error);
-                el.disabled = false;
-                el.textContent = original;
-                toast(showCheckinError(error), { variant: 'error' });
-                return;
-              }
-
-              el.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
-              toast('Checked in — have fun! 🎉', { variant: 'success', timeout: 2500 });
-              await refreshProfilePoints();
-            } catch (geoErr) {
-              console.error('geolocation error', geoErr);
-              el.disabled = false;
-              el.textContent = original;
-              alert('We need your location to check in. Please allow location access (site must be HTTPS or localhost) and try again.');
-            }
-          });
-        });
+        // NEW: wire buttons using shared module
+        initCheckinButtons();
 
         // Deep-link focus: index.html?event=<uuid>#today
         (function focusDeepLinkedEvent() {

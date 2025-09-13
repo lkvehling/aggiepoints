@@ -184,7 +184,7 @@
     const $$ = (s) => Array.from(document.querySelectorAll(s));
     const toggle = (el, show) => { if (!el) return; el.classList[show ? 'remove' : 'add']('hidden'); };
     const TZ = 'America/Los_Angeles';
-    
+
     // Time helpers
     const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
     const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
@@ -203,11 +203,6 @@
     }
     function meridian(d) { return d.getHours() >= 12 ? 'PM' : 'AM'; }
 
-    /**
-     * 1) Same day & same meridian → "1:00–2:00PM"
-     * 2) Same day & different meridian → "11:30AM–12:10PM"
-     * 3) Cross-day → show both meridians → "11:30PM–12:10AM"
-     */
     function fmtTimeRangeShort(start_ts, end_ts) {
       const s = toPT(start_ts);
       const e = toPT(end_ts);
@@ -217,7 +212,6 @@
       return `${hm12(s)}${sMer}–${hm12(e)}${eMer}`;
     }
 
-    /** Final: "Sept. 16 1:00–2:00PM" */
     function fmtShortEventLine(start_ts, end_ts) {
       return `${fmtMonthDayShort(start_ts)} ${fmtTimeRangeShort(start_ts, end_ts)}`;
     }
@@ -307,7 +301,7 @@
       catch { return new Set(); }
     }
 
-    // Row renderer — POINTS in middle line & large (matches index.html). Past uses compact size but same date line.
+    // Row renderer — points in middle line (big); Past uses compact size but same date line.
     function eventRow(ev, opts = {}) {
       const { forceClosed = false, checkedOverride = null, compact = false } = opts;
       const today   = isTodayPT(ev.start_ts);
@@ -316,19 +310,17 @@
 
       const timeLine = fmtShortEventLine(ev.start_ts, ev.end_ts);
 
-      // Points badge styling: big on normal cards, slightly smaller for compact
       const pointsHTML = (typeof ev.points === 'number')
         ? `<span class="inline-flex items-center rounded-full bg-aggieGold/20 ${compact ? 'px-2 py-0.5 text-[12px]' : 'px-2.5 py-1 text-sm md:text-base'} font-ui font-semibold text-aggieBlue">+${ev.points} pts</span>`
         : '';
 
-      // badge helpers
       const checkedBadge = `<span class="inline-flex items-center rounded-lg bg-green-100 text-green-700 ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} font-ui">Checked in</span>`;
       const closedBadge  = `<span class="inline-flex items-center rounded-lg bg-gray-200 text-gray-700 ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} font-ui">Closed</span>`;
       const notOpenBadge = `<span class="inline-flex items-center rounded-lg bg-gray-200 text-gray-700 ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} font-ui">Not Open Yet</span>`;
 
       let action;
       if (checkedOverride === true) {
-        action = checkedBadge; // explicit override (used by Past Events)
+        action = checkedBadge;
       } else if (forceClosed) {
         action = closedBadge;
       } else if (isLocalChecked) {
@@ -392,7 +384,7 @@
       `;
     }
 
-    // Reconcile local vs server truth (kept for main sections; past section sets badges server-side)
+    // Reconcile local vs server truth
     async function reconcileCheckedInsFromServer() {
       try {
         const slots = Array.from(document.querySelectorAll('.checkin-slot[data-event-id]'));
@@ -460,7 +452,6 @@
       copy.setHours(0,0,0,0);
       return copy;
     }
-    // Rolling 7-day range starting today
     function formatThisWeekRangeLabel() {
       const today = startOfDayPT(nowPT());
       const end = new Date(today); end.setDate(end.getDate() + 7);
@@ -481,8 +472,17 @@
       return `${monthFull} ${now.getFullYear()}`;
     }
 
-    // Past filter
     const isPast = (end_ts) => nowPT() > closeAtPT(end_ts);
+
+    // --- NEW: auth gate (same approach as index.html) ---
+    async function ensureAuthed() {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) {
+        window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html';
+        return null;
+      }
+      return session;
+    }
 
     // Page boot
     (async () => {
@@ -491,11 +491,14 @@
       $('#acctBtn')?.addEventListener('click', () => { const m = $('#acctMenu'); if (m) m.classList.toggle('hidden'); });
       $('#yearText').textContent = new Date().getFullYear();
 
-      // Account label
+      // Require auth before loading data (prevents RLS 401 + “looks logged out” issue)
+      const session = await ensureAuthed(); if (!session) return;
+
+      // Account label + react to auth state
       try {
-        const { data: { user} } = await sb.auth.getUser();
+        const { data: { user } } = await sb.auth.getUser();
         if (user) $('#acctName').textContent = user.user_metadata?.display_name || user.email || 'Account';
-        sb.auth.onAuthStateChange((_evt, sess) => {
+        sb.auth.onAuthStateChange(async (_evt, sess) => {
           if (sess?.user) $('#acctName').textContent = sess.user.user_metadata?.display_name || sess.user.email || 'Account';
         });
       } catch {}
@@ -607,9 +610,9 @@
         }
       });
 
-      // Search (affects loaded sections; won’t auto-open Past)
+      // Search
       const searchInput = $('#searchInput');
-      const searchHint = $('#searchHint']);
+      const searchHint = $('#searchHint'); // ✅ fixed stray bracket
       const params = new URLSearchParams(location.search);
       const initialQ = params.get('q'); if (initialQ) searchInput.value = initialQ;
 

@@ -105,34 +105,37 @@
     <!-- Grid: mobile order - Your Points (1), Today's Events (2), Quick Links (3) -->
     <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-      <!-- Your Points -->
+      <!-- Your Points (Summary) -->
       <section class="lg:col-span-1 order-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-        <div class="p-6">
-          <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-4">Your Points</h2>
-
-          <div class="space-y-4">
+        <div class="p-4"> <!-- smaller padding -->
+          <h2 class="font-ui text-lg font-semibold text-aggieBlue mb-3">Your Summary</h2>
+      
+          <div class="space-y-3">
+            <!-- Keep big points number -->
             <div>
-              <div class="font-ui text-sm uppercase tracking-wide text-ink/60">Total Points</div>
+              <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Total Points</div>
               <div id="pointsTotal" class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">—</div>
             </div>
-
+      
+            <!-- Smaller ranks -->
             <div>
-              <div class="font-ui text-sm uppercase tracking-wide text-ink/60">Rank</div>
-              <div class="mt-1 text-2xl font-heading font-extrabold text-aggieBlue"><span id="rank">—</span></div>
+              <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Individual Rank</div>
+              <div class="mt-1 text-xl font-heading font-extrabold text-aggieBlue"><span id="individualRank">—</span></div>
             </div>
-
+      
             <div>
-              <div class="font-ui text-sm uppercase tracking-wide text-ink/60">Team</div>
-              <div class="mt-1 text-2xl font-heading font-extrabold text-aggieBlue"><span id="team">—</span></div>
+              <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Team Rank</div>
+              <div class="mt-1 text-xl font-heading font-extrabold text-aggieBlue"><span id="teamRank">—</span></div>
             </div>
           </div>
-
-          <div class="mt-6 flex gap-3">
+      
+          <div class="mt-5 flex gap-3">
             <a href="leaderboard.html" class="px-4 py-2 rounded-lg bg-aggieBlue text-white font-ui hover:bg-aggieBlue/90">Leaderboards</a>
             <a href="events.html" class="px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95">All Events</a>
           </div>
         </div>
       </section>
+
 
       <!-- Today's Events -->
       <section id="today" class="lg:col-span-2 order-2 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
@@ -249,19 +252,19 @@
   }
 
   async function refreshProfilePoints() {
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
-    const { data: prof, error } = await sb
-      .from('profiles')
-      .select('points_total, rank, team_name')
-      .eq('id', user.id)
-      .single();
-    if (!error && prof) {
-      $('#pointsTotal').textContent = (prof.points_total ?? 0);
-      $('#rank').textContent        = (prof.rank ?? '—');
-      $('#team').textContent        = prof.team_name || '—';
-    }
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+  const { data: prof, error } = await sb
+    .from('profiles')
+    .select('points_total, rank, team_rank')
+    .eq('id', user.id)
+    .single();
+  if (!error && prof) {
+    $('#pointsTotal').textContent = (prof.points_total ?? 0);
+    $('#individualRank').textContent = (prof.rank ?? '—');       // individual rank
+    $('#teamRank').textContent = (prof.team_rank ?? '—');        // team rank
   }
+}
 
   // UPDATED: wrap each event in a boxed card (only change)
   function todayRow(ev) {
@@ -351,13 +354,13 @@
     try {
       const { data: prof, error: pErr } = await sb
         .from('profiles')
-        .select('display_name, team_name, points_total, rank')
+        .select('display_name, points_total, rank, team_rank')
         .eq('id', user.id)
         .single();
       if (!pErr && prof) {
-        $('#pointsTotal').textContent = (prof.points_total ?? 0);
-        $('#rank').textContent        = (prof.rank ?? '—');
-        $('#team').textContent        = prof.team_name || '—';
+        $('#pointsTotal').textContent   = (prof.points_total ?? 0);
+        $('#individualRank').textContent = (prof.rank ?? '—');      // individual rank
+        $('#teamRank').textContent       = (prof.team_rank ?? '—'); // team rank
       } else {
         console.error('profiles error', pErr);
       }

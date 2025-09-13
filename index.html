@@ -260,8 +260,14 @@
   
     const $id = (s) => document.querySelector(s);
     $id('#pointsTotal')    && ($id('#pointsTotal').textContent    = pts);
-    $id('#individualRank') && ($id('#individualRank').textContent = ind);
-    $id('#teamRank')       && ($id('#teamRank').textContent       = tr);
+    $('#individualRank').textContent = (prof.rank == null)
+    ? '—'
+    : (prof.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
+  
+  $('#teamRank').textContent = (prof.team_rank == null)
+    ? '—'
+    : (prof.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
+
   
     // Back-compat if old IDs still exist anywhere
     $id('#rank') && ($id('#rank').textContent = ind);
@@ -275,7 +281,7 @@
   
     const { data: prof, error } = await sb
       .from('profiles')
-      .select('points_total, rank, team_rank, rank_label, team_rank_label, team_name')
+      .select('.select('points_total, rank, team_rank, individual_is_tied, team_is_tied')
       .eq('id', user.id)
       .single();
   
@@ -372,7 +378,7 @@
     try {
       const { data: prof, error: pErr } = await sb
         .from('profiles')
-        .select('display_name, points_total, rank, team_rank, rank_label, team_rank_label, team_name')
+        .select('display_name, points_total, rank, team_rank, individual_is_tied, team_is_tied')
         .eq('id', user.id)
         .single();
     

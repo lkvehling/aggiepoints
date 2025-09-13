@@ -1,29 +1,71 @@
-// checkin.js — shared check-in module for Home + Events
-// Requires: auth-config.js (global `sb`), and optionally page helpers:
-// - window.toast(message, { variant, timeout })
-// - window.showCheckinError(err)
-// - window.refreshProfilePoints()
+// checkin.js — shared check-in module with cross-page sync
+// Requires: auth-config.js (global `sb`)
+// Optional on page: window.toast(), window.showCheckinError(), window.refreshProfilePoints()
 
 (function () {
   const $ = (s, r = document) => r.querySelector(s);
   const $$ = (s, r = document) => Array.from(r.querySelectorAll(s));
 
   function hasFn(name) { return typeof window[name] === 'function'; }
-  function call(fnName, ...args) { if (hasFn(fnName)) try { return window[fnName](...args); } catch(e) { console.warn(fnName, e);} }
+  function call(fnName, ...args) { if (hasFn(fnName)) try { return window[fnName](...args); } catch {} }
 
-  // Basic fallback to keep UX decent if page didn't define toast()
-  function fallbackToast(msg) {
-    alert(msg);
+  // --- Cross-page channel + helpers ---
+  const chan = ('BroadcastChannel' in window) ? new BroadcastChannel('aggie-checkin') : null;
+  const LS_KEY = 'aggie_checked_in_ids'; // JSON array of eventIds
+
+  function getCheckedSet() {
+    try { return new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]')); }
+    catch { return new Set(); }
   }
-  function showToast(message, opts = {}) {
-    if (hasFn('toast')) return window.toast(message, opts);
-    fallbackToast(message);
+  function addChecked(eventId) {
+    const set = getCheckedSet();
+    set.add(eventId);
+    localStorage.setItem(LS_KEY, JSON.stringify([...set]));
   }
 
+  // Mark any button for eventId as "Checked in"
+  function markCheckedInUI(eventId) {
+    $$('.checkin-btn[data-event-id]').forEach(btn => {
+      if (btn.getAttribute('data-event-id') === eventId) {
+        btn.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
+      }
+    });
+  }
+
+  // Public: scan page and mark already-checked events based on localStorage
+  function syncCheckedInUI() {
+    const set = getCheckedSet();
+    $$('.checkin-btn[data-event-id]').forEach(btn => {
+      const id = btn.getAttribute('data-event-id');
+      if (set.has(id)) {
+        btn.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
+      }
+    });
+  }
+
+  // Listen for cross-tab messages
+  if (chan) {
+    chan.onmessage = (evt) => {
+      const { type, eventId } = evt.data || {};
+      if (type === 'checked_in' && eventId) {
+        addChecked(eventId);   // ensure local cache is consistent
+        markCheckedInUI(eventId);
+        call('refreshProfilePoints');
+      }
+    };
+  }
+
+  // Fallback: listen to storage events (when other tab writes)
+  window.addEventListener('storage', (e) => {
+    if (e.key === LS_KEY) syncCheckedInUI();
+  });
+
+  // --- Toast fallbacks ---
+  function fallbackToast(msg) { alert(msg); }
+  function showToast(message, opts = {}) { return hasFn('toast') ? window.toast(message, opts) : fallbackToast(message); }
   function mapError(err) {
     if (hasFn('showCheckinError')) return window.showCheckinError(err);
-    const code = err?.code;
-    const details = err?.details || err?.message || '';
+    const code = err?.code, details = err?.details || err?.message || '';
     if (code === '23505' || /duplicate/i.test(details)) return 'You already checked in for this event.';
     if (code === '401' || /JWT|auth/i.test(details))    return 'You must be signed in to check in.';
     if (/geofence/i.test(details))                      return 'You must be at the venue to check in.';
@@ -35,11 +77,7 @@
   function getPosition() {
     return new Promise((resolve, reject) => {
       if (!('geolocation' in navigator)) return reject(new Error('Geolocation not available'));
-      navigator.geolocation.getCurrentPosition(
-        pos => resolve(pos),
-        err => reject(err),
-        { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
-      );
+      navigator.geolocation.getCurrentPosition(resolve, reject, { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 });
     });
   }
 
@@ -47,11 +85,9 @@
     const eventId = btn.getAttribute('data-event-id');
     if (!eventId) { showToast('Check-in misconfigured (missing event id).', { variant: 'error' }); return; }
 
-    // Optional metadata for nicer success toast
     const eventName   = btn.getAttribute('data-event-name');
     const eventPoints = btn.getAttribute('data-event-points');
 
-    // Button -> loading
     if (btn.disabled) return;
     btn.disabled = true;
     const original = btn.innerHTML;
@@ -66,11 +102,9 @@
     `;
 
     try {
-      // Geolocation
       const pos = await getPosition();
       const { latitude, longitude, accuracy } = pos.coords;
 
-      // RPC (matches your current backend)
       const { error } = await sb.rpc('checkin', {
         p_event_id: eventId,
         p_lat: latitude,
@@ -81,20 +115,22 @@
       if (error) {
         btn.disabled = false;
         btn.innerHTML = original;
-        const msg = mapError(error);
-        showToast(msg, { variant: 'error' });
+        showToast(mapError(error), { variant: 'error' });
         return;
       }
 
-      // Success UI
+      // Success: update here
       btn.outerHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
-      const msg = eventName
-        ? `Checked in to “${eventName}”${eventPoints ? ` — +${eventPoints} pts` : ''}! 🎉`
-        : 'Checked in — have fun! 🎉';
-      showToast(msg, { variant: 'success', timeout: 2500 });
+      showToast(
+        eventName ? `Checked in to “${eventName}”${eventPoints ? ` — +${eventPoints} pts` : ''}! 🎉` : 'Checked in — have fun! 🎉',
+        { variant: 'success', timeout: 2500 }
+      );
+      call('refreshProfilePoints');
 
-      // Let page refresh points if it has a helper
-      await call('refreshProfilePoints');
+      // Cross-page sync
+      addChecked(eventId);
+      if (chan) chan.postMessage({ type: 'checked_in', eventId });
+
     } catch (geoErr) {
       btn.disabled = false;
       btn.innerHTML = original;
@@ -103,14 +139,16 @@
   }
 
   function initCheckinButtons() {
-    // Wire any .checkin-btn that isn't already wired
     $$('.checkin-btn[data-event-id]').forEach(btn => {
       if (btn.dataset.wired === '1') return;
       btn.dataset.wired = '1';
       btn.addEventListener('click', () => handleClick(btn));
     });
+    // After wiring, also sync any that are already checked in (e.g., from another tab)
+    syncCheckedInUI();
   }
 
-  // Expose
+  // Expose for pages
   window.initCheckinButtons = initCheckinButtons;
+  window.syncCheckedInUI = syncCheckedInUI;
 })();

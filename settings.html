@@ -148,15 +148,25 @@
         <!-- Populated by JS -->
       </div>
 
+      <!-- TEMPLATE: updated event formatting to match Events/Home -->
       <template id="checkinCardTmpl">
         <article class="rounded-2xl border border-aggieBlue/10 bg-white p-4 shadow-soft">
           <div class="flex items-start justify-between gap-4">
-            <div>
-              <p class="font-ui text-sm text-ink/70" data-date></p>
-              <h3 class="mt-1 font-heading text-lg font-semibold text-aggieBlue" data-name></h3>
-              <p class="mt-1 font-ui text-sm text-ink/70" data-location></p>
+            <div class="min-w-0">
+              <!-- Name -->
+              <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate" data-name></h3>
+              <!-- Date & time -->
+              <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5" data-date></p>
+              <!-- Location (clickable) -->
+              <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5" data-location-row>
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+                  <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10c0 7-7.5 10.5-7.5 10.5S4.5 17 4.5 10a7.5 7.5 0 1115 0z" />
+                </svg>
+                <a data-location-link class="truncate hover:underline" target="_blank" rel="noopener noreferrer"></a>
+              </p>
             </div>
-            <div class="flex flex-col items-end gap-2">
+            <div class="flex flex-col items-end gap-2 shrink-0">
               <span class="inline-flex items-center rounded-full bg-green-100 text-green-800 text-xs font-ui px-2 py-1">
                 ✓ Checked in
               </span>
@@ -215,6 +225,12 @@
   const esc = (s) => String(s ?? "")
     .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
     .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+
+  // Build a Google Maps search URL from a human location
+  function mapsLink(locationText) {
+    if (!locationText) return null;
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
+  }
 
   const fmtDateRange = (startISO, endISO) => {
     const s = new Date(startISO);
@@ -324,10 +340,28 @@
       if (!ev) continue;
 
       const tmpl = document.getElementById("checkinCardTmpl").content.cloneNode(true);
-      tmpl.querySelector("[data-date]").textContent = fmtDateRange(ev.start_time, ev.end_time);
+
+      // Name (standard size/classes)
       tmpl.querySelector("[data-name]").textContent = esc(ev.name);
-      tmpl.querySelector("[data-location]").textContent = ev.location ? `Location: ${esc(ev.location)}` : "";
-      tmpl.querySelector("[data-points]").textContent = typeof ev.points === "number" ? `+${ev.points} pts` : "";
+
+      // Date/time (standard line)
+      tmpl.querySelector("[data-date]").textContent = fmtDateRange(ev.start_time, ev.end_time);
+
+      // Points badge
+      tmpl.querySelector("[data-points]").textContent =
+        typeof ev.points === "number" ? `+${ev.points} pts` : "";
+
+      // Location → clickable Google Maps (hide row if missing)
+      const row = tmpl.querySelector("[data-location-row]");
+      const link = tmpl.querySelector("[data-location-link]");
+      if (ev.location) {
+        link.href = mapsLink(ev.location);
+        link.textContent = ev.location;
+        link.setAttribute("aria-label", `Open ${ev.location} in Google Maps`);
+        row.classList.remove("hidden");
+      } else {
+        row.classList.add("hidden");
+      }
 
       list.appendChild(tmpl);
       rendered++;
@@ -341,7 +375,6 @@
     $("#accountForm").addEventListener("submit", async (e) => {
       e.preventDefault();
       const msg = $("#accountMsg");
-      btn.disabled = true; msg.textContent = "Saving…";
 
       const display_name = $("#displayName").value.trim();
       const team_name = $("#team").value.trim();
@@ -359,7 +392,6 @@
         $("#acctName").textContent = display_name;
       }
 
-  
       msg.textContent = error ? "Save failed. Try again." : "Saved!";
       setTimeout(() => msg.textContent = "", 2500);
     });
@@ -371,9 +403,7 @@
       const msg = $("#pwdMsg");
       if (!pwd || pwd.length < 8) { msg.textContent = "Use at least 8 characters."; return; }
 
-      
       const { error } = await sb.auth.updateUser({ password: pwd });
-      
       msg.textContent = error ? "Password update failed." : "Password updated!";
       if (!error) { $("#newPassword").value = ""; }
       setTimeout(() => msg.textContent = "", 2500);

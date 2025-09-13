@@ -1,4 +1,4 @@
-<!doctype html>
+<!doctype html> 
 <html lang="en">
 <head>
   <meta charset="utf-8" />
@@ -142,7 +142,8 @@
             <div class="text-sm font-ui text-ink/60"><span id="todayDate">—</span></div>
           </div>
 
-          <div id="todayList" class="mt-4 divide-y divide-gray-100"></div>
+          <!-- CHANGED: use space between boxed rows -->
+          <div id="todayList" class="mt-4 space-y-4"></div>
           <div id="todayEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No events today.</div>
         </div>
       </section>
@@ -177,10 +178,6 @@
 
   <script>
   // ========= Helpers (match SQL) =========
-  // Uses views: public.profiles (display_name, team_name, points_total, rank)
-  //             public.events_today (id, title, start_ts, end_ts, location, points, user_checked_in)
-  // RPC:        public.checkin(uuid, lat, lng, accuracy)
-
   const $  = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
   const toggle = (el) => el.classList.toggle('hidden');
@@ -192,7 +189,7 @@
   const fmtDate = (ts) => new Date(ts).toLocaleDateString([], {timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
   const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], {timeZone:TZ, hour:'numeric', minute:'2-digit'});
 
-  // NEW: build a Google Maps search link for a human location string
+  // Google Maps link for location text
   function mapsLink(locationText) {
     if (!locationText) return null;
     return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
@@ -228,7 +225,6 @@
     if (timeout > 0) setTimeout(() => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); }, timeout);
   }
 
-  // Tiny fade-out animation
   (function injectToastAnim(){
     const style = document.createElement('style');
     style.textContent = `@keyframes toast-fade-out { to { opacity: 0; transform: translateY(-4px); } } .animate-fade-out { animation: toast-fade-out .15s ease forwards; }`;
@@ -248,11 +244,10 @@
     if (/outside_time_window/i.test(details))                           return 'This event is not currently active (20 min before start → 10 min before end).';
     if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please allow location access and try again.';
     if (/low_accuracy/i.test(details))                                  return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled.';
-    if (/missing_accuracy/i.test(details))                               return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
+    if (/missing_accuracy/i.test(details))                              return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
     return err?.message || 'Check-in failed. Please try again.';
   }
 
-  // ⬇️ Globally callable for both pages
   async function refreshProfilePoints() {
     const { data: { user } } = await sb.auth.getUser();
     if (!user) return;
@@ -268,7 +263,7 @@
     }
   }
 
-  // ⬇️ UPDATED: Today's event row renderer (format matches events.html & Settings)
+  // UPDATED: wrap each event in a boxed card (only change)
   function todayRow(ev) {
     const already = !!ev.user_checked_in;
     const whenLine = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
@@ -286,7 +281,6 @@
            Check in
          </button>`;
 
-    // Location line with pin + clickable Google Maps (hidden if missing)
     const hasLoc = !!(ev.location && ev.location.trim());
     const locHTML = hasLoc ? `
       <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
@@ -300,16 +294,13 @@
       </p>` : '';
 
     return `
-      <div class="py-4" id="event-${ev.id}">
+      <article class="rounded-2xl border border-aggieBlue/10 bg-white p-4 shadow-soft" id="event-${ev.id}">
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div class="min-w-0">
-            <!-- Name -->
             <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate">
               ${escapeHtml(ev.title)} ${badge}
             </h3>
-            <!-- Date & time -->
             <p class="font-ui text-sm md:text-base text-ink/80 mt-0.5">${whenLine}</p>
-            <!-- Location (clickable) -->
             ${locHTML}
           </div>
           <div class="flex items-center gap-3">
@@ -317,7 +308,7 @@
             <a class="font-ui text-sm text-aggieBlue hover:underline" href="events.html#upcoming">More</a>
           </div>
         </div>
-      </div>`;
+      </article>`;
   }
 
   async function ensureAuthed() {

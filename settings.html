@@ -342,7 +342,7 @@
       const tmpl = document.getElementById("checkinCardTmpl").content.cloneNode(true);
 
       // Name (standard size/classes)
-      tmpl.querySelector("[data-name]").textContent = esc(ev.name);
+      tmpl.querySelector("[data-name]").textContent = ev.name || "";
 
       // Date/time (standard line)
       tmpl.querySelector("[data-date]").textContent = fmtDateRange(ev.start_time, ev.end_time);

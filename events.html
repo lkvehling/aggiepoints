@@ -188,13 +188,40 @@
     // Time helpers
     const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
     const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
-    const fmtDT = (ts) => new Date(ts).toLocaleString([], { timeZone: TZ, month:'short', day:'numeric', hour:'numeric', minute:'2-digit' });
-    const fmtHM = (dt) => dt.toLocaleTimeString([], { timeZone: TZ, hour: 'numeric', minute: '2-digit' });
-    const sameDayTitle = (start_ts, end_ts) => {
-      const d = toPT(start_ts);
-      const left = d.toLocaleDateString([], { timeZone: TZ, weekday: 'short', month: 'short', day: 'numeric' });
-      return `${left} · ${fmtHM(toPT(start_ts))}–${fmtHM(toPT(end_ts))}`;
-    };
+
+    // --- Short "Sept. 16 1:00–2:00PM" formatting ---
+    const MONTHS_ABBR = ["Jan.","Feb.","Mar.","Apr.","May","Jun.","Jul.","Aug.","Sept.","Oct.","Nov.","Dec."];
+
+    function fmtMonthDayShort(ts) {
+      const d = toPT(ts);
+      return `${MONTHS_ABBR[d.getMonth()]} ${d.getDate()}`;
+    }
+    function hm12(d) {
+      let h = d.getHours() % 12; if (h === 0) h = 12;
+      const m = String(d.getMinutes()).padStart(2, '0');
+      return `${h}:${m}`;
+    }
+    function meridian(d) { return d.getHours() >= 12 ? 'PM' : 'AM'; }
+
+    /**
+     * 1) Same day & same meridian → "1:00–2:00PM"
+     * 2) Same day & different meridian → "11:30AM–12:10PM"
+     * 3) Cross-day → show both meridians → "11:30PM–12:10AM"
+     */
+    function fmtTimeRangeShort(start_ts, end_ts) {
+      const s = toPT(start_ts);
+      const e = toPT(end_ts);
+      const sameDay = s.toDateString() === e.toDateString();
+      const sMer = meridian(s), eMer = meridian(e);
+      if (sameDay && sMer === eMer) return `${hm12(s)}–${hm12(e)}${eMer}`;
+      return `${hm12(s)}${sMer}–${hm12(e)}${eMer}`;
+    }
+
+    /** Final: "Sept. 16 1:00–2:00PM" */
+    function fmtShortEventLine(start_ts, end_ts) {
+      return `${fmtMonthDayShort(start_ts)} ${fmtTimeRangeShort(start_ts, end_ts)}`;
+    }
+
     const isTodayPT = (ts) => {
       const d = toPT(ts), n = nowPT();
       return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth() && d.getDate()===n.getDate();
@@ -280,16 +307,14 @@
       catch { return new Set(); }
     }
 
-    // Row renderer — POINTS MOVED TO MIDDLE LINE & LARGER (matches index.html)
+    // Row renderer — POINTS in middle line & large (matches index.html). Past uses compact size but same date line.
     function eventRow(ev, opts = {}) {
       const { forceClosed = false, checkedOverride = null, compact = false } = opts;
       const today   = isTodayPT(ev.start_ts);
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
       const isLocalChecked = getCheckedSet().has(ev.id);
 
-      const timeLine = today
-        ? sameDayTitle(ev.start_ts, ev.end_ts)
-        : `${fmtDT(ev.start_ts)} – ${fmtDT(ev.end_ts)}`;
+      const timeLine = fmtShortEventLine(ev.start_ts, ev.end_ts);
 
       // Points badge styling: big on normal cards, slightly smaller for compact
       const pointsHTML = (typeof ev.points === 'number')
@@ -344,7 +369,7 @@
                 ${escapeHtml(ev.title)}
               </h3>
 
-              <!-- Middle line: time + BIG points (matches index.html) -->
+              <!-- Middle line: short date/time + BIG points -->
               <div class="mt-0.5 flex items-center justify-start gap-3">
                 <p class="font-ui ${compact?'text-[13px]':'text-sm md:text-base'} text-ink/80">${timeLine}</p>
                 ${pointsHTML}
@@ -584,7 +609,7 @@
 
       // Search (affects loaded sections; won’t auto-open Past)
       const searchInput = $('#searchInput');
-      const searchHint = $('#searchHint');
+      const searchHint = $('#searchHint']);
       const params = new URLSearchParams(location.search);
       const initialQ = params.get('q'); if (initialQ) searchInput.value = initialQ;
 

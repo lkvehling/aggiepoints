@@ -251,20 +251,37 @@
     return err?.message || 'Check-in failed. Please try again.';
   }
 
-  async function refreshProfilePoints() {
-  const { data: { user } } = await sb.auth.getUser();
-  if (!user) return;
-  const { data: prof, error } = await sb
-    .from('profiles')
-    .select('points_total, rank, team_rank')
-    .eq('id', user.id)
-    .single();
-  if (!error && prof) {
-    $('#pointsTotal').textContent = (prof.points_total ?? 0);
-    $('#individualRank').textContent = (prof.rank ?? '—');       // individual rank
-    $('#teamRank').textContent = (prof.team_rank ?? '—');        // team rank
+  function applySummary(prof) {
+    const pts = prof?.points_total ?? 0;
+  
+    // Prefer label fields (e.g., "T1") if present; fall back to numbers
+    const ind = prof?.rank_label ?? (prof?.rank != null ? String(prof.rank) : '—');
+    const tr  = prof?.team_rank_label ?? (prof?.team_rank != null ? String(prof.team_rank) : '—');
+  
+    const $id = (s) => document.querySelector(s);
+    $id('#pointsTotal')    && ($id('#pointsTotal').textContent    = pts);
+    $id('#individualRank') && ($id('#individualRank').textContent = ind);
+    $id('#teamRank')       && ($id('#teamRank').textContent       = tr);
+  
+    // Back-compat if old IDs still exist anywhere
+    $id('#rank') && ($id('#rank').textContent = ind);
+    $id('#team') && ($id('#team').textContent = tr);
   }
-}
+
+
+  async function refreshProfilePoints() {
+    const { data: { user } } = await sb.auth.getUser();
+    if (!user) return;
+  
+    const { data: prof, error } = await sb
+      .from('profiles')
+      .select('points_total, rank, team_rank, rank_label, team_rank_label, team_name')
+      .eq('id', user.id)
+      .single();
+  
+    if (!error && prof) applySummary(prof);
+  }
+
 
   // UPDATED: wrap each event in a boxed card (only change)
   function todayRow(ev) {
@@ -345,6 +362,7 @@
         await refreshProfilePoints();
       }
     });
+    await refreshProfilePoints();
 
     // Today header (in PT)
     const todayPT = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
@@ -354,19 +372,16 @@
     try {
       const { data: prof, error: pErr } = await sb
         .from('profiles')
-        .select('display_name, points_total, rank, team_rank')
+        .select('display_name, points_total, rank, team_rank, rank_label, team_rank_label, team_name')
         .eq('id', user.id)
         .single();
-      if (!pErr && prof) {
-        $('#pointsTotal').textContent   = (prof.points_total ?? 0);
-        $('#individualRank').textContent = (prof.rank ?? '—');      // individual rank
-        $('#teamRank').textContent       = (prof.team_rank ?? '—'); // team rank
-      } else {
-        console.error('profiles error', pErr);
-      }
+    
+      if (!pErr && prof) applySummary(prof);
+      else console.error('profiles error', pErr);
     } catch (e) {
       console.error('profiles fetch crashed', e);
     }
+
 
     // ----- Load Today’s Events from public.events_today -----
     const list = $('#todayList');

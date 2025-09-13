@@ -269,7 +269,7 @@
 
     const { data: prof, error } = await sb
       .from('profiles')
-      .select('display_name, points_total, rank, team_rank, rank_label, team_rank_label, team_name')
+      .select('*')
       .eq('id', user.id)
       .single();
 
@@ -367,7 +367,7 @@
     try {
       const { data: prof, error: pErr } = await sb
         .from('profiles')
-        .select('display_name, points_total, rank, team_rank, rank_label, team_rank_label, team_name')
+        .select('*')
         .eq('id', user.id)
         .single();
 

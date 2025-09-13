@@ -40,7 +40,33 @@
     }
     .card { transition: transform .15s ease, box-shadow .15s ease; }
     .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
-    .input { @apply w-full rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieGold/60; }
+
+    /* Use plain CSS (no @apply) so it works without a build step */
+    .label {
+      display: block;
+      margin-bottom: 0.25rem; /* mb-1 */
+      font-family: Montserrat, "Helvetica Neue", Arial, sans-serif; /* font-ui */
+      font-size: 0.875rem; /* text-sm */
+      font-weight: 700; /* bold */
+      color: var(--aggie-blue); /* text-aggieBlue */
+    }
+    .input {
+      width: 100%;
+      border-radius: 0.75rem; /* rounded-xl */
+      border: 1px solid rgba(2,40,81,0.10); /* border-aggieBlue/10 */
+      padding: 0.5rem 1rem; /* py-2 px-4 */
+      font-family: Montserrat, "Helvetica Neue", Arial, sans-serif; /* font-ui */
+      outline: none;
+    }
+    .input:focus {
+      box-shadow: 0 0 0 2px rgba(255,191,0,0.60); /* focus:ring-2 focus:ring-aggieGold/60 */
+    }
+    /* Email: readonly but not greyed out */
+    #email {
+      background: #fff !important;
+      color: #111827; /* text-ink-ish */
+      opacity: 1 !important;
+    }
   </style>
 </head>
 <body class="min-h-screen bg-aggieBg text-ink font-body">
@@ -111,22 +137,22 @@
 
       <form id="accountForm" class="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
         <div class="sm:col-span-2">
-          <label class="block text-sm font-ui font-bold text-aggieBlue mb-1">Display Name:</label>
+          <label class="label">Display Name:</label>
           <input id="displayName" type="text" class="input" placeholder="Your name" />
         </div>
 
         <div class="sm:col-span-2">
-          <label class="block text-sm font-ui font-bold text-aggieBlue mb-1">Email:</label>
-          <input id="email" type="email" class="input bg-white text-ink opacity-100" placeholder="you@example.com" readonly aria-readonly="true" />
+          <label class="label">Email:</label>
+          <input id="email" type="email" class="input" placeholder="you@example.com" readonly aria-readonly="true" />
         </div>
 
         <div class="sm:col-span-2">
-          <label class="block text-sm font-ui font-bold text-aggieBlue mb-1">Team:</label>
+          <label class="label">Team:</label>
           <input id="team" type="text" class="input" placeholder="Team name" />
         </div>
 
         <div class="sm:col-span-2">
-          <label class="block text-sm font-ui font-bold text-aggieBlue mb-1">Graduation Year:</label>
+          <label class="label">Graduation Year:</label>
           <input id="gradYear" type="number" inputmode="numeric" min="1900" max="2100" class="input" placeholder="2027" />
         </div>
 
@@ -191,7 +217,7 @@
         <p class="font-ui text-sm text-ink/70 mb-3">For your security, we can’t show your current password. Please set a new one below.</p>
         <form id="passwordForm" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div class="sm:col-span-2">
-            <label class="block text-sm font-ui font-bold text-aggieBlue mb-1">New Password:</label>
+            <label class="label">New Password:</label>
             <div class="flex gap-2">
               <input id="newPassword" type="password" class="input" placeholder="••••••••" />
             </div>
@@ -216,7 +242,190 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
 
-  <!-- The same JavaScript as before remains here (omitted for brevity in this message) -->
-  <!-- Keep your JS unchanged -->
+  <script>
+  // ===== Utilities =====
+  const $ = (sel) => document.querySelector(sel);
+  const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+  const toggle = (el) => el.classList.toggle("hidden");
+  const esc = (s) => String(s ?? "")
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+
+  // Build a Google Maps search URL from a human location
+  function mapsLink(locationText) {
+    if (!locationText) return null;
+    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
+  }
+
+  const fmtDateRange = (startISO, endISO) => {
+    const s = new Date(startISO);
+    const e = new Date(endISO);
+    const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "short" });
+    const mdFmt = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+    const tmFmt = new Intl.DateTimeFormat(undefined, { hour: "numeric", minute: "2-digit" });
+    const sameDay = s.toDateString() === e.toDateString();
+    const left = `${dayFmt.format(s)}, ${mdFmt.format(s)} · ${tmFmt.format(s)}`;
+    const right = sameDay ? tmFmt.format(e) : `${dayFmt.format(e)}, ${mdFmt.format(e)} · ${tmFmt.format(e)}`;
+    return `${left}–${right}`;
+  };
+
+  // Header UI
+  $("#mobileMenuBtn")?.addEventListener("click", () => toggle($("#mobileMenu")));
+  $("#acctBtn")?.addEventListener("click", () => toggle($("#acctMenu")));
+  $("#year").textContent = new Date().getFullYear();
+
+  // Password UI toggle
+  $("#togglePwd")?.addEventListener("click", () => toggle($("#pwdPanel")));
+
+  // ===== Boot/Auth (guarded) =====
+  (async () => {
+    // Make sure Supabase client is available
+    if (!window.supabase || typeof sb === "undefined") {
+      console.warn("Supabase client not available on settings.html");
+      return;
+    }
+
+    const { data: { session } } = await sb.auth.getSession();
+    const user = session?.user ?? null;
+
+    // Update header label even before redirect logic
+    const acctEl = document.getElementById("acctName");
+    acctEl.textContent = user?.user_metadata?.display_name || user?.email || "Account";
+
+    // Wire logout buttons regardless (harmless if not logged in)
+    const doLogout = async () => {
+      await sb.auth.signOut();
+      window.location.href = (typeof LOGIN_PAGE !== "undefined" && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
+    };
+    $("#logoutBtn")?.addEventListener("click", doLogout);
+    $("#logoutBtnMobile")?.addEventListener("click", doLogout);
+
+    // Enforce login
+    if (!session) {
+      window.location.href = (typeof LOGIN_PAGE !== "undefined" && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
+      return;
+    }
+
+    // With a session: load profile + check-ins, then wire forms
+    await loadProfile(user);
+    await loadCheckins(user);
+    wireForms(user);
+  })();
+
+  async function loadProfile(user) {
+    const { data: profile, error } = await sb.from("profiles")
+      .select("display_name, team_name, grad_year")
+      .eq("id", user.id).single();
+    if (error) console.warn("profiles load error", error);
+
+    $("#displayName").value = profile?.display_name ?? user.user_metadata?.display_name ?? "";
+    $("#email").value = user.email ?? "";
+    $("#team").value = profile?.team_name ?? "";
+    $("#gradYear").value = profile?.grad_year ?? "";
+  }
+
+  async function loadCheckins(user) {
+    const list = $("#checkinsList");
+    const none = $("#noCheckins");
+    const countEl = $("#checkinsCount");
+    list.innerHTML = "";
+
+    const { data: checkins, error: cErr } = await sb
+      .from("checkins")
+      .select("event_id, created_at")
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false });
+    if (cErr) { console.warn("checkins load error", cErr); none.classList.remove("hidden"); return; }
+
+    if (!checkins?.length) {
+      none.classList.remove("hidden");
+      countEl.textContent = "";
+      return;
+    }
+
+    const eventIds = [...new Set(checkins.map(c => c.event_id))];
+    const { data: events, error: eErr } = await sb
+      .from("events")
+      .select("id, name, start_time, end_time, points, location")
+      .in("id", eventIds);
+    if (eErr) { console.warn("events load error", eErr); none.classList.remove("hidden"); return; }
+
+    const eventsById = Object.fromEntries((events || []).map(e => [e.id, e]));
+    let rendered = 0;
+
+    for (const chk of checkins) {
+      const ev = eventsById[chk.event_id];
+      if (!ev) continue;
+
+      const tmpl = document.getElementById("checkinCardTmpl").content.cloneNode(true);
+
+      // Name (standard size/classes)
+      tmpl.querySelector("[data-name]").textContent = ev.name || "";
+
+      // Date/time (standard line)
+      tmpl.querySelector("[data-date]").textContent = fmtDateRange(ev.start_time, ev.end_time);
+
+      // Points badge
+      tmpl.querySelector("[data-points]").textContent =
+        typeof ev.points === "number" ? `+${ev.points} pts` : "";
+
+      // Location → clickable Google Maps (hide row if missing)
+      const row = tmpl.querySelector("[data-location-row]");
+      const link = tmpl.querySelector("[data-location-link]");
+      if (ev.location) {
+        link.href = mapsLink(ev.location);
+        link.textContent = ev.location;
+        link.setAttribute("aria-label", `Open ${ev.location} in Google Maps`);
+        row.classList.remove("hidden");
+      } else {
+        row.classList.add("hidden");
+      }
+
+      list.appendChild(tmpl);
+      rendered++;
+    }
+
+    countEl.textContent = rendered ? `${rendered} total` : "";
+    none.classList.toggle("hidden", rendered > 0);
+  }
+
+  function wireForms(user) {
+    $("#accountForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const msg = $("#accountMsg");
+
+      const display_name = $("#displayName").value.trim();
+      const team_name = $("#team").value.trim();
+      const grad_year_val = $("#gradYear").value ? parseInt($("#gradYear").value, 10) : null;
+
+      const { error } = await sb.from("profiles").upsert({
+        id: user.id,
+        display_name,
+        team_name,
+        grad_year: grad_year_val
+      }, { onConflict: "id" });
+
+      if (!error && display_name) {
+        await sb.auth.updateUser({ data: { display_name } }).catch(()=>{});
+        $("#acctName").textContent = display_name;
+      }
+
+      msg.textContent = error ? "Save failed. Try again." : "Saved!";
+      setTimeout(() => msg.textContent = "", 2500);
+    });
+
+    $("#passwordForm").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const pwd = $("#newPassword").value;
+      const msg = $("#pwdMsg");
+      if (!pwd || pwd.length < 8) { msg.textContent = "Use at least 8 characters."; return; }
+
+      const { error } = await sb.auth.updateUser({ password: pwd });
+      msg.textContent = error ? "Password update failed." : "Password updated!";
+      if (!error) { $("#newPassword").value = ""; }
+      setTimeout(() => msg.textContent = "", 2500);
+    });
+  }
+  </script>
 </body>
 </html>

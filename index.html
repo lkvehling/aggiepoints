@@ -364,7 +364,7 @@
 
         // NEW: wire buttons using shared module
         initCheckinButtons();
-        syncCheckedInUI();
+        if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
 
 
         // Deep-link focus: index.html?event=<uuid>#today

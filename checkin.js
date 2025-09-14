@@ -140,7 +140,7 @@
     } catch (geoErr) {
       btn.disabled = false;
       btn.innerHTML = original;
-      showToast('We need your location to check in. Please allow location access (site must be HTTPS or localhost) and try again.', { variant: 'error' });
+      showToast('We need your location to check in. Please turn on location access for your browser settings and try again!', { variant: 'error' });
     }
   }
 

@@ -378,6 +378,47 @@
     return session;
   }
 
+  async function requestLocationPermission() {
+    if (!('geolocation' in navigator)) {
+      console.log('Geolocation not supported by this browser');
+      return;
+    }
+
+    // Check if we already have permission
+    if ('permissions' in navigator) {
+      try {
+        const permission = await navigator.permissions.query({name: 'geolocation'});
+        if (permission.state === 'granted') {
+          console.log('Location permission already granted');
+          return;
+        }
+      } catch (e) {
+        console.log('Could not check permission status');
+      }
+    }
+
+    // Request permission by attempting to get location
+    try {
+      await new Promise((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            console.log('Location permission granted');
+            resolve(position);
+          },
+          (error) => {
+            if (error.code === error.PERMISSION_DENIED) {
+              toast('Location access was denied. You can enable it in your browser settings to check in to events.', { variant: 'info', timeout: 6000 });
+            }
+            reject(error);
+          },
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 600000 }
+        );
+      });
+    } catch (error) {
+      console.log('Location permission request failed:', error.message);
+    }
+  }
+
   // ========= Boot =========
   (async () => {
     // Header interactions
@@ -401,6 +442,9 @@
       }
     });
     await refreshProfilePoints();
+
+    // Request location permission on first visit
+    await requestLocationPermission();
 
     // Today header (in PT)
     const todayPT = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));

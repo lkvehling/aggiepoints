@@ -1,5 +1,49 @@
 // checkin.js — shared check-in module with cross-page sync
 // Requires: auth-config.js (global `sb`)
+// ===== Global Pacific Time helpers (shared) =====
+(function () {
+  const PT_TZ = 'America/Los_Angeles';
+
+  function formatPT(iso, opts = {}) {
+    if (!iso) return '';
+    const d = new Date(iso);
+    return new Intl.DateTimeFormat('en-US', {
+      timeZone: PT_TZ,
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
+      ...opts
+    }).format(d);
+  }
+
+  // Useful if you group by day in PT, e.g., "2025-10-06"
+  function toPTDateKey(iso) {
+    if (!iso) return '';
+    return new Intl.DateTimeFormat('en-CA', { timeZone: PT_TZ }).format(new Date(iso));
+  }
+
+  // Optionally compute PT “today” bounds in UTC for client-side filtering
+  function ptDayBoundsUTC(date = new Date()) {
+    const parts = new Intl.DateTimeFormat('en-CA', { timeZone: PT_TZ,
+      year:'numeric', month:'2-digit', day:'2-digit'
+    }).formatToParts(date);
+    const y = parts.find(p=>p.type==='year').value;
+    const m = parts.find(p=>p.type==='month').value;
+    const d = parts.find(p=>p.type==='day').value;
+    const startPT = new Date(`${y}-${m}-${d}T00:00:00-08:00`);
+    const endPT   = new Date(`${y}-${m}-${d}T24:00:00-08:00`);
+    return { startUTC: startPT.toISOString(), endUTC: endPT.toISOString() };
+  }
+
+  // Expose globally for any page script to use
+  window.formatPT = formatPT;
+  window.toPTDateKey = toPTDateKey;
+  window.ptDayBoundsUTC = ptDayBoundsUTC;
+})();
+
 // Optional on page: window.toast(), window.showCheckinError(), window.refreshProfilePoints()
 
 (function () {

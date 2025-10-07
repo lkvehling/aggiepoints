@@ -179,243 +179,231 @@
   <script src="auth-config.js"></script>
   <!-- shared check-in module -->
   <script src="checkin.js"></script>
-
-  <script>
   
-  // ========= Helpers =========
-  const $  = (s) => document.querySelector(s);
-  const $$ = (s) => Array.from(document.querySelectorAll(s));
-  const toggle = (el) => el.classList.toggle('hidden');
-  const escapeHtml = (s) => (s ?? '').toString()
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+<script>
+// ========= Helpers =========
+const $  = (s) => document.querySelector(s);
+const $$ = (s) => Array.from(document.querySelectorAll(s));
+const toggle = (el) => el.classList.toggle('hidden');
+const escapeHtml = (s) => (s ?? '').toString()
+  .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+  .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 
-  // Google Maps link for location text
-  function mapsLink(locationText) {
-    if (!locationText) return null;
-    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
+// Google Maps link for location text
+function mapsLink(locationText) {
+  if (!locationText) return null;
+  return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
+}
+
+function toast(message, { variant = 'error', timeout = 4500 } = {}) {
+  const root = document.querySelector('#toast-root > div');
+  if (!root) return;
+
+  const variants = {
+    success: 'bg-green-100 text-green-900 ring-1 ring-green-300',
+    error:   'bg-red-100 text-red-900 ring-1 ring-red-300',
+    info:    'bg-aggieBlue/10 text-aggieBlue ring-1 ring-aggieBlue/30',
+    warn:    'bg-yellow-100 text-yellow-900 ring-1 ring-yellow-300'
+  };
+  const cls = variants[variant] || variants.info;
+
+  const el = document.createElement('div');
+  el.setAttribute('role', 'status');
+  el.className = [
+    'pointer-events-auto','max-w-sm','w-[360px]','rounded-2xl','shadow-soft',
+    'px-4','py-3','font-ui','text-sm','backdrop-blur','flex','items-start','gap-3',cls
+  ].join(' ');
+  el.innerHTML = `
+    <div class="shrink-0 pt-0.5">
+      ${variant === 'success' ? '✅' : variant === 'warn' ? '⚠️' : variant === 'info' ? 'ℹ️' : '❌'}
+    </div>
+    <div class="min-w-0 leading-snug">${message}</div>
+    <button class="ml-auto shrink-0 opacity-70 hover:opacity-100" aria-label="Close">✕</button>
+  `;
+  el.querySelector('button').addEventListener('click', () => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); });
+  root.appendChild(el);
+  if (timeout > 0) setTimeout(() => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); }, timeout);
+}
+
+(function injectToastAnim(){
+  const style = document.createElement('style');
+  style.textContent = `@keyframes toast-fade-out { to { opacity: 0; transform: translateY(-4px); } } .animate-fade-out { animation: toast-fade-out .15s ease forwards; }`;
+  document.head.appendChild(style);
+})();
+
+function showCheckinError(err) {
+  const code = err?.code;
+  const details = err?.details || '';
+
+  if (code === '22P02' || /invalid input syntax for type uuid/i.test(details)) return 'Invalid event id. Please refresh and try again.';
+  if (code === '23503' || /foreign key/i.test(details))               return 'This event no longer exists. Please refresh the page.';
+  if (code === 'PGRST301' || code === '401' || /JWT|auth/i.test(details)) return 'You must be signed in to check in.';
+  if (/Missing required input parameter: event_id/i.test(details))    return 'Check-in misconfigured (missing event id). Please contact an admin.';
+  if (code === '42501')                                               return 'You do not have permission to check in to this event.';
+  if (/outside_geofence/i.test(details))                              return 'You must be at the venue to check in.';
+  if (/outside_time_window/i.test(details))                           return 'This event is not currently active (20 min before start → 10 min before end).';
+  if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please allow location access and try again.';
+  if (/low_accuracy/i.test(details))                                  return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled.';
+  if (/missing_accuracy/i.test(details))                              return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
+  return err?.message || 'Check-in failed. Please try again.';
+}
+
+function applySummary(prof) {
+  const pts = prof?.points_total ?? 0;
+
+  const ind = prof?.rank_label ?? (prof?.rank != null ? String(prof.rank) : '—');
+  const tr  = prof?.team_rank_label ?? (prof?.team_rank != null ? String(prof.team_rank) : '—');
+
+  const $id = (s) => document.querySelector(s);
+  $id('#pointsTotal')    && ($id('#pointsTotal').textContent    = pts);
+  $('#individualRank').textContent = (prof.rank == null)
+    ? '—'
+    : (prof.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
+  $('#teamRank').textContent = (prof.team_rank == null)
+    ? '—'
+    : (prof.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
+
+  // Back-compat if old IDs still exist anywhere
+  $id('#rank') && ($id('#rank').textContent = ind);
+  $id('#team') && ($id('#team').textContent = tr);
+}
+
+async function refreshProfilePoints() {
+  const { data: { user } } = await sb.auth.getUser();
+  if (!user) return;
+
+  const { data: prof, error } = await sb
+    .from('profiles')
+    .select('points_total, rank, team_rank, individual_is_tied, team_is_tied')
+    .eq('id', user.id)
+    .single();
+
+  if (!error && prof) applySummary(prof);
+}
+
+// --- Open/Closed helper (backend window: -20m to +10m) ---
+function isOpenNow(ev) {
+  const now = Date.now();
+  const start = new Date(ev.start_at).getTime();
+  const end   = new Date(ev.end_at).getTime();
+  const openFrom = start - 20 * 60 * 1000; // 20 minutes before start
+  const openTo   = end   - 10 * 60 * 1000; // 10 minutes before end
+  return now >= openFrom && now <= openTo;
+}
+
+// Event card renderer (uses global window.formatPT from checkin.js)
+function todayRow(ev) {
+  const checkedIn = !!ev.user_checked_in;
+  const open = isOpenNow(ev);
+
+  const startFull = window.formatPT(ev.start_at);
+  const endTime   = window.formatPT(ev.end_at, { hour:'numeric', minute:'2-digit' });
+  const whenLine  = `${startFull}–${endTime} PT`;
+
+  const pointsHTML = typeof ev.points === 'number' ? `
+    <span class="inline-flex items-center rounded-full bg-aggieGold/20 px-2.5 py-1 text-sm md:text-base font-ui font-semibold text-aggieBlue">
+      +${ev.points} pts
+    </span>` : '';
+
+  let actionHTML = '';
+  if (checkedIn) {
+    actionHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">✓ Checked in</span>`;
+  } else if (open) {
+    actionHTML = `<button
+      class="checkin-btn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95"
+      data-event-id="${ev.id}"
+      data-event-name="${escapeHtml(ev.title)}"
+      data-event-points="${ev.points ?? ''}">
+      Check in
+    </button>`;
+  } else {
+    actionHTML = `<span class="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`;
   }
 
-  function toast(message, { variant = 'error', timeout = 4500 } = {}) {
-    const root = document.querySelector('#toast-root > div');
-    if (!root) return;
+  const hasLoc = !!(ev.location && ev.location.trim());
+  const locHTML = hasLoc ? `
+    <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
+      <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10c0 7-7.5 10.5-7.5 10.5S4.5 17 4.5 10a7.5 7.5 0 1115 0z" />
+      </svg>
+      <a href="${mapsLink(ev.location)}" target="_blank" rel="noopener noreferrer" class="truncate hover:underline" aria-label="Open ${escapeHtml(ev.location)} in Google Maps">
+        ${escapeHtml(ev.location)}
+      </a>
+    </p>` : '';
 
-    const variants = {
-      success: 'bg-green-100 text-green-900 ring-1 ring-green-300',
-      error:   'bg-red-100 text-red-900 ring-1 ring-red-300',
-      info:    'bg-aggieBlue/10 text-aggieBlue ring-1 ring-aggieBlue/30',
-      warn:    'bg-yellow-100 text-yellow-900 ring-1 ring-yellow-300'
-    };
-    const cls = variants[variant] || variants.info;
+  return `
+    <article class="rounded-2xl border border-aggieBlue/10 bg-white p-4 shadow-soft" id="event-${ev.id}">
+      <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+        <div class="min-w-0">
+          <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate">
+            ${escapeHtml(ev.title)}
+          </h3>
 
-    const el = document.createElement('div');
-    el.setAttribute('role', 'status');
-    el.className = [
-      'pointer-events-auto','max-w-sm','w-[360px]','rounded-2xl','shadow-soft',
-      'px-4','py-3','font-ui','text-sm','backdrop-blur','flex','items-start','gap-3',cls
-    ].join(' ');
-    el.innerHTML = `
-      <div class="shrink-0 pt-0.5">
-        ${variant === 'success' ? '✅' : variant === 'warn' ? '⚠️' : variant === 'info' ? 'ℹ️' : '❌'}
+          <div class="mt-0.5 flex items-center gap-2">
+            <p class="font-ui text-xs sm:text-sm md:text-base text-ink/80 flex-1 min-w-0 truncate whitespace-nowrap">
+              ${whenLine}
+            </p>
+            <span class="shrink-0 whitespace-nowrap">
+              ${pointsHTML}
+            </span>
+          </div>
+
+          ${locHTML}
+        </div>
+
+        <div class="flex items-center gap-3">
+          ${actionHTML}
+        </div>
       </div>
-      <div class="min-w-0 leading-snug">${message}</div>
-      <button class="ml-auto shrink-0 opacity-70 hover:opacity-100" aria-label="Close">✕</button>
-    `;
-    el.querySelector('button').addEventListener('click', () => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); });
-    root.appendChild(el);
-    if (timeout > 0) setTimeout(() => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); }, timeout);
-  }
+    </article>`;
+}
 
-  (function injectToastAnim(){
-    const style = document.createElement('style');
-    style.textContent = `@keyframes toast-fade-out { to { opacity: 0; transform: translateY(-4px); } } .animate-fade-out { animation: toast-fade-out .15s ease forwards; }`;
-    document.head.appendChild(style);
-  })();
+// ========= Boot =========
+(async () => {
+  // Header interactions
+  $('#mobileMenuBtn')?.addEventListener('click', () => toggle($('#mobileMenu')));
+  $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
+  $('#yearText').textContent = new Date().getFullYear();
 
-  function showCheckinError(err) {
-    const code = err?.code;
-    const details = err?.details || '';
+  // Auth
+  const session = await ensureAuthed(); if (!session) return;
+  const { data: { user } } = await sb.auth.getUser();
+  $('#acctName').textContent = user?.user_metadata?.display_name || user?.email || 'Account';
+  const doLogout = async () => { await sb.auth.signOut(); window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; };
+  $('#logoutBtn')?.addEventListener('click', doLogout);
+  $('#logoutBtnMobile')?.addEventListener('click', doLogout);
 
-    if (code === '22P02' || /invalid input syntax for type uuid/i.test(details)) return 'Invalid event id. Please refresh and try again.';
-    if (code === '23503' || /foreign key/i.test(details))               return 'This event no longer exists. Please refresh the page.';
-    if (code === 'PGRST301' || code === '401' || /JWT|auth/i.test(details)) return 'You must be signed in to check in.';
-    if (/Missing required input parameter: event_id/i.test(details))    return 'Check-in misconfigured (missing event id). Please contact an admin.';
-    if (code === '42501')                                               return 'You do not have permission to check in to this event.';
-    if (/outside_geofence/i.test(details))                              return 'You must be at the venue to check in.';
-    if (/outside_time_window/i.test(details))                           return 'This event is not currently active (20 min before start → 10 min before end).';
-    if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please allow location access and try again.';
-    if (/low_accuracy/i.test(details))                                  return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled.';
-    if (/missing_accuracy/i.test(details))                              return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
-    return err?.message || 'Check-in failed. Please try again.';
-  }
+  // Keep header/data fresh on auth state changes
+  sb.auth.onAuthStateChange(async (_event, sess) => {
+    if (sess?.user) {
+      $('#acctName').textContent = sess.user.user_metadata?.display_name || sess.user.email || 'Account';
+      await refreshProfilePoints();
+    }
+  });
+  await refreshProfilePoints();
 
-  function applySummary(prof) {
-    const pts = prof?.points_total ?? 0;
+  // Today header (Pacific date label)
+  const todayLabel = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/Los_Angeles',
+    weekday: 'long', month: 'long', day: 'numeric'
+  }).format(new Date());
+  $('#todayDate').textContent = todayLabel;
 
-    const ind = prof?.rank_label ?? (prof?.rank != null ? String(prof.rank) : '—');
-    const tr  = prof?.team_rank_label ?? (prof?.team_rank != null ? String(prof.team_rank) : '—');
-
-    const $id = (s) => document.querySelector(s);
-    $id('#pointsTotal')    && ($id('#pointsTotal').textContent    = pts);
-    $('#individualRank').textContent = (prof.rank == null)
-      ? '—'
-      : (prof.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
-    $('#teamRank').textContent = (prof.team_rank == null)
-      ? '—'
-      : (prof.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
-
-    // Back-compat if old IDs still exist anywhere
-    $id('#rank') && ($id('#rank').textContent = ind);
-    $id('#team') && ($id('#team').textContent = tr);
-  }
-
-  async function refreshProfilePoints() {
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
-
-    const { data: prof, error } = await sb
+  // Load Profile
+  try {
+    const { data: prof, error: pErr } = await sb
       .from('profiles')
-      .select('points_total, rank, team_rank, individual_is_tied, team_is_tied')
+      .select('display_name, points_total, rank, team_rank, individual_is_tied, team_is_tied')
       .eq('id', user.id)
       .single();
-
-    if (!error && prof) applySummary(prof);
+    if (!pErr && prof) applySummary(prof);
+    else console.error('profiles error', pErr);
+  } catch (e) {
+    console.error('profiles fetch crashed', e);
   }
 
-  // --- Open/Closed helper (backend window: -20m to +10m) ---
-  // NOTE: With timestamptz in UTC, compare instants directly (no PT math needed here).
-  function isOpenNow(ev) {
-    const now = Date.now();
-    const start = new Date(ev.start_at).getTime();
-    const end   = new Date(ev.end_at).getTime();
-    const openFrom = start - 20 * 60 * 1000; // 20 minutes before start
-    const openTo   = end   - 10 * 60 * 1000; // 10 minutes before end
-    return now >= openFrom && now <= openTo;
-  }
-
-  // Event card renderer (uses global window.formatPT from checkin.js)
-  function todayRow(ev) {
-    const checkedIn = !!ev.user_checked_in;
-    const open = isOpenNow(ev);
-
-    const startFull = window.formatPT(ev.start_at);                              // e.g., "Oct 06, 2025, 11:00 AM"
-    const endTime   = window.formatPT(ev.end_at, { hour:'numeric', minute:'2-digit' }); // e.g., "12:30 PM"
-    const whenLine  = `${startFull}–${endTime} PT`;
-
-    const pointsHTML = typeof ev.points === 'number' ? `
-      <span class="inline-flex items-center rounded-full bg-aggieGold/20 px-2.5 py-1 text-sm md:text-base font-ui font-semibold text-aggieBlue">
-        +${ev.points} pts
-      </span>` : '';
-
-    let actionHTML = '';
-    if (checkedIn) {
-      actionHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">✓ Checked in</span>`;
-    } else if (open) {
-      actionHTML = `<button
-        class="checkin-btn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95"
-        data-event-id="${ev.id}"
-        data-event-name="${escapeHtml(ev.title)}"
-        data-event-points="${ev.points ?? ''}">
-        Check in
-      </button>`;
-    } else {
-      actionHTML = `<span class="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`;
-    }
-
-    const hasLoc = !!(ev.location && ev.location.trim());
-    const locHTML = hasLoc ? `
-      <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10c0 7-7.5 10.5-7.5 10.5S4.5 17 4.5 10a7.5 7.5 0 1115 0z" />
-        </svg>
-        <a href="${mapsLink(ev.location)}" target="_blank" rel="noopener noreferrer" class="truncate hover:underline" aria-label="Open ${escapeHtml(ev.location)} in Google Maps">
-          ${escapeHtml(ev.location)}
-        </a>
-      </p>` : '';
-
-    return `
-      <article class="rounded-2xl border border-aggieBlue/10 bg-white p-4 shadow-soft" id="event-${ev.id}">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div class="min-w-0">
-            <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate">
-              ${escapeHtml(ev.title)}
-            </h3>
-
-            <div class="mt-0.5 flex items-center gap-2">
-              <p class="font-ui text-xs sm:text-sm md:text-base text-ink/80 flex-1 min-w-0 truncate whitespace-nowrap">
-                ${whenLine}
-              </p>
-              <span class="shrink-0 whitespace-nowrap">
-                ${pointsHTML}
-              </span>
-            </div>
-
-            ${locHTML}
-          </div>
-
-          <div class="flex items-center gap-3">
-            ${actionHTML}
-          </div>
-        </div>
-      </article>`;
-  }
-
-  async function ensureAuthed() {
-    const { data: { session} } = await sb.auth.getSession();
-    if (!session) {
-      window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html';
-      return null;
-    }
-    return session;
-  }
-
-  // ========= Boot =========
-  (async () => {
-    // Header interactions
-    $('#mobileMenuBtn')?.addEventListener('click', () => toggle($('#mobileMenu')));
-    $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
-    $('#yearText').textContent = new Date().getFullYear();
-
-    // Auth
-    const session = await ensureAuthed(); if (!session) return;
-    const { data: { user } } = await sb.auth.getUser();
-    $('#acctName').textContent = user?.user_metadata?.display_name || user?.email || 'Account';
-    const doLogout = async () => { await sb.auth.signOut(); window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; };
-    $('#logoutBtn')?.addEventListener('click', doLogout);
-    $('#logoutBtnMobile')?.addEventListener('click', doLogout);
-
-    // Keep header/data fresh on auth state changes
-    sb.auth.onAuthStateChange(async (_event, sess) => {
-      if (sess?.user) {
-        $('#acctName').textContent = sess.user.user_metadata?.display_name || sess.user.email || 'Account';
-        await refreshProfilePoints();
-      }
-    });
-    await refreshProfilePoints();
-
-    // Today header (Pacific date label)
-    const todayLabel = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'America/Los_Angeles',
-      weekday: 'long', month: 'long', day: 'numeric'
-    }).format(new Date());
-    $('#todayDate').textContent = todayLabel;
-
-    // Load Profile
-    try {
-      const { data: prof, error: pErr } = await sb
-        .from('profiles')
-        .select('display_name, points_total, rank, team_rank, individual_is_tied, team_is_tied')
-        .eq('id', user.id)
-        .single();
-      if (!pErr && prof) applySummary(prof);
-      else console.error('profiles error', pErr);
-    } catch (e) {
-      console.error('profiles fetch crashed', e);
-    }
-
-    // ----- Load Today’s Events (uses PT-aware view; now selecting start_at/end_at) -----
-
+  // ----- Load Today’s Events -----
   async function loadTodaysEvents() {
     const list  = document.querySelector('#todayList');
     const empty = document.querySelector('#todayEmpty');
@@ -433,15 +421,15 @@
       .select('id, title, start_at, end_at, location, points, user_checked_in')
       .order('start_at', { ascending: true });
 
-    // Try #2: alias common legacy names (start_ts/end_ts)
-    if (error && /column .*start_at|end_at|user_checked_in|start_ts|end_ts/i.test(error.message || error.details || '')) {
+    // Try #2: alias legacy names (start_ts/end_ts)
+    if (error && /start_at|end_at|user_checked_in|start_ts|end_ts/i.test(error.message || error.details || '')) {
       ({ data: todays, error } = await sb
         .from('events_today')
         .select('id, title, start_at:start_ts, end_at:end_ts, location, points, user_checked_in')
         .order('start_ts', { ascending: true }));
     }
 
-    // Try #3: some views don’t expose user_checked_in; remove it
+    // Try #3: if view lacks user_checked_in
     if (error && /user_checked_in/i.test(error.message || error.details || '')) {
       ({ data: todays, error } = await sb
         .from('events_today')
@@ -450,20 +438,17 @@
       if (!error && todays) todays = todays.map(e => ({ ...e, user_checked_in: false }));
     }
 
-    // Try #4 (fallback): compute “today in PT” and query base events
+    // Try #4: fallback to base events for PT "today"
     if (error) {
-      // Today bounds in PT → ISO (works with timestamptz columns)
       const tz = 'America/Los_Angeles';
       const now = new Date();
       const startPT = new Date(new Intl.DateTimeFormat('en-US', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' })
         .format(now).replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2') + 'T00:00:00');
       const endPT = new Date(startPT); endPT.setDate(endPT.getDate() + 1);
 
-      // Convert those PT instants to ISO strings
       const startISO = new Date(startPT.getTime() - (startPT.getTimezoneOffset()*60000)).toISOString();
       const endISO   = new Date(endPT.getTime()   - (endPT.getTimezoneOffset()*60000)).toISOString();
 
-      // Adjust column names if your events table uses start_ts/end_ts
       let q = sb.from('events')
         .select('id, title, start_at, end_at, location, points')
         .gte('start_at', startISO)
@@ -493,25 +478,24 @@
     }
 
     render(todays || []);
-    // focus deep-link if present
-    (function focusDeepLinkedEvent() {
-      const params = new URLSearchParams(location.search);
-      const focusId = params.get('event');
-      if (!focusId) return;
+
+    // Deep link focus
+    const params = new URLSearchParams(location.search);
+    const focusId = params.get('event');
+    if (focusId) {
       const target = document.getElementById(`event-${focusId}`);
-      if (!target) return;
-      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-      target.classList.add('ring-2','ring-aggieGold','rounded-xl');
-      setTimeout(() => target.classList.remove('ring-2','ring-aggieGold'), 2500);
-    })();
+      if (target) {
+        target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        target.classList.add('ring-2','ring-aggieGold','rounded-xl');
+        setTimeout(() => target.classList.remove('ring-2','ring-aggieGold'), 2500);
+      }
+    }
   }
 
-  // Boot continuation: replace your existing “Load Today’s Events” try/catch with:
-  (async () => {
-    // ...keep all your existing boot code above...
-    await loadTodaysEvents();
-  })();
+  await loadTodaysEvents();
+})();  // <-- this was missing; leaving it unclosed blanks the page
 </script>
+
 
 
   <!-- Toast root -->

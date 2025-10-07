@@ -415,43 +415,101 @@
     }
 
     // ----- Load Today’s Events (uses PT-aware view; now selecting start_at/end_at) -----
-    const list = $('#todayList');
-    const empty = $('#todayEmpty');
-    try {
-      const { data: todays, error: tErr } = await sb
+
+  async function loadTodaysEvents() {
+    const list  = document.querySelector('#todayList');
+    const empty = document.querySelector('#todayEmpty');
+
+    const render = (rows=[]) => {
+      list.innerHTML = rows.map(todayRow).join('');
+      empty.classList.toggle('hidden', rows.length > 0);
+      if (typeof window.initCheckinButtons === 'function') initCheckinButtons();
+      if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
+    };
+
+    // Try #1: expected columns
+    let { data: todays, error } = await sb
+      .from('events_today')
+      .select('id, title, start_at, end_at, location, points, user_checked_in')
+      .order('start_at', { ascending: true });
+
+    // Try #2: alias common legacy names (start_ts/end_ts)
+    if (error && /column .*start_at|end_at|user_checked_in|start_ts|end_ts/i.test(error.message || error.details || '')) {
+      ({ data: todays, error } = await sb
         .from('events_today')
-        .select('id, title, start_at, end_at, location, points, user_checked_in')
+        .select('id, title, start_at:start_ts, end_at:end_ts, location, points, user_checked_in')
+        .order('start_ts', { ascending: true }));
+    }
+
+    // Try #3: some views don’t expose user_checked_in; remove it
+    if (error && /user_checked_in/i.test(error.message || error.details || '')) {
+      ({ data: todays, error } = await sb
+        .from('events_today')
+        .select('id, title, start_at, end_at, location, points')
+        .order('start_at', { ascending: true }));
+      if (!error && todays) todays = todays.map(e => ({ ...e, user_checked_in: false }));
+    }
+
+    // Try #4 (fallback): compute “today in PT” and query base events
+    if (error) {
+      // Today bounds in PT → ISO (works with timestamptz columns)
+      const tz = 'America/Los_Angeles';
+      const now = new Date();
+      const startPT = new Date(new Intl.DateTimeFormat('en-US', { timeZone: tz, year:'numeric', month:'2-digit', day:'2-digit' })
+        .format(now).replace(/(\d+)\/(\d+)\/(\d+)/, '$3-$1-$2') + 'T00:00:00');
+      const endPT = new Date(startPT); endPT.setDate(endPT.getDate() + 1);
+
+      // Convert those PT instants to ISO strings
+      const startISO = new Date(startPT.getTime() - (startPT.getTimezoneOffset()*60000)).toISOString();
+      const endISO   = new Date(endPT.getTime()   - (endPT.getTimezoneOffset()*60000)).toISOString();
+
+      // Adjust column names if your events table uses start_ts/end_ts
+      let q = sb.from('events')
+        .select('id, title, start_at, end_at, location, points')
+        .gte('start_at', startISO)
+        .lt('start_at', endISO)
         .order('start_at', { ascending: true });
 
-      if (tErr) {
-        console.error('events_today error', tErr);
-        list.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">Could not load today’s events.</div>`;
-      } else {
-        const rows = (todays || []).map(todayRow).join('');
-        list.innerHTML = rows;
-        empty.classList.toggle('hidden', (todays || []).length > 0);
-
-        // Wire buttons + sync
-        if (typeof window.initCheckinButtons === 'function') initCheckinButtons();
-        if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
-
-        // Deep-link focus: index.html?event=<uuid>#today
-        (function focusDeepLinkedEvent() {
-          const params = new URLSearchParams(location.search);
-          const focusId = params.get('event');
-          if (!focusId) return;
-          const target = document.getElementById(`event-${focusId}`);
-          if (!target) return;
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          target.classList.add('ring-2','ring-aggieGold','rounded-xl');
-          setTimeout(() => target.classList.remove('ring-2','ring-aggieGold'), 2500);
-        })();
+      let fb = await q;
+      if (fb.error && /start_at/i.test(fb.error.message || fb.error.details || '')) {
+        q = sb.from('events')
+          .select('id, title, start_at:start_ts, end_at:end_ts, location, points')
+          .gte('start_ts', startISO)
+          .lt('start_ts', endISO)
+          .order('start_ts', { ascending: true });
+        fb = await q;
       }
-    } catch (e) {
-      console.error('events_today fetch crashed', e);
+      if (!fb.error && fb.data) {
+        todays = fb.data.map(e => ({ ...e, user_checked_in: false }));
+        error = null;
+      }
+    }
+
+    if (error) {
+      console.error('Load Today error:', error);
       list.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">Could not load today’s events.</div>`;
       empty.classList.add('hidden');
+      return;
     }
+
+    render(todays || []);
+    // focus deep-link if present
+    (function focusDeepLinkedEvent() {
+      const params = new URLSearchParams(location.search);
+      const focusId = params.get('event');
+      if (!focusId) return;
+      const target = document.getElementById(`event-${focusId}`);
+      if (!target) return;
+      target.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      target.classList.add('ring-2','ring-aggieGold','rounded-xl');
+      setTimeout(() => target.classList.remove('ring-2','ring-aggieGold'), 2500);
+    })();
+  }
+
+  // Boot continuation: replace your existing “Load Today’s Events” try/catch with:
+  (async () => {
+    // ...keep all your existing boot code above...
+    await loadTodaysEvents();
   })();
 </script>
 

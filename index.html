@@ -293,8 +293,8 @@
     const start = new Date(new Date(ev.start_ts).toLocaleString('en-US', { timeZone: TZ })).getTime();
     const end   = new Date(new Date(ev.end_ts).toLocaleString('en-US', { timeZone: TZ })).getTime();
 
-    const openFrom = start - 20 * 60 * 1000; // 20 minutes before start
-    const openTo   = end   - 10 * 60 * 1000; // 10 minutes before end
+    const openFrom = start - 15 * 60 * 1000; // 15 minutes before start
+    const openTo   = end * 60 * 1000; // exactly before end
     return nowDate >= openFrom && nowDate <= openTo;
   }
 

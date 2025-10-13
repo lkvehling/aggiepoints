@@ -285,18 +285,16 @@
     if (!error && prof) applySummary(prof);
   }
 
-  // --- Open/Closed helper (mirror backend window: -20m to +10m) ---
-  function isOpenNow(ev) {
-    const now = new Date().toLocaleString('en-US', { timeZone: TZ });
-    const nowDate = new Date(now).getTime();
+  // --- Open/Closed helper (mirror backend window: -15m + 0m) ---
+function isOpenNow(ev) {
+  const now = Date.now();               // current UTC instant (ms since epoch)
+  const start = Date.parse(ev.start_ts); // start_ts is an ISO UTC string
+  const end = Date.parse(ev.end_ts);     // end_ts likewise
 
-    const start = new Date(new Date(ev.start_ts).toLocaleString('en-US', { timeZone: TZ })).getTime();
-    const end   = new Date(new Date(ev.end_ts).toLocaleString('en-US', { timeZone: TZ })).getTime();
-
-    const openFrom = start - 15 * 60 * 1000; // 15 minutes before start
-    const openTo   = end * 60 * 1000; // exactly before end
-    return nowDate >= openFrom && nowDate <= openTo;
-  }
+  const openFrom = start - 15 * 60 * 1000; // 15 minutes before start
+  const openTo = end;                      // until exact end
+  return now >= openFrom && now <= openTo;
+}
 
   // Event card renderer (points moved to middle line; no "More" link; closed state supported)
   function todayRow(ev) {

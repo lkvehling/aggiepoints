@@ -53,8 +53,8 @@
 
         <nav class="hidden md:flex items-center gap-8 font-ui">
           <a href="index.html" class="hover:text-aggieGold">Home</a>
-          <a href="events.html" class="hover:text-aggieGold">All Events</a>
           <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
+          <a href="events.html" class="hover:text-aggieGold">All Events</a>
           <a href="about.html" class="hover:text-aggieGold">About</a>
 
           <!-- Account dropdown -->
@@ -84,8 +84,8 @@
     <div id="mobileMenu" class="md:hidden hidden border-t border-white/10">
       <div class="space-y-1 px-4 pb-4 pt-2 font-ui">
         <a href="index.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Home</a>
-        <a href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
         <a href="leaderboard.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Leaderboard</a>
+        <a href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
         <a href="about.html" class="block px-3 py-2 rounded-md hover:bg-white/10">About</a>
         <a href="settings.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Settings</a>
         <button id="logoutBtnMobile" class="w-full text-left block px-3 py-2 rounded-md hover:bg-white/10">Log out</button>
@@ -104,45 +104,43 @@
   <!-- Content -->
   <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-    <!-- Left column: My summary -->
+    <!-- Left column: Summary -->
     <aside class="space-y-6 lg:col-span-1">
-      <!-- My Points (compact for mobile) -->
-      <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
-        <div class="flex items-start justify-between">
-          <div class="min-w-0">
-            <h2 class="font-ui text-xs tracking-wide uppercase text-aggieBlue/80">Your Summary</h2>
+      <section class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+        <div class="p-4">
+          <h2 class="font-ui text-lg font-semibold text-aggieBlue mb-3">Your Summary</h2>
 
-            <!-- Points emphasized, with label -->
-            <div class="mt-1">
-              <div class="font-ui text-[11px] text-ink/60">Points</div>
-              <div class="flex items-end gap-3">
-                <span id="myPoints" class="font-heading text-4xl sm:text-5xl font-extrabold text-aggieBlue leading-none">—</span>
-              </div>
+          <div class="space-y-3">
+            <div>
+              <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Total Points</div>
+              <div id="pointsTotal" class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">—</div>
             </div>
 
-            <!-- Rank + Team smaller and clearly labeled -->
-            <div class="mt-2 space-y-0.5 text-sm font-ui text-ink/80">
-              <div id="myRank" class="flex items-center gap-2">
-                <span class="inline-flex items-center rounded-md bg-aggieBlue/5 px-2 py-0.5 text-[12px] font-semibold text-aggieBlue">Rank</span>
-                <span id="myRankVal">—</span>
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Individual Rank</div>
+                <div class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">
+                  <span id="individualRank">—</span>
+                </div>
               </div>
-              <div id="myTeam" class="flex items-center gap-2">
-                <span class="inline-flex items-center rounded-md bg-aggieGold/20 px-2 py-0.5 text-[12px] font-semibold text-aggieBlue">Team</span>
-                <span id="myTeamVal">—</span>
+              <div>
+                <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Team Rank</div>
+                <div class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">
+                  <span id="teamRank">—</span>
+                </div>
               </div>
             </div>
           </div>
 
-          <div class="rounded-xl bg-aggieGold/20 text-aggieBlue px-3 py-2 font-ui text-xs font-semibold">Season</div>
-        </div>
-
-        <div class="mt-4 grid grid-cols-2 gap-3">
-          <a href="events.html" class="rounded-xl border border-aggieBlue/10 px-4 py-2.5 text-center font-ui hover:border-aggieBlue/30">Find Events</a>
-          <a href="index.html#today" class="rounded-xl bg-aggieGold text-aggieBlue px-4 py-2.5 text-center font-ui font-semibold hover:brightness-95">Check in</a>
+          <div class="mt-5 flex gap-3">
+            <!-- Updated buttons -->
+            <a href="index.html#today" class="px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95">Check In</a>
+            <a href="events.html" class="px-4 py-2 rounded-lg bg-aggieBlue text-white font-ui hover:bg-aggieBlue/90">All Events</a>
+          </div>
         </div>
       </section>
 
-      <!-- Search individuals -->
+      <!-- Search individuals (unchanged) -->
       <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <h3 class="font-ui text-base font-semibold text-aggieBlue">Search Individuals</h3>
         <div class="mt-3 flex items-center gap-2">
@@ -152,7 +150,7 @@
       </section>
     </aside>
 
-    <!-- Right column: Leaderboards -->
+    <!-- Right column: Leaderboards (unchanged) -->
     <section class="lg:col-span-2 space-y-6">
       <!-- Top Individuals -->
       <div class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
@@ -177,7 +175,7 @@
         </div>
       </div>
 
-      <!-- Top Teams (scores intentionally hidden) -->
+      <!-- Top Teams -->
       <div class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <div class="flex items-center justify-between">
           <h3 class="font-ui text-lg font-semibold text-aggieBlue">Top 5 Teams</h3>
@@ -206,7 +204,7 @@
     </div>
   </footer>
 
-  <!-- Supabase auth/config -->
+  <!-- Scripts (unchanged JS) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
 
@@ -224,63 +222,52 @@
     $("#acctBtn")?.addEventListener("click", () => toggle($("#acctMenu")));
     $("#year").textContent = new Date().getFullYear();
 
-    // ===== Boot =====
-    (async () => {
-      // Require auth
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) { window.location.href = LOGIN_PAGE || "login.html"; return; }
+    // ===== Tie-aware summary helpers (match Home) =====
+    function applySummary(prof) {
+      const pts = prof?.points_total ?? 0;
 
-      const { data: { user } } = await sb.auth.getUser();
-      $("#acctName").textContent = user.user_metadata?.display_name || user.email || "Account";
-      const doLogout = async () => { await sb.auth.signOut(); window.location.href = LOGIN_PAGE || "login.html"; };
-      $("#logoutBtn")?.addEventListener("click", doLogout);
-      $("#logoutBtnMobile")?.addEventListener("click", doLogout);
+      const indText = (prof?.rank == null)
+        ? '—'
+        : (prof?.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
 
-      // Load "My Summary" from profiles
-      const { data: profile } = await sb.from("profiles")
-        .select("display_name, team_name, points_total, rank")
-        .eq("id", user.id).single();
+      const teamText = (prof?.team_rank == null)
+        ? '—'
+        : (prof?.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
 
-      if (profile) {
-        $("#myPoints").textContent = profile.points_total ?? 0;
-        $("#myRankVal").textContent = profile.rank ?? "—";
-        $("#myTeamVal").textContent = profile.team_name || "—";
+      $("#pointsTotal").textContent = pts;
+      $("#individualRank").textContent = indText;
+      $("#teamRank").textContent = teamText;
+    }
+
+    async function refreshProfileSummary() {
+      try {
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+
+        const { data: prof, error } = await sb
+          .from("profiles")
+          .select("points_total, rank, team_rank, individual_is_tied, team_is_tied")
+          .eq("id", user.id)
+          .single();
+
+        if (!error && prof) applySummary(prof);
+        else if (error) console.warn("profiles error", error);
+      } catch (e) {
+        console.warn("profiles fetch crashed", e);
       }
-
-      // Load Top Individuals (points shown)
-      await loadTopIndividuals();
-
-      // Load Top Teams (no scores/participants/rosters shown)
-      await loadTopTeams();
-
-      // Search wiring
-      let query = "";
-      $("#searchInput").addEventListener("input", (e) => {
-        query = (e.target.value || "").trim().toLowerCase();
-        filterIndividuals(query);
-      });
-      $("#clearSearch").addEventListener("click", () => {
-        $("#searchInput").value = "";
-        query = "";
-        filterIndividuals(query);
-      });
-    })();
+    }
 
     // ===== Ranking helpers (competition ranking with T for ties) =====
     function computeRankLabelsByValue(values) {
-      // values must be an array of numbers (e.g., points). Assumes rows are already sorted DESC by value.
       const labels = new Array(values.length).fill("");
       let rank = 1;
       for (let i = 0; i < values.length; ) {
-        // find tie group [i..j)
         let j = i + 1;
         while (j < values.length && values[j] === values[i]) j++;
-
         const groupSize = j - i;
         const label = groupSize > 1 ? `T${rank}` : String(rank);
         for (let k = i; k < j; k++) labels[k] = label;
-
-        rank += groupSize; // skip ahead by group size (competition ranking)
+        rank += groupSize;
         i = j;
       }
       return labels;
@@ -346,15 +333,12 @@
       });
       if (error) { console.warn("team_score_participation_weighted", error); return; }
 
-      // Normalize possible score field names; keep hidden in UI
       const rows = (data || []).map(r => ({
         team: r.team ?? r.team_name ?? "",
         score: toNum(r.score ?? r.points ?? r.total ?? r.value ?? 0)
       }));
 
-      // Ensure DESC by score just in case
       rows.sort((a,b) => b.score - a.score);
-
       renderTeams(rows);
     }
 
@@ -390,6 +374,38 @@
       const end   = new Date(d.getFullYear(), d.getMonth()+1, 1);
       return { start: start.toISOString(), end: end.toISOString() };
     }
+
+    // ===== Boot =====
+    (async () => {
+      // Require auth
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html"; return; }
+
+      const { data: { user } } = await sb.auth.getUser();
+      $("#acctName").textContent = user.user_metadata?.display_name || user.email || "Account";
+      const doLogout = async () => { await sb.auth.signOut(); window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html"; };
+      $("#logoutBtn")?.addEventListener("click", doLogout);
+      $("#logoutBtnMobile")?.addEventListener("click", doLogout);
+
+      // Summary (tie-aware like Home)
+      await refreshProfileSummary();
+
+      // Load Top Individuals and Teams
+      await loadTopIndividuals();
+      await loadTopTeams();
+
+      // Search wiring (unchanged)
+      let query = "";
+      $("#searchInput").addEventListener("input", (e) => {
+        query = (e.target.value || "").trim().toLowerCase();
+        filterIndividuals(query);
+      });
+      $("#clearSearch").addEventListener("click", () => {
+        $("#searchInput").value = "";
+        query = "";
+        filterIndividuals(query);
+      });
+    })();
   </script>
 </body>
 </html>

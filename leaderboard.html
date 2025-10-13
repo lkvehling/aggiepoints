@@ -5,10 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Aggie Points — Leaderboard</title>
 
-  <!-- Fonts (Raleway = headings, Montserrat = UI/body, Merriweather optional) -->
+  <!-- Fonts (Raleway = headings, Montserrat = UI/body, Merriweather optional body) -->
   <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
 
-  <!-- Tailwind -->
+  <!-- Tailwind CDN -->
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
     tailwind.config = {
@@ -23,338 +23,373 @@
           fontFamily: {
             heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
             ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
-            serif: ["Merriweather", "Georgia", "serif"],
-          }
+            body: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"], /* no feet for tables */
+          },
+          boxShadow: { soft: "0 6px 24px rgba(2, 40, 81, 0.08)" }
         }
       }
     }
   </script>
 
   <style>
-    * { -webkit-tap-highlight-color: transparent; }
-    @media (max-width: 420px) {
-      .td-tight td { padding-top: 0.35rem; padding-bottom: 0.35rem; }
+    :root {
+      --aggie-blue: #022851;
+      --aggie-gold: #FFBF00;
     }
+    .card { transition: transform .15s ease, box-shadow .15s ease; }
+    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
+    .tbl thead th { letter-spacing: .02em; }
   </style>
 </head>
-<body class="bg-aggieBg text-ink font-ui">
-  <!-- Top bar (kept minimal + on-theme) -->
-  <header class="sticky top-0 z-20 bg-white/95 backdrop-blur border-b border-aggieBlue/10">
-    <div class="max-w-6xl mx-auto px-3 sm:px-4 py-3 flex items-center gap-2">
-      <h1 class="font-heading font-extrabold tracking-wide text-aggieBlue text-lg sm:text-xl">
-        Leaderboard
-      </h1>
-      <nav class="ml-auto hidden sm:flex items-center gap-4">
-        <a href="index.html" class="text-sm hover:underline underline-offset-2 text-aggieBlue">Home</a>
-        <a href="events.html" class="text-sm hover:underline underline-offset-2 text-aggieBlue">Events</a>
-        <a href="settings.html" class="text-sm hover:underline underline-offset-2 text-aggieBlue">Settings</a>
-      </nav>
+<body class="min-h-screen bg-aggieBg text-ink font-body">
+
+  <!-- Header / Nav -->
+  <header class="bg-aggieBlue text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between py-3">
+        <a href="index.html" class="flex items-center">
+          <span class="font-ui text-xl font-semibold tracking-wide">Aggie Points</span>
+        </a>
+
+        <nav class="hidden md:flex items-center gap-8 font-ui">
+          <a href="index.html" class="hover:text-aggieGold">Home</a>
+          <a href="events.html" class="hover:text-aggieGold">All Events</a>
+          <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
+          <a href="about.html" class="hover:text-aggieGold">About</a>
+
+          <!-- Account dropdown -->
+          <div class="relative">
+            <button id="acctBtn" class="hover:text-aggieGold flex items-center gap-2">
+              <span id="acctName" class="font-medium">Account</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div id="acctMenu" class="absolute right-0 mt-2 w-44 bg-white text-ink rounded-lg shadow-soft py-2 hidden">
+              <a href="settings.html" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
+              <button id="logoutBtn" class="w-full text-left block px-4 py-2 hover:bg-gray-100">Log out</button>
+            </div>
+          </div>
+        </nav>
+
+        <!-- Mobile menu button -->
+        <button id="mobileMenuBtn" class="md:hidden inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10">
+          <span class="sr-only">Open main menu</span>
+          <svg class="h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" fill="none">
+            <path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round" />
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Mobile menu -->
+    <div id="mobileMenu" class="md:hidden hidden border-t border-white/10">
+      <div class="space-y-1 px-4 pb-4 pt-2 font-ui">
+        <a href="index.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Home</a>
+        <a href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
+        <a href="leaderboard.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Leaderboard</a>
+        <a href="about.html" class="block px-3 py-2 rounded-md hover:bg-white/10">About</a>
+        <a href="settings.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Settings</a>
+        <button id="logoutBtnMobile" class="w-full text-left block px-3 py-2 rounded-md hover:bg-white/10">Log out</button>
+      </div>
     </div>
   </header>
 
-  <main class="max-w-6xl mx-auto px-3 sm:px-4 py-4">
-    <!-- Filters -->
-    <section class="mb-3">
-      <div class="grid grid-cols-1 sm:grid-cols-5 gap-2">
-        <label class="sm:col-span-2">
-          <span class="sr-only">Search</span>
-          <input id="searchInput" type="text" placeholder="Search athlete or team…"
-                 class="w-full rounded-xl border border-aggieBlue/15 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-aggieGold" />
-        </label>
+  <!-- Page Header -->
+  <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
+      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">Leaderboard</h1>
+      <p class="mt-1 font-ui text-white/90">See top individuals and teams.</p>
+    </div>
+  </section>
 
-        <label class="sm:col-span-2">
-          <span class="sr-only">Team</span>
-          <select id="teamFilter"
-                  class="w-full rounded-xl border border-aggieBlue/15 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-aggieGold">
-            <option value="">All teams</option>
-          </select>
-        </label>
+  <!-- Content -->
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
 
-        <div class="sm:col-span-1">
-          <div class="bg-white border border-aggieBlue/15 rounded-xl p-1 flex">
-            <button id="viewAll" class="flex-1 text-xs sm:text-sm px-2 py-1 rounded-lg bg-aggieBlue text-white">All</button>
-            <button id="viewParticipation" class="flex-1 text-xs sm:text-sm px-2 py-1 rounded-lg">Participation</button>
-            <button id="viewAverage" class="flex-1 text-xs sm:text-sm px-2 py-1 rounded-lg">Average</button>
+    <!-- Left column: My summary -->
+    <aside class="space-y-6 lg:col-span-1">
+      <!-- My Points (compact for mobile) -->
+      <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
+        <div class="flex items-start justify-between">
+          <div class="min-w-0">
+            <h2 class="font-ui text-xs tracking-wide uppercase text-aggieBlue/80">Your Summary</h2>
+
+            <!-- Points emphasized, with label -->
+            <div class="mt-1">
+              <div class="font-ui text-[11px] text-ink/60">Points</div>
+              <div class="flex items-end gap-3">
+                <span id="myPoints" class="font-heading text-4xl sm:text-5xl font-extrabold text-aggieBlue leading-none">—</span>
+              </div>
+            </div>
+
+            <!-- Rank + Team smaller and clearly labeled -->
+            <div class="mt-2 space-y-0.5 text-sm font-ui text-ink/80">
+              <div id="myRank" class="flex items-center gap-2">
+                <span class="inline-flex items-center rounded-md bg-aggieBlue/5 px-2 py-0.5 text-[12px] font-semibold text-aggieBlue">Rank</span>
+                <span id="myRankVal">—</span>
+              </div>
+              <div id="myTeam" class="flex items-center gap-2">
+                <span class="inline-flex items-center rounded-md bg-aggieGold/20 px-2 py-0.5 text-[12px] font-semibold text-aggieBlue">Team</span>
+                <span id="myTeamVal">—</span>
+              </div>
+            </div>
           </div>
+
+          <div class="rounded-xl bg-aggieGold/20 text-aggieBlue px-3 py-2 font-ui text-xs font-semibold">Season</div>
+        </div>
+
+        <div class="mt-4 grid grid-cols-2 gap-3">
+          <a href="events.html" class="rounded-xl border border-aggieBlue/10 px-4 py-2.5 text-center font-ui hover:border-aggieBlue/30">Find Events</a>
+          <a href="index.html#today" class="rounded-xl bg-aggieGold text-aggieBlue px-4 py-2.5 text-center font-ui font-semibold hover:brightness-95">Check in</a>
+        </div>
+      </section>
+
+      <!-- Search individuals -->
+      <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
+        <h3 class="font-ui text-base font-semibold text-aggieBlue">Search Individuals</h3>
+        <div class="mt-3 flex items-center gap-2">
+          <input id="searchInput" type="search" placeholder="Search by name or team…" class="w-full rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieGold/60" />
+          <button id="clearSearch" class="px-3 py-2 rounded-lg font-ui border border-aggieBlue/10 hover:bg-aggieBlue/5">Clear</button>
+        </div>
+      </section>
+    </aside>
+
+    <!-- Right column: Leaderboards -->
+    <section class="lg:col-span-2 space-y-6">
+      <!-- Top Individuals -->
+      <div class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
+        <div class="flex items-center justify-between">
+          <h3 class="font-ui text-lg font-semibold text-aggieBlue">Top 10 Individuals</h3>
+          <span id="indCount" class="font-ui text-sm text-ink/60"></span>
+        </div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="tbl min-w-full">
+            <thead class="font-ui">
+              <tr class="text-left border-b border-gray-200">
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Rank</th>
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Name</th>
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Points</th>
+              </tr>
+            </thead>
+            <tbody id="indBody" class="divide-y divide-gray-100"></tbody>
+          </table>
+          <div id="indEmpty" class="hidden py-8 text-center font-ui text-ink/60">No individuals found.</div>
         </div>
       </div>
+
+      <!-- Top Teams (scores intentionally hidden) -->
+      <div class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
+        <div class="flex items-center justify-between">
+          <h3 class="font-ui text-lg font-semibold text-aggieBlue">Top 5 Teams</h3>
+          <span id="teamCount" class="font-ui text-sm text-ink/60"></span>
+        </div>
+
+        <div class="mt-4 overflow-x-auto">
+          <table class="tbl min-w-full">
+            <thead class="font-ui">
+              <tr class="text-left border-b border-gray-200">
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Rank</th>
+                <th class="py-3 px-4 font-ui text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
+              </tr>
+            </thead>
+            <tbody id="teamBody" class="divide-y divide-gray-100"></tbody>
+          </table>
+          <div id="teamEmpty" class="hidden py-8 text-center font-ui text-ink/60">No teams found.</div>
+        </div>
     </section>
-
-    <!-- Table (desktop) -->
-    <section class="bg-white border border-aggieBlue/15 rounded-2xl overflow-hidden">
-      <div class="hidden sm:block overflow-x-auto">
-        <table class="w-full text-sm">
-          <thead class="bg-aggieBlue text-white sticky top-[57px] sm:top-[61px] z-10">
-            <tr>
-              <th class="text-left font-semibold px-3 py-2"># Part</th>
-              <th class="text-left font-semibold px-3 py-2">Athlete</th>
-              <th class="text-left font-semibold px-3 py-2">Team</th>
-              <th class="text-right font-semibold px-3 py-2">Events</th>
-              <th class="text-right font-semibold px-3 py-2">Points</th>
-              <th class="text-right font-semibold px-3 py-2">Avg/Ev</th>
-              <th class="text-right font-semibold px-3 py-2"># Avg</th>
-              <th class="text-right font-semibold px-3 py-2">Δ Rank</th>
-            </tr>
-          </thead>
-          <tbody id="tableBody" class="divide-y divide-aggieBlue/10 td-tight"></tbody>
-        </table>
-      </div>
-
-      <!-- List (mobile) -->
-      <div id="mobileList" class="sm:hidden divide-y divide-aggieBlue/10"></div>
-
-      <!-- Pagination -->
-      <div class="px-3 py-2 flex items-center justify-between bg-aggieBg">
-        <div id="countLabel" class="text-xs">Showing 0</div>
-        <button id="loadMoreBtn" class="text-sm px-3 py-1 rounded-lg border border-aggieBlue/20 bg-white hover:bg-aggieBg">
-          Load more
-        </button>
-      </div>
-    </section>
-
-    <p class="mt-2 text-xs">
-      Δ Rank = (# Avg) − (# Part). Lower is better. ▲ better Avg rank; ▼ worse Avg rank.
-    </p>
   </main>
 
-  <!-- Supabase -->
-  <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+  <!-- Footer -->
+  <footer class="border-t border-gray-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-sm font-ui text-ink/60">
+      © <span id="year"></span> Aggie Points. UC Davis-inspired theme.
+    </div>
+  </footer>
+
+  <!-- Supabase auth/config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
 
   <script>
-    // ===== Field map: adjust here if your view columns differ =====
-    const FIELD_MAP = {
-      id: "id",
-      name: "full_name",
-      team: "team_name",
-      total_points: "total_points",
-      events_attended: "events_attended",
-      avg_points: "avg_points_per_event", // if missing, we compute it
-    };
+    // ===== Utilities =====
+    const $ = (sel) => document.querySelector(sel);
+    const $$ = (sel) => Array.from(document.querySelectorAll(sel));
+    const toggle = (el) => el.classList.toggle("hidden");
+    const esc = (s) => String(s ?? "")
+      .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;").replaceAll("'","&#39;");
 
-    // ===== State =====
-    const PAGE_SIZE = 50;
-    let allAthletes = [];
-    let filtered = [];
-    let renderedCount = 0;
-    let currentView = "all";
+    // Header UI
+    $("#mobileMenuBtn")?.addEventListener("click", () => toggle($("#mobileMenu")));
+    $("#acctBtn")?.addEventListener("click", () => toggle($("#acctMenu")));
+    $("#year").textContent = new Date().getFullYear();
 
-    // ===== UI =====
-    const searchInput = document.getElementById('searchInput');
-    const teamFilter = document.getElementById('teamFilter');
-    const viewAllBtn = document.getElementById('viewAll');
-    const viewPartBtn = document.getElementById('viewParticipation');
-    const viewAvgBtn = document.getElementById('viewAverage');
-    const tableBody = document.getElementById('tableBody');
-    const mobileList = document.getElementById('mobileList');
-    const loadMoreBtn = document.getElementById('loadMoreBtn');
-    const countLabel = document.getElementById('countLabel');
+    // ===== Boot =====
+    (async () => {
+      // Require auth
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = LOGIN_PAGE || "login.html"; return; }
 
-    // ===== Helpers =====
-    const toFixed1 = (x) => (x ?? 0).toFixed(1);
+      const { data: { user } } = await sb.auth.getUser();
+      $("#acctName").textContent = user.user_metadata?.display_name || user.email || "Account";
+      const doLogout = async () => { await sb.auth.signOut(); window.location.href = LOGIN_PAGE || "login.html"; };
+      $("#logoutBtn")?.addEventListener("click", doLogout);
+      $("#logoutBtnMobile")?.addEventListener("click", doLogout);
 
-    function computeRanks(items, key, tiebreakers = []) {
-      const arr = [...items].sort((a, b) => {
-        const d = (b[key] ?? 0) - (a[key] ?? 0);
-        if (d !== 0) return d;
-        for (const tb of tiebreakers) {
-          const dd = (b[tb] ?? 0) - (a[tb] ?? 0);
-          if (dd !== 0) return dd;
-        }
-        return a.name.localeCompare(b.name);
+      // Load "My Summary" from profiles
+      const { data: profile } = await sb.from("profiles")
+        .select("display_name, team_name, points_total, rank")
+        .eq("id", user.id).single();
+
+      if (profile) {
+        $("#myPoints").textContent = profile.points_total ?? 0;
+        $("#myRankVal").textContent = profile.rank ?? "—";
+        $("#myTeamVal").textContent = profile.team_name || "—";
+      }
+
+      // Load Top Individuals (points shown)
+      await loadTopIndividuals();
+
+      // Load Top Teams (no scores/participants/rosters shown)
+      await loadTopTeams();
+
+      // Search wiring
+      let query = "";
+      $("#searchInput").addEventListener("input", (e) => {
+        query = (e.target.value || "").trim().toLowerCase();
+        filterIndividuals(query);
       });
-      const rankMap = new Map();
+      $("#clearSearch").addEventListener("click", () => {
+        $("#searchInput").value = "";
+        query = "";
+        filterIndividuals(query);
+      });
+    })();
+
+    // ===== Ranking helpers (competition ranking with T for ties) =====
+    function computeRankLabelsByValue(values) {
+      // values must be an array of numbers (e.g., points). Assumes rows are already sorted DESC by value.
+      const labels = new Array(values.length).fill("");
       let rank = 1;
-      for (let i = 0; i < arr.length; i++) {
-        if (i > 0) {
-          const prev = arr[i - 1], cur = arr[i];
-          if ((cur[key] ?? 0) !== (prev[key] ?? 0)) rank = i + 1;
-        }
-        rankMap.set(arr[i].id, rank);
+      for (let i = 0; i < values.length; ) {
+        // find tie group [i..j)
+        let j = i + 1;
+        while (j < values.length && values[j] === values[i]) j++;
+
+        const groupSize = j - i;
+        const label = groupSize > 1 ? `T${rank}` : String(rank);
+        for (let k = i; k < j; k++) labels[k] = label;
+
+        rank += groupSize; // skip ahead by group size (competition ranking)
+        i = j;
       }
-      return rankMap;
+      return labels;
     }
 
-    function deltaArrow(delta) {
-      if (delta < 0) return `▲ ${Math.abs(delta)}`;
-      if (delta > 0) return `▼ ${Math.abs(delta)}`;
-      return "—";
+    // ===== Individuals =====
+    let INDIVIDUALS = [];
+
+    async function loadTopIndividuals() {
+      const { data, error } = await sb.rpc("leaderboard_top_individuals", { limit_n: 10 });
+      if (error) { console.warn("leaderboard_top_individuals", error); return; }
+      INDIVIDUALS = (data || []).map(r => ({
+        name: r.name ?? "",
+        team: r.team ?? "",
+        points: Number(r.points ?? 0)
+      }));
+      renderIndividuals(INDIVIDUALS);
     }
 
-    function clearRender() {
-      tableBody.innerHTML = "";
-      mobileList.innerHTML = "";
-      renderedCount = 0;
-    }
-
-    function sortForView() {
-      if (currentView === "participation") {
-        filtered.sort((a, b) =>
-          (a.rank_participation - b.rank_participation) ||
-          (a.rank_average - b.rank_average)
-        );
-      } else if (currentView === "average") {
-        filtered.sort((a, b) =>
-          (a.rank_average - b.rank_average) ||
-          (a.rank_participation - b.rank_participation)
-        );
-      } else {
-        filtered.sort((a, b) =>
-          (a.rank_participation - b.rank_participation) ||
-          (a.rank_average - b.rank_average)
-        );
-      }
-    }
-
-    function applyFiltersAndView() {
-      const q = (searchInput.value || "").trim().toLowerCase();
-      const team = teamFilter.value || "";
-
-      filtered = allAthletes.filter(a => {
-        const matchQ = !q || a.name?.toLowerCase().includes(q) || a.team?.toLowerCase().includes(q);
-        const matchT = !team || a.team === team;
-        return matchQ && matchT;
-      });
-
-      sortForView();
-      clearRender();
-      renderMore();
-      updateCount();
-    }
-
-    function updateCount() {
-      countLabel.textContent = `Showing ${Math.min(renderedCount, filtered.length)} of ${filtered.length}`;
-      loadMoreBtn.style.display = renderedCount < filtered.length ? "inline-block" : "none";
-    }
-
-    function renderRow(a) {
-      // Desktop row
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="px-3 py-2">${a.rank_participation}</td>
-        <td class="px-3 py-2 font-semibold">${a.name || "—"}</td>
-        <td class="px-3 py-2">${a.team || "—"}</td>
-        <td class="px-3 py-2 text-right">${a.events_attended ?? 0}</td>
-        <td class="px-3 py-2 text-right">${a.total_points ?? 0}</td>
-        <td class="px-3 py-2 text-right">${toFixed1(a.avg_points)}</td>
-        <td class="px-3 py-2 text-right">${a.rank_average}</td>
-        <td class="px-3 py-2 text-right">${deltaArrow(a.delta_rank)}</td>
-      `;
-      tableBody.appendChild(tr);
-
-      // Mobile card
-      const card = document.createElement('div');
-      card.className = "px-3 py-2";
-      card.innerHTML = `
-        <div class="flex items-center justify-between gap-2">
-          <div class="min-w-0">
-            <div class="text-xs text-ink"># Part ${a.rank_participation} • # Avg ${a.rank_average}</div>
-            <div class="font-semibold truncate">${a.name || "—"}</div>
-            <div class="text-xs truncate">${a.team || "—"}</div>
-          </div>
-          <div class="text-right ml-2">
-            <div class="text-xs">${deltaArrow(a.delta_rank)}</div>
-            <div class="text-[11px]">Δ Rank</div>
-          </div>
-        </div>
-        <div class="mt-1 grid grid-cols-3 gap-1 text-sm">
-          <div class="bg-aggieBg rounded-lg px-2 py-1 text-center">
-            <div class="font-semibold">${a.events_attended ?? 0}</div>
-            <div class="text-[11px]">Events</div>
-          </div>
-          <div class="bg-aggieBg rounded-lg px-2 py-1 text-center">
-            <div class="font-semibold">${a.total_points ?? 0}</div>
-            <div class="text-[11px]">Points</div>
-          </div>
-          <div class="bg-aggieBg rounded-lg px-2 py-1 text-center">
-            <div class="font-semibold">${toFixed1(a.avg_points)}</div>
-            <div class="text-[11px]">Avg/Ev</div>
-          </div>
-        </div>
-      `;
-      mobileList.appendChild(card);
-    }
-
-    function renderMore() {
-      const next = filtered.slice(renderedCount, renderedCount + PAGE_SIZE);
-      next.forEach(renderRow);
-      renderedCount += next.length;
-      updateCount();
-    }
-
-    function setView(v) {
-      currentView = v;
-      [viewAllBtn, viewPartBtn, viewAvgBtn].forEach(b => b.classList.remove("bg-aggieBlue","text-white"));
-      if (v === "all") viewAllBtn.classList.add("bg-aggieBlue","text-white");
-      if (v === "participation") viewPartBtn.classList.add("bg-aggieBlue","text-white");
-      if (v === "average") viewAvgBtn.classList.add("bg-aggieBlue","text-white");
-      applyFiltersAndView();
-    }
-
-    // ===== Data =====
-    async function fetchLeaderboard() {
-      const fields = [
-        FIELD_MAP.id,
-        FIELD_MAP.name,
-        FIELD_MAP.team,
-        FIELD_MAP.total_points,
-        FIELD_MAP.events_attended,
-        FIELD_MAP.avg_points
-      ].filter(Boolean).join(",");
-
-      const { data, error } = await sb
-        .from('profiles')
-        .select(fields)
-        .neq(FIELD_MAP.name, null);
-
-      if (error) {
-        console.error(error);
-        alert("Failed to load leaderboard.");
+    function renderIndividuals(rows) {
+      const body = $("#indBody");
+      const empty = $("#indEmpty");
+      body.innerHTML = "";
+      if (!rows || rows.length === 0) {
+        empty.classList.remove("hidden");
+        $("#indCount").textContent = "";
         return;
       }
+      empty.classList.add("hidden");
+      $("#indCount").textContent = `${rows.length} shown`;
 
-      const rows = (data || []).map(r => {
-        const id = r[FIELD_MAP.id];
-        const name = r[FIELD_MAP.name];
-        const team = r[FIELD_MAP.team] ?? "";
-        const total_points = Number(r[FIELD_MAP.total_points] ?? 0);
-        const events_attended = Number(r[FIELD_MAP.events_attended] ?? 0);
-        const avg_points = r[FIELD_MAP.avg_points] != null
-          ? Number(r[FIELD_MAP.avg_points])
-          : (events_attended > 0 ? total_points / events_attended : 0);
-        return { id, name, team, total_points, events_attended, avg_points };
+      const pts = rows.map(r => Number(r.points ?? 0));
+      const ranks = computeRankLabelsByValue(pts);
+
+      rows.forEach((r, i) => {
+        body.insertAdjacentHTML("beforeend", `
+          <tr class="hover:bg-aggieBlue/5">
+            <td class="py-3 px-4 font-ui">${ranks[i]}</td>
+            <td class="py-3 px-4 font-ui">${esc(r.name)}</td>
+            <td class="py-3 px-4 font-ui">${esc(r.team)}</td>
+            <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${r.points}</td>
+          </tr>
+        `);
       });
-
-      const partRanks = computeRanks(rows, "events_attended", ["total_points"]);
-      const avgRanks  = computeRanks(rows, "avg_points", ["total_points","events_attended"]);
-
-      allAthletes = rows.map(a => {
-        const rp = partRanks.get(a.id) ?? 9999;
-        const ra = avgRanks.get(a.id) ?? 9999;
-        return { ...a, rank_participation: rp, rank_average: ra, delta_rank: ra - rp };
-      });
-
-      // Team filter options
-      const teams = Array.from(new Set(allAthletes.map(a => a.team).filter(Boolean))).sort();
-      for (const t of teams) {
-        const opt = document.createElement('option');
-        opt.value = t; opt.textContent = t;
-        teamFilter.appendChild(opt);
-      }
-
-      applyFiltersAndView();
     }
 
-    // ===== Events =====
-    searchInput.addEventListener('input', applyFiltersAndView);
-    teamFilter.addEventListener('change', applyFiltersAndView);
-    loadMoreBtn.addEventListener('click', renderMore);
-    viewAllBtn.addEventListener('click', () => setView('all'));
-    viewPartBtn.addEventListener('click', () => setView('participation'));
-    viewAvgBtn.addEventListener('click', () => setView('average'));
+    function filterIndividuals(q) {
+      if (!q) return renderIndividuals(INDIVIDUALS);
+      const filtered = INDIVIDUALS.filter(r =>
+        (r.name ?? "").toLowerCase().includes(q) ||
+        (r.team ?? "").toLowerCase().includes(q)
+      );
+      renderIndividuals(filtered);
+    }
 
-    // Start
-    fetchLeaderboard();
+    // ===== Teams (scores hidden but used to rank) =====
+    async function loadTopTeams() {
+      const { start, end } = monthRangeISO();
+      const { data, error } = await sb.rpc("team_score_participation_weighted", {
+        month_start: start,
+        month_end: end,
+        limit_n: 5
+      });
+      if (error) { console.warn("team_score_participation_weighted", error); return; }
+
+      // Normalize possible score field names; keep hidden in UI
+      const rows = (data || []).map(r => ({
+        team: r.team ?? r.team_name ?? "",
+        score: toNum(r.score ?? r.points ?? r.total ?? r.value ?? 0)
+      }));
+
+      // Ensure DESC by score just in case
+      rows.sort((a,b) => b.score - a.score);
+
+      renderTeams(rows);
+    }
+
+    function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
+
+    function renderTeams(rows) {
+      const body = $("#teamBody");
+      const empty = $("#teamEmpty");
+      body.innerHTML = "";
+      if (!rows || rows.length === 0) {
+        empty.classList.remove("hidden");
+        $("#teamCount").textContent = "";
+        return;
+      }
+      empty.classList.add("hidden");
+      $("#teamCount").textContent = `${rows.length} shown`;
+
+      const vals = rows.map(r => r.score);
+      const ranks = computeRankLabelsByValue(vals);
+
+      rows.forEach((r, i) => {
+        body.insertAdjacentHTML("beforeend", `
+          <tr class="hover:bg-aggieBlue/5">
+            <td class="py-3 px-4 font-ui">${ranks[i]}</td>
+            <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${esc(r.team)}</td>
+          </tr>
+        `);
+      });
+    }
+
+    function monthRangeISO(d=new Date()) {
+      const start = new Date(d.getFullYear(), d.getMonth(), 1);
+      const end   = new Date(d.getFullYear(), d.getMonth()+1, 1);
+      return { start: start.toISOString(), end: end.toISOString() };
+    }
   </script>
 </body>
 </html>

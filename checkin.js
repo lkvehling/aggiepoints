@@ -118,9 +118,9 @@
     const code = err?.code, details = err?.details || err?.message || '';
     if (code === '23505' || /duplicate/i.test(details)) return 'You already checked in for this event.';
     if (code === '401' || /JWT|auth/i.test(details))    return 'You must be signed in to check in.';
-    if (/geofence/i.test(details))                      return 'You must be at the venue to check in.';
+    if (/geofence/i.test(details))                      return 'You must be at the venue to check in. If you are here, please close the tab, ensure precision location is on, move closer to center of event, and reopen Aggie Points.';
     if (/time/i.test(details))                          return 'This event is not currently active.';
-    if (/accuracy/i.test(details))                      return 'Location accuracy is too low. Try again outside with GPS on.';
+    if (/accuracy/i.test(details))                      return 'Location accuracy is too low. Try again with GPS on.';
     return 'Check-in failed. Please try again.';
   }
 
@@ -184,7 +184,7 @@
     } catch (geoErr) {
       btn.disabled = false;
       btn.innerHTML = original;
-      showToast('We need your location to check in. Please turn on location access for your browser settings and try again!', { variant: 'error' });
+      showToast('We need your location to check in. Please turn on location access ("Privacy & Security" > "Location Services") for your browser (Safari/Chrome) and try again!', { variant: 'error' });
     }
   }
 

@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Set New Password — Aggie Points</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+
+  <!-- Fonts + Tailwind theme (same as above) -->
+  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors:{ aggieBlue:"#022851", aggieGold:"#FFBF00", aggieBg:"#F7F7F7", ink:"#333333" },
+          fontFamily:{
+            heading:["Raleway","Helvetica Neue","Arial","sans-serif"],
+            ui:["Montserrat","Helvetica Neue","Arial","sans-serif"],
+            body:["Merriweather","Georgia","serif"],
+          },
+          boxShadow:{ soft:"0 6px 24px rgba(2,40,81,0.08)" }
+        }
+      }
+    }
+  </script>
+  <style>.card{transition:transform .15s ease, box-shadow .15s ease}.card:hover{transform:translateY(-2px); box-shadow:0 10px 30px rgba(2,40,81,.12)}</style>
+</head>
+<body class="min-h-screen bg-aggieBg text-ink font-body">
+  <header class="bg-aggieBlue text-white">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center justify-between py-3">
+        <a href="index.html" class="font-ui text-xl font-semibold tracking-wide">Aggie Points</a>
+        <a href="login.html" class="font-ui hover:text-aggieGold">Back to login</a>
+      </div>
+    </div>
+  </header>
+
+  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
+    <div class="mx-auto w-full max-w-md card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
+      <div class="p-6">
+        <h1 class="font-heading text-2xl font-extrabold text-aggieBlue mb-2">Choose a new password</h1>
+
+        <label class="block mb-4">
+          <span class="font-ui text-sm uppercase tracking-wide text-ink/60">New password</span>
+          <input id="pw" type="password" autocomplete="new-password" required
+                 class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue"
+                 placeholder="At least 8 characters" />
+        </label>
+
+        <button id="updateBtn" class="w-full inline-flex items-center justify-center rounded-lg bg-aggieGold px-4 py-2 font-ui font-semibold text-aggieBlue hover:brightness-95">
+          Update password
+        </button>
+
+        <p id="msg" class="font-ui text-sm mt-3"></p>
+      </div>
+    </div>
+  </main>
+
+  <footer class="border-t border-gray-200">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-sm font-ui text-ink/60">
+      © <span id="yearText"></span> Aggie Points.
+    </div>
+  </footer>
+
+  <!-- Supabase + your config -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="auth-config.js"></script>
+  <script>
+    document.getElementById('yearText').textContent = new Date().getFullYear();
+
+    const msgEl = document.getElementById('msg');
+    const btn   = document.getElementById('updateBtn');
+    const pwEl  = document.getElementById('pw');
+
+    function setMsg(txt, ok=false){
+      msgEl.textContent = txt;
+      msgEl.className = "font-ui text-sm " + (ok ? "text-green-700" : "text-aggieBlue");
+    }
+
+    // Optional: check that we have a recovery session (Supabase sets it from URL fragment)
+    async function ensureRecoverySession(){
+      const { data:{ session } } = await sb.auth.getSession();
+      if(!session){
+        setMsg("We couldn't verify your reset link. Please use the latest email link.");
+      }
+    }
+    ensureRecoverySession();
+
+    btn.addEventListener('click', async () => {
+      const pw = pwEl.value.trim();
+      if(!pw || pw.length < 8){ setMsg("Please enter a password of at least 8 characters."); return; }
+
+      btn.disabled = true; btn.classList.add('opacity-60');
+      const { error } = await sb.auth.updateUser({ password: pw });
+      if (error) {
+        setMsg(error.message || "Could not update password.");
+      } else {
+        setMsg("Password updated! Redirecting to login…", true);
+        setTimeout(() => window.location.href = "login.html", 1500);
+      }
+      btn.disabled = false; btn.classList.remove('opacity-60');
+    });
+  </script>
+</body>
+</html>

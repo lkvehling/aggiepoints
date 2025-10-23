@@ -246,7 +246,7 @@
     if (code === '42501')                                               return 'You do not have permission to check in to this event.';
     if (/outside_geofence/i.test(details))                              return 'You must be at the venue to check in. If you are here, please close the tab, ensure precision location is on, move closer to center of event, and reopen Aggie Points.';
     if (/outside_time_window/i.test(details))                           return 'This event is not currently active (20 min before start → 10 min before end).';
-    if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please allow location access and try again.';
+    if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please turn on location access ("Privacy & Security" > "Location Services") for your browser (Safari/Chrome) and try again!';
     if (/low_accuracy/i.test(details))                                  return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled. Also can close the tab, move closer to center of event, and reopen Aggie Points.';
     if (/missing_accuracy/i.test(details))                              return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
     return err?.message || 'Check-in failed. Please try again.';

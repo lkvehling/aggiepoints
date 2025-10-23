@@ -118,7 +118,11 @@
       setBusy(true);
       try {
         const redirectTo = buildRedirectTo(); // must be allowlisted in Supabase Auth → URL Configuration
-        const { data, error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+        const { data, error } = await sb.auth.resetPasswordForEmail(email, {
+          redirectTo: "https://lkvehling.github.io/aggiepoints/reset.html",
+        });
+        console.log({ data, error });
+
 
         if (error) {
           // Show exact error to diagnose e.g. "URL not allowed" or "Email address is invalid"

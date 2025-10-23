@@ -50,11 +50,14 @@
           <input
             id="email"
             type="email"
+            inputmode="email"
             autocomplete="email"
             required
-            inputmode="email"
+            pattern="^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$"
             class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue"
-            placeholder="you@ucdavis.edu" />
+            placeholder="you@ucdavis.edu"
+          />
+
         </label>
 
         <button
@@ -104,13 +107,14 @@
 
     async function sendReset(){
       // Normalize email: trim, collapse spaces, lowercase domain
-      let email = (emailEl.value || '')
+      let email = (emailEl.value || "")
         .trim()
-        .replace(/\s+/g, ' ')
+        .replace(/\s+/g, " ")   // collapse accidental spaces/newlines
         .toLowerCase();
 
+      const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!EMAIL_RE.test(email)) {
-        setMsg("Please enter a valid email address (e.g., you@ucdavis.edu).");
+        setMsg("Please enter a valid email (e.g., you@ucdavis.edu).");
         emailEl.focus();
         return;
       }

@@ -47,16 +47,23 @@
 
         <label class="block mb-4">
           <span class="font-ui text-sm uppercase tracking-wide text-ink/60">UC Davis email</span>
-          <input id="email" type="email" autocomplete="email" required
-                 class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue"
-                 placeholder="you@ucdavis.edu" />
+          <input
+            id="email"
+            type="email"
+            autocomplete="email"
+            required
+            inputmode="email"
+            class="mt-1 w-full rounded-lg border border-gray-300 px-3 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieBlue"
+            placeholder="you@ucdavis.edu" />
         </label>
 
-        <button id="sendBtn" class="w-full inline-flex items-center justify-center rounded-lg bg-aggieBlue px-4 py-2 font-ui font-semibold text-white hover:bg-aggieBlue/90">
+        <button
+          id="sendBtn"
+          class="w-full inline-flex items-center justify-center rounded-lg bg-aggieBlue px-4 py-2 font-ui font-semibold text-white hover:bg-aggieBlue/90">
           Send reset link
         </button>
 
-        <p id="msg" class="font-ui text-sm mt-3"></p>
+        <p id="msg" class="font-ui text-sm mt-3" role="status" aria-live="polite"></p>
       </div>
     </div>
   </main>
@@ -77,25 +84,64 @@
     const msgEl   = document.getElementById('msg');
     const btn     = document.getElementById('sendBtn');
 
+    // Simple, safe email check (avoids whitespace/hidden chars issues)
+    const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
     function setMsg(txt, ok=false){
       msgEl.textContent = txt;
-      msgEl.className = "font-ui text-sm " + (ok ? "text-green-700" : "text-aggieBlue");
+      msgEl.className = "font-ui text-sm mt-3 " + (ok ? "text-green-700" : "text-aggieBlue");
+    }
+    function setBusy(v){
+      btn.disabled = !!v;
+      btn.classList.toggle('opacity-60', !!v);
     }
 
-    btn.addEventListener('click', async () => {
-      const email = emailEl.value.trim();
-      if(!email){ setMsg("Please enter your email."); return; }
-      btn.disabled = true; btn.classList.add('opacity-60');
+    // Build an absolute redirect URL robustly: <origin>/<dir>/reset.html
+    function buildRedirectTo(){
+      const base = location.origin + location.pathname.replace(/[^/]+$/, '');
+      return base + 'reset.html';
+    }
 
-      const { error } = await sb.auth.resetPasswordForEmail(email, {
-        redirectTo: window.location.origin + window.location.pathname.replace('forgot.html','reset.html')
-          // e.g. https://username.github.io/aggie-points/reset.html
-      });
+    async function sendReset(){
+      // Normalize email: trim, collapse spaces, lowercase domain
+      let email = (emailEl.value || '')
+        .trim()
+        .replace(/\s+/g, ' ')
+        .toLowerCase();
 
-      if (error) setMsg(error.message || "Could not send reset email.");
-      else setMsg("Check your email for a password-reset link.", true);
+      if (!EMAIL_RE.test(email)) {
+        setMsg("Please enter a valid email address (e.g., you@ucdavis.edu).");
+        emailEl.focus();
+        return;
+      }
 
-      btn.disabled = false; btn.classList.remove('opacity-60');
+      setBusy(true);
+      try {
+        const redirectTo = buildRedirectTo(); // must be allowlisted in Supabase Auth → URL Configuration
+        const { data, error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+
+        if (error) {
+          // Show exact error to diagnose e.g. "URL not allowed" or "Email address is invalid"
+          setMsg(error.message || "Could not send reset email.");
+          console.log('resetPasswordForEmail error:', error);
+        } else {
+          setMsg("Check your email for a password-reset link.", true);
+          console.log('resetPasswordForEmail data:', data);
+        }
+      } catch (e) {
+        setMsg("Something went wrong sending the reset. Try again.");
+        console.error(e);
+      } finally {
+        setBusy(false);
+      }
+    }
+
+    btn.addEventListener('click', sendReset);
+    emailEl.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        sendReset();
+      }
     });
   </script>
 </body>

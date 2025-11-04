@@ -83,7 +83,7 @@
       </section>
 
       <!-- Search Individuals -->
-      <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
+      <<section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <h3 class="font-ui text-base font-semibold text-aggieBlue">Search Individuals</h3>
         <div class="mt-3 flex items-center gap-2">
           <input id="searchInput" type="search" placeholder="Search by name or team…" class="w-full rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieGold/60" />
@@ -121,7 +121,7 @@
         </div>
       </div>
 
-      <!-- Teams (UPDATED) -->
+      <!-- Teams (Avg-based ranking; no roster display) -->
       <div class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <div class="flex items-center justify-between">
           <h3 class="font-ui text-lg font-semibold text-aggieBlue">Teams</h3>
@@ -140,7 +140,6 @@
                 <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
                 <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Avg / Person</th>
                 <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Total Points</th>
-                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Roster Size</th>
               </tr>
             </thead>
             <tbody id="teamBody" class="divide-y divide-gray-100"></tbody>
@@ -169,15 +168,6 @@
     const esc = s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     $("#year").textContent = new Date().getFullYear();
 
-    // === YOU PROVIDE THIS: roster sizes ===
-    // Keys must match team names returned by the totals query.
-    const TEAM_SIZES = {
-      // "Women's Water Polo": 25,
-      // "Men's Soccer": 30,
-      // "Track & Field": 60,
-      // ...
-    };
-
     // ---- Auth guard + account label
     (async () => {
       const { data: { session } } = await sb.auth.getSession();
@@ -192,7 +182,7 @@
       wireSearch();
     })();
 
-    // ---- Summary (unchanged)
+    // ---- Summary
     function applySummary(prof) {
       const pts = prof?.points_total ?? 0;
       const indText = (prof?.rank == null) ? '—' : (prof?.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
@@ -226,13 +216,11 @@
         for(let k=i;k<j;k++)labels[k]=lbl;rank+=j-i;i=j;}
       return labels;
     }
-    function monthRangeISO(d=new Date()){
-      const start=new Date(d.getFullYear(),d.getMonth(),1);
-      const end=new Date(d.getFullYear(),d.getMonth()+1,1);
-      return {start:start.toISOString(), end:end.toISOString()};
-    }
     function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
-    function fmt(num, digits=1){ return Number.isFinite(num) ? (Math.round(num*10**digits)/10**digits).toFixed(digits) : "—"; }
+    function fmt(num, digits=1){
+      return (num == null || Number.isNaN(num)) ? '—'
+           : (Math.round(num*10**digits)/10**digits).toFixed(digits);
+    }
 
     // ==========================
     // Individuals (unchanged)
@@ -306,63 +294,40 @@
     }
 
     // ==========================
-    // Teams (UPDATED: avg + total)
+    // Teams (DB-driven avg + total, no roster column)
     // ==========================
     let showAllTeams = false;
-    let TEAMS = []; // normalized rows with {team,total,roster,avg}
+    let TEAMS = []; // { team, total, avg, rankLabel }
 
-    // NOTE: You likely have/need a view or RPC that returns team total points for the period.
-    // Example RPC name used here: 'team_total_points' (team_name, total_points) with optional month range.
-    async function fetchTeamTotals() {
-      const { start, end } = monthRangeISO();
-      // Try RPC first
-      const { data, error } = await sb.rpc("team_total_points", { month_start: start, month_end: end });
-      if (!error && Array.isArray(data)) return data.map(r => ({
-        team_name: r.team_name ?? r.team ?? "",
-        total_points: toNum(r.total_points ?? r.total ?? r.points ?? 0),
+    // Reads from v_team_totals_with_avg (expects team_name,total_points,avg_points_per_person)
+    async function fetchTeamTotalsWithAvg() {
+      const { data, error } = await sb
+        .from('v_team_totals_with_avg')
+        .select('team_name,total_points,avg_points_per_person');
+      if (error) { console.warn('v_team_totals_with_avg error', error); return []; }
+
+      return (data || []).map(r => ({
+        team: r.team_name ?? 'Unknown',
+        total: toNum(r.total_points),
+        avg: (r.avg_points_per_person == null) ? null : Number(r.avg_points_per_person)
       }));
-
-      // Fallback: if you have a materialized view `v_team_total_points`
-      const { data: viewData, error: viewErr } = await sb.from("v_team_total_points").select("team_name,total_points");
-      if (!viewErr && Array.isArray(viewData)) return viewData.map(r => ({
-        team_name: r.team_name ?? "",
-        total_points: toNum(r.total_points ?? 0),
-      }));
-
-      console.warn("No team totals source found. Provide RPC 'team_total_points' or view 'v_team_total_points'.");
-      return [];
     }
 
-    function computeTeamRows(teamTotals, teamSizes) {
-      const rows = teamTotals.map(({ team_name, total_points }) => {
-        const roster = toNum(teamSizes[team_name]);
-        const avg = roster > 0 ? (total_points / roster) : 0;
-        return {
-          team: team_name,
-          total: total_points,
-          roster,
-          avg
-        };
-      });
+    async function loadTeams(){
+      // Pull pre-computed totals + averages from DB
+      let rows = await fetchTeamTotalsWithAvg();
 
-      // Sort: avg desc, then total desc, then name asc
+      // Sort by average desc (null treated as -Infinity), then total desc, then name
       rows.sort((a,b)=>{
-        if (b.avg !== a.avg) return b.avg - a.avg;
+        const av = (a.avg == null) ? -Infinity : a.avg;
+        const bv = (b.avg == null) ? -Infinity : b.avg;
+        if (bv !== av) return bv - av;
         if (b.total !== a.total) return b.total - a.total;
         return a.team.localeCompare(b.team);
       });
 
-      return rows;
-    }
-
-    async function loadTeams(){
-      const totals = await fetchTeamTotals();
-
-      // Compute, then slice per toggle
-      let rows = computeTeamRows(totals, TEAM_SIZES);
-
-      // Rank labels based on avg
-      const avgs = rows.map(r=>r.avg);
+      // Rank by avg
+      const avgs = rows.map(r => (r.avg == null ? -Infinity : r.avg));
       const ranks = computeRankLabelsByValue(avgs);
       rows = rows.map((r,i)=>({ ...r, rankLabel: ranks[i] }));
 
@@ -382,14 +347,12 @@
       empty.classList.add("hidden");
 
       rows.forEach((r)=>{
-        const rosterCell = r.roster > 0 ? r.roster : "—";
         body.insertAdjacentHTML("beforeend",`
           <tr class="hover:bg-aggieBlue/5">
             <td class="py-3 px-4 font-ui">${r.rankLabel}</td>
             <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${esc(r.team)}</td>
             <td class="py-3 px-4 font-ui text-right">${fmt(r.avg,1)}</td>
             <td class="py-3 px-4 font-ui text-right">${r.total}</td>
-            <td class="py-3 px-4 font-ui text-right">${rosterCell}</td>
           </tr>
         `);
       });

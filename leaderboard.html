@@ -40,7 +40,17 @@
         <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
         <a href="events.html" class="hover:text-aggieGold">All Events</a>
         <a href="about.html" class="hover:text-aggieGold">About</a>
-        <span id="acctName" class="text-white/80"></span>
+        <!-- Account dropdown -->
+          <div class="relative">
+            <button id="acctBtn" class="hover:text-aggieGold flex items-center gap-2">
+              <span id="acctName" class="font-medium">Account</span>
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
+            </button>
+            <div id="acctMenu" class="absolute right-0 mt-2 w-44 bg-white text-ink rounded-lg shadow-soft py-2 hidden">
+              <a href="settings.html" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
+              <button id="logoutBtn" class="w-full text-left block px-4 py-2 hover:bg-gray-100">Log out</button>
+            </div>
+          </div>
       </nav>
     </div>
   </header>

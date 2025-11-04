@@ -109,15 +109,17 @@
       // Normalize email: trim, collapse spaces, lowercase domain
       let email = (emailEl.value || "")
         .trim()
-        .replace(/\s+/g, " ")   // collapse accidental spaces/newlines
+        .replace(/\s+/g, "")   
         .toLowerCase();
 
       const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!EMAIL_RE.test(email)) {
-        setMsg("Please enter a valid email (e.g., you@ucdavis.edu).");
+      const UCD_RE   = /@ucdavis\.edu$/i;
+      if (!EMAIL_RE.test(email) || !UCD_RE.test(email)) {
+        setMsg("Please enter a valid UC Davis email (e.g., you@ucdavis.edu).");
         emailEl.focus();
         return;
       }
+
 
       setBusy(true);
       try {

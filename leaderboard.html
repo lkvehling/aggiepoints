@@ -82,7 +82,6 @@
         </div>
       </section>
 
-
       <!-- Search Individuals -->
       <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <h3 class="font-ui text-base font-semibold text-aggieBlue">Search Individuals</h3>
@@ -122,12 +121,16 @@
         </div>
       </div>
 
-      <!-- Teams -->
+      <!-- Teams (UPDATED) -->
       <div class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <div class="flex items-center justify-between">
           <h3 class="font-ui text-lg font-semibold text-aggieBlue">Teams</h3>
           <span id="teamCount" class="font-ui text-sm text-ink/60"></span>
         </div>
+
+        <p class="mt-2 text-xs md:text-sm text-ink/70">
+          Ranked by <span class="font-semibold">Average Points per Team Member</span>. Total Points shown for transparency.
+        </p>
 
         <div class="mt-4 overflow-x-auto">
           <table class="tbl min-w-full">
@@ -135,6 +138,9 @@
               <tr class="text-left border-b border-gray-200">
                 <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80">Rank</th>
                 <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
+                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Avg / Person</th>
+                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Total Points</th>
+                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Roster Size</th>
               </tr>
             </thead>
             <tbody id="teamBody" class="divide-y divide-gray-100"></tbody>
@@ -163,6 +169,15 @@
     const esc = s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     $("#year").textContent = new Date().getFullYear();
 
+    // === YOU PROVIDE THIS: roster sizes ===
+    // Keys must match team names returned by the totals query.
+    const TEAM_SIZES = {
+      // "Women's Water Polo": 25,
+      // "Men's Soccer": 30,
+      // "Track & Field": 60,
+      // ...
+    };
+
     // ---- Auth guard + account label
     (async () => {
       const { data: { session } } = await sb.auth.getSession();
@@ -170,32 +185,18 @@
 
       const { data: { user } } = await sb.auth.getUser();
       $("#acctName").textContent = user?.user_metadata?.display_name || user?.email || "Account";
-      $("#logoutBtn")?.addEventListener("click", async () => {
-        await sb.auth.signOut();
-        window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
-      });
 
-      // load summary AFTER we know the user
       await refreshProfileSummary();
-
-      // then load boards
       await loadIndividuals();
       await loadTeams();
       wireSearch();
     })();
 
-    // ---- Summary (restored)
+    // ---- Summary (unchanged)
     function applySummary(prof) {
       const pts = prof?.points_total ?? 0;
-
-      const indText = (prof?.rank == null)
-        ? '—'
-        : (prof?.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
-
-      const teamText = (prof?.team_rank == null)
-        ? '—'
-        : (prof?.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
-
+      const indText = (prof?.rank == null) ? '—' : (prof?.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
+      const teamText = (prof?.team_rank == null) ? '—' : (prof?.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
       $("#pointsTotal").textContent = pts;
       $("#individualRank").textContent = indText;
       $("#teamRank").textContent = teamText;
@@ -231,18 +232,20 @@
       return {start:start.toISOString(), end:end.toISOString()};
     }
     function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
+    function fmt(num, digits=1){ return Number.isFinite(num) ? (Math.round(num*10**digits)/10**digits).toFixed(digits) : "—"; }
 
-    // ---- Individuals: toggle top 10 / all
+    // ==========================
+    // Individuals (unchanged)
+    // ==========================
     let showAllIndividuals = false;
     let INDIVIDUALS = [];
     let IND_FILTER = "";
 
     async function loadIndividuals(){
-      const limit = showAllIndividuals ? null : 10; // null/undefined means "all" for our RPC
+      const limit = showAllIndividuals ? null : 10;
       const {data,error} = await sb.rpc("leaderboard_top_individuals", { limit_n: limit });
       if(error){ console.warn("leaderboard_top_individuals", error); return; }
 
-      // Normalize + (optional) filter by search
       INDIVIDUALS = (data || []).map(r => ({
         name: r.name ?? "",
         team: r.team ?? "",
@@ -284,64 +287,12 @@
       });
     }
 
-    // ---- Teams: toggle top 5 / all
-    let showAllTeams = false;
-    let TEAMS = [];
-
-    async function loadTeams(){
-      const { start, end } = monthRangeISO();
-      const limit = showAllTeams ? null : 5;
-      const {data,error} = await sb.rpc("team_score_participation_weighted", {
-        month_start: start, month_end: end, limit_n: limit
-      });
-      if(error){ console.warn("team_score_participation_weighted", error); return; }
-
-      // Normalize shape (team + numeric score)
-      const rows = (data || []).map(r => ({
-        team: r.team ?? r.team_name ?? "",
-        score: toNum(r.score ?? r.points ?? r.total ?? r.value ?? 0)
-      }));
-      // Sort high → low just in case RPC doesn't already
-      rows.sort((a,b)=>b.score - a.score);
-      TEAMS = rows;
-
-      renderTeams(TEAMS);
-      $("#teamCount").textContent = showAllTeams ? `${TEAMS.length} total` : "Top 5";
-      $("#teamToggleBtn").textContent = showAllTeams ? "See top 5" : "See all";
-    }
-
-    function renderTeams(rows){
-      const body=$("#teamBody"), empty=$("#teamEmpty");
-      body.innerHTML="";
-      if(!rows.length){ empty.classList.remove("hidden"); return; }
-      empty.classList.add("hidden");
-
-      const vals = rows.map(r=>r.score);
-      const ranks = computeRankLabelsByValue(vals);
-
-      rows.forEach((r,i)=>{
-        body.insertAdjacentHTML("beforeend",`
-          <tr class="hover:bg-aggieBlue/5">
-            <td class="py-3 px-4 font-ui">${ranks[i]}</td>
-            <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${esc(r.team)}</td>
-          </tr>
-        `);
-      });
-    }
-
-    // ---- Toggle buttons
     $("#indToggleBtn").addEventListener("click", async () => {
       showAllIndividuals = !showAllIndividuals;
       await loadIndividuals();
-      // keep current search applied
       renderIndividuals(applyIndFilter(IND_FILTER));
     });
-    $("#teamToggleBtn").addEventListener("click", async () => {
-      showAllTeams = !showAllTeams;
-      await loadTeams();
-    });
 
-    // ---- Search wiring (Individuals)
     function wireSearch(){
       $("#searchInput")?.addEventListener("input", (e) => {
         IND_FILTER = (e.target.value || "").trim();
@@ -353,6 +304,101 @@
         renderIndividuals(INDIVIDUALS);
       });
     }
+
+    // ==========================
+    // Teams (UPDATED: avg + total)
+    // ==========================
+    let showAllTeams = false;
+    let TEAMS = []; // normalized rows with {team,total,roster,avg}
+
+    // NOTE: You likely have/need a view or RPC that returns team total points for the period.
+    // Example RPC name used here: 'team_total_points' (team_name, total_points) with optional month range.
+    async function fetchTeamTotals() {
+      const { start, end } = monthRangeISO();
+      // Try RPC first
+      const { data, error } = await sb.rpc("team_total_points", { month_start: start, month_end: end });
+      if (!error && Array.isArray(data)) return data.map(r => ({
+        team_name: r.team_name ?? r.team ?? "",
+        total_points: toNum(r.total_points ?? r.total ?? r.points ?? 0),
+      }));
+
+      // Fallback: if you have a materialized view `v_team_total_points`
+      const { data: viewData, error: viewErr } = await sb.from("v_team_total_points").select("team_name,total_points");
+      if (!viewErr && Array.isArray(viewData)) return viewData.map(r => ({
+        team_name: r.team_name ?? "",
+        total_points: toNum(r.total_points ?? 0),
+      }));
+
+      console.warn("No team totals source found. Provide RPC 'team_total_points' or view 'v_team_total_points'.");
+      return [];
+    }
+
+    function computeTeamRows(teamTotals, teamSizes) {
+      const rows = teamTotals.map(({ team_name, total_points }) => {
+        const roster = toNum(teamSizes[team_name]);
+        const avg = roster > 0 ? (total_points / roster) : 0;
+        return {
+          team: team_name,
+          total: total_points,
+          roster,
+          avg
+        };
+      });
+
+      // Sort: avg desc, then total desc, then name asc
+      rows.sort((a,b)=>{
+        if (b.avg !== a.avg) return b.avg - a.avg;
+        if (b.total !== a.total) return b.total - a.total;
+        return a.team.localeCompare(b.team);
+      });
+
+      return rows;
+    }
+
+    async function loadTeams(){
+      const totals = await fetchTeamTotals();
+
+      // Compute, then slice per toggle
+      let rows = computeTeamRows(totals, TEAM_SIZES);
+
+      // Rank labels based on avg
+      const avgs = rows.map(r=>r.avg);
+      const ranks = computeRankLabelsByValue(avgs);
+      rows = rows.map((r,i)=>({ ...r, rankLabel: ranks[i] }));
+
+      TEAMS = rows;
+
+      const visible = showAllTeams ? TEAMS : TEAMS.slice(0, 5);
+      renderTeams(visible);
+
+      $("#teamCount").textContent = showAllTeams ? `${TEAMS.length} total` : "Top 5";
+      $("#teamToggleBtn").textContent = showAllTeams ? "See top 5" : "See all";
+    }
+
+    function renderTeams(rows){
+      const body=$("#teamBody"), empty=$("#teamEmpty");
+      body.innerHTML="";
+      if(!rows.length){ empty.classList.remove("hidden"); return; }
+      empty.classList.add("hidden");
+
+      rows.forEach((r)=>{
+        const rosterCell = r.roster > 0 ? r.roster : "—";
+        body.insertAdjacentHTML("beforeend",`
+          <tr class="hover:bg-aggieBlue/5">
+            <td class="py-3 px-4 font-ui">${r.rankLabel}</td>
+            <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${esc(r.team)}</td>
+            <td class="py-3 px-4 font-ui text-right">${fmt(r.avg,1)}</td>
+            <td class="py-3 px-4 font-ui text-right">${r.total}</td>
+            <td class="py-3 px-4 font-ui text-right">${rosterCell}</td>
+          </tr>
+        `);
+      });
+    }
+
+    $("#teamToggleBtn").addEventListener("click", async () => {
+      showAllTeams = !showAllTeams;
+      await loadTeams();
+    });
   </script>
 </body>
 </html>

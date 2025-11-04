@@ -92,7 +92,7 @@
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
       <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">All Events</h1>
-      <p class="mt-1 font-ui text-white/90">Plan ahead. If an event is today and in the check-in window, you’ll be sent to Home to complete your check-in.</p>
+      <p class="mt-1 font-ui text-white/90">Plan ahead. When an event is within the check-in window, clicking “Check in” will send you to Home to complete it.</p>
 
       <!-- Search bar -->
       <div class="mt-6">
@@ -173,10 +173,9 @@
     </div>
   </footer>
 
-  <!-- Supabase -->
+  <!-- Supabase (no checkin.js) -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
-  <script src="checkin.js"></script>
 
   <script>
     // ===== Helpers =====
@@ -189,7 +188,6 @@
     const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
     const nowPT = () => new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
 
-    // --- Compact "Sat, Sep 13 · 12:10 AM–11:59 AM" formatting ---
     const DOW_ABBR = ["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
     const MON_ABBR = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 
@@ -197,21 +195,17 @@
       const d = toPT(ts);
       return `${DOW_ABBR[d.getDay()]}, ${MON_ABBR[d.getMonth()]} ${d.getDate()}`;
     }
-
     function hm12WithMeridian(d) {
       let h = d.getHours() % 12; if (h === 0) h = 12;
       const m = String(d.getMinutes()).padStart(2, '0');
       const mer = d.getHours() >= 12 ? 'PM' : 'AM';
       return `${h}:${m} ${mer}`;
     }
-
     function fmtTimeRangeFull(start_ts, end_ts) {
       const s = toPT(start_ts);
       const e = toPT(end_ts);
-      // Always show both meridians
       return `${hm12WithMeridian(s)}–${hm12WithMeridian(e)}`;
     }
-
     function fmtEventLine(start_ts, end_ts) {
       return `${fmtMonthDayDow(start_ts)} · ${fmtTimeRangeFull(start_ts, end_ts)}`;
     }
@@ -269,22 +263,6 @@
       document.head.appendChild(style);
     })();
 
-    function showCheckinError(err) {
-      const code = err?.code;
-      const details = err?.details || '';
-      if (code === '22P02' || /invalid input syntax for type uuid/i.test(details)) return 'Invalid event id. Please refresh and try again.';
-      if (code === '23503' || /foreign key/i.test(details))               return 'This event no longer exists. Please refresh the page.';
-      if (code === 'PGRST301' || code === '401' || /JWT|auth/i.test(details)) return 'You must be signed in to check in.';
-      if (/Missing required input parameter: event_id/i.test(details))    return 'Check-in misconfigured (missing event id). Please contact an admin.';
-      if (code === '42501')                                               return 'You do not have permission to check in to this event.';
-      if (/outside_geofence/i.test(details))                              return 'You must be at the venue to check in. If you are here, please close the tab, ensure precision location is on, move closer to the center of the event, and reopen Aggie Points.';
-      if (/outside_time_window/i.test(details))                           return 'This event is not currently active (20 min before start → 10 min before end).';
-      if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please turn on location access ("Privacy & Security" > "Location Services") for your browser (Safari/Chrome) and try again!';
-      if (/low_accuracy/i.test(details))                                  return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled. Also can close the tab, move closer to center of event, and reopen Aggie Points.';
-      if (/missing_accuracy/i.test(details))                              return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
-      return err?.message || 'Check-in failed. Please try again.';
-    }
-
     function uiError(el, err) {
       const msg = [
         'Could not load events.',
@@ -295,26 +273,25 @@
       el.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">${msg}</div>`;
     }
 
-    // Local "checked" cache
+    // Local "checked" cache (for green badge only)
     function getCheckedSet() {
       try { return new Set(JSON.parse(localStorage.getItem('aggie_checked_in_ids') || '[]')); }
       catch { return new Set(); }
     }
 
-    // Helper to build the redirect URL to Home
+    // Build Home redirect URL
     function homeCheckinUrl(eventId) {
       const url = new URL('index.html', location.origin);
       url.searchParams.set('checkin_event_id', eventId);
       return url.toString();
     }
 
-    // Row renderer — points in middle line (big); Past uses compact size but same date line.
+    // Row renderer
     function eventRow(ev, opts = {}) {
       const { forceClosed = false, checkedOverride = null, compact = false } = opts;
       const today   = isTodayPT(ev.start_ts);
       const canNow  = isCheckinWindow(ev.start_ts, ev.end_ts);
       const isLocalChecked = getCheckedSet().has(ev.id);
-
       const timeLine = fmtEventLine(ev.start_ts, ev.end_ts);
 
       const pointsHTML = (typeof ev.points === 'number')
@@ -325,6 +302,7 @@
       const closedBadge  = `<span class="inline-flex items-center rounded-lg bg-gray-200 text-gray-700 ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} font-ui">Closed</span>`;
       const notOpenBadge = `<span class="inline-flex items-center rounded-lg bg-gray-200 text-gray-700 ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} font-ui">Not Open Yet</span>`;
 
+      // Render a clickable button when today (for UX), but the click handler re-checks window at click time.
       let action;
       if (checkedOverride === true) {
         action = checkedBadge;
@@ -332,16 +310,16 @@
         action = closedBadge;
       } else if (isLocalChecked) {
         action = checkedBadge;
-      } else if (today && canNow) {
-        // REDIRECT to Home to complete check-in
-        action = `<a
-          class="${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} inline-flex rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95"
-          href="${homeCheckinUrl(ev.id)}"
-          aria-label="Check in to ${escapeHtml(ev.title)} on Home">
-          Check in
-        </a>`;
       } else if (today) {
-        action = nowPT() > closeAtPT(ev.end_ts) ? closedBadge : notOpenBadge;
+        action = canNow
+          ? `<button class="checkin-redirect ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95"
+                     data-event-id="${ev.id}" data-start="${ev.start_ts}" data-end="${ev.end_ts}" data-title="${escapeHtml(ev.title)}">
+               Check in
+             </button>`
+          : `<button class="checkin-redirect ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} rounded-lg bg-gray-200 text-gray-700 font-ui"
+                     data-event-id="${ev.id}" data-start="${ev.start_ts}" data-end="${ev.end_ts}" data-title="${escapeHtml(ev.title)}">
+               Not Open Yet
+             </button>`;
       } else {
         action = notOpenBadge;
       }
@@ -367,25 +345,17 @@
               <h3 class="font-ui text-ink ${compact?'text-[15px]':'text-base md:text-lg'} font-semibold leading-tight truncate">
                 ${escapeHtml(ev.title)}
               </h3>
-
-              <!-- Middle line: date (single-line, truncates) + BIG points (no wrap) -->
               <div class="mt-0.5 flex items-center gap-2">
-                <p class="font-ui ${compact?'text-[12px]':'text-xs sm:text-sm md:text-base'} text-ink/80
-                                  flex-1 min-w-0 truncate whitespace-nowrap">
+                <p class="font-ui ${compact?'text-[12px]':'text-xs sm:text-sm md:text-base'} text-ink/80 flex-1 min-w-0 truncate whitespace-nowrap">
                   ${timeLine}
                 </p>
-                <span class="shrink-0 whitespace-nowrap">
-                  ${pointsHTML}
-                </span>
+                <span class="shrink-0 whitespace-nowrap">${pointsHTML}</span>
               </div>
-
               ${locHTML}
             </div>
             <div class="shrink-0">
               <span class="checkin-slot"
                     data-event-id="${ev.id}"
-                    data-title-full="${escapeHtml(ev.title)}"
-                    data-points="${ev.points ?? ''}"
                     data-start="${ev.start_ts}"
                     data-end="${ev.end_ts}">
                 ${action}
@@ -396,7 +366,7 @@
       `;
     }
 
-    // Reconcile local vs server truth
+    // Reconcile server-checked events (optional, for green badge only)
     async function reconcileCheckedInsFromServer() {
       try {
         const slots = Array.from(document.querySelectorAll('.checkin-slot[data-event-id]'));
@@ -411,84 +381,34 @@
           .in('event_id', eventIds);
         if (error) { console.warn('reconcile error', error); return; }
         const serverSet = new Set((rows || []).map(r => r.event_id));
-        const LS_KEY = 'aggie_checked_in_ids';
-        const getLocal = () => {
-          try { return new Set(JSON.parse(localStorage.getItem(LS_KEY) || '[]')); }
-          catch { return new Set(); }
-        };
-        const saveLocal = (set) => localStorage.setItem(LS_KEY, JSON.stringify([...set]));
-        const localSet = getLocal();
 
-        const isClosed = (end_ts) => nowPT() > new Date(toPT(end_ts).getTime() - WINDOW_CLOSE_MIN * 60 * 1000);
-
-        localSet.forEach(id => {
-          if (!serverSet.has(id)) {
-            localSet.delete(id);
-            document.querySelectorAll(`.checkin-slot[data-event-id="${id}"]`).forEach(slot => {
-              const start = slot.getAttribute('data-start');
-              const end   = slot.getAttribute('data-end');
-              const title = slot.getAttribute('data-title-full') || '';
-              const pts   = slot.getAttribute('data-points') || '';
-              let html;
-              if (start && end && isTodayPT(start) && isCheckinWindow(start, end)) {
-                // Use redirect link here too
-                html = `<a
-                  class="px-3 py-1.5 inline-flex rounded-lg bg-aggieGold text-aggieBlue font-ui text-sm hover:brightness-95"
-                  href="${homeCheckinUrl(id)}"
-                  aria-label="Check in to ${title} on Home"
-                  data-event-points="${pts}">
-                  Check in
-                </a>`;
-              } else if (start && end && isTodayPT(start) && isClosed(end)) {
-                html = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`;
-              } else {
-                html = `<span class="px-3 py-1.5 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Not Open Yet</span>`;
-              }
-              slot.innerHTML = html;
-            });
+        document.querySelectorAll('.checkin-slot').forEach(slot => {
+          const id = slot.getAttribute('data-event-id');
+          if (!id) return;
+          if (serverSet.has(id)) {
+            slot.innerHTML = `<span class="px-3 py-1.5 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
           }
         });
-        saveLocal(localSet);
-        // No initCheckinButtons here—redirect-only flow
       } catch (e) {
         console.warn('reconcile exception', e);
       }
     }
 
-    // Date labels
-    function ordinal(n) {
-      const s = ["th","st","nd","rd"], v = n % 100;
-      return s[(v-20)%10] || s[v] || s[0];
+    // Labels
+    function ordinal(n){const s=["th","st","nd","rd"],v=n%100;return s[(v-20)%10]||s[v]||s[0];}
+    function startOfDayPT(d){const c=new Date(d);c.setHours(0,0,0,0);return c;}
+    function formatThisWeekRangeLabel(){
+      const today=startOfDayPT(nowPT());const end=new Date(today);end.setDate(end.getDate()+7);
+      const sameMonth=today.getMonth()===end.getMonth();const sameYear=today.getFullYear()===end.getFullYear();
+      if(sameMonth&&sameYear){const monthFull=today.toLocaleString('en-US',{timeZone:TZ,month:'long'});return `${monthFull} ${today.getDate()}–${end.getDate()}${ordinal(end.getDate())}, ${today.getFullYear()}`;}
+      const left=today.toLocaleString('en-US',{timeZone:TZ,month:'short',day:'numeric'});const rightMonth=end.toLocaleString('en-US',{timeZone:TZ,month:'short'});
+      return `${left} – ${rightMonth} ${end.getDate()}${ordinal(end.getDate())}, ${end.getFullYear()}`;
     }
-    function startOfDayPT(d) {
-      const copy = new Date(d);
-      copy.setHours(0,0,0,0);
-      return copy;
-    }
-    // Rolling 7-day range starting today (as requested)
-    function formatThisWeekRangeLabel() {
-      const today = startOfDayPT(nowPT());
-      const end = new Date(today); end.setDate(end.getDate() + 7);
-      const sameMonth = today.getMonth() === end.getMonth();
-      const sameYear = today.getFullYear() === end.getFullYear();
-      if (sameMonth && sameYear) {
-        const monthFull = today.toLocaleString('en-US', { timeZone: TZ, month: 'long' });
-        return `${monthFull} ${today.getDate()}–${end.getDate()}${ordinal(end.getDate())}, ${today.getFullYear()}`;
-      } else {
-        const left = today.toLocaleString('en-US', { timeZone: TZ, month: 'short', day: 'numeric' });
-        const rightMonth = end.toLocaleString('en-US', { timeZone: TZ, month: 'short' });
-        return `${left} – ${rightMonth} ${end.getDate()}${ordinal(end.getDate())}, ${end.getFullYear()}`;
-      }
-    }
-    function formatThisMonthLabel() {
-      const now = nowPT();
-      const monthFull = now.toLocaleString('en-US', { timeZone: TZ, month: 'long' });
-      return `${monthFull} ${now.getFullYear()}`;
-    }
+    function formatThisMonthLabel(){const n=nowPT();const m=n.toLocaleString('en-US',{timeZone:TZ,month:'long'});return `${m} ${n.getFullYear()}`;}
 
     const isPast = (end_ts) => nowPT() > closeAtPT(end_ts);
 
-    // --- Auth gate (mirrors index.html) ---
+    // --- Auth gate ---
     async function ensureAuthed() {
       const { data: { session } } = await sb.auth.getSession();
       if (!session) {
@@ -498,11 +418,33 @@
       return session;
     }
 
+    // Delegated click: re-check window at click time then redirect (no checkin.js)
+    function attachRedirectHandler(root) {
+      root.addEventListener('click', (e) => {
+        const btn = e.target.closest('.checkin-redirect');
+        if (!btn) return;
+        const slot = btn.closest('.checkin-slot');
+        if (!slot) return;
+        const id = slot.getAttribute('data-event-id');
+        const start = slot.getAttribute('data-start');
+        const end = slot.getAttribute('data-end');
+
+        // Re-check time window at the moment of click
+        if (isTodayPT(start) && isCheckinWindow(start, end)) {
+          window.location.href = homeCheckinUrl(id);
+        } else if (isTodayPT(start) && nowPT() > closeAtPT(end)) {
+          toast('This event is now closed for check-in.', { variant: 'warn' });
+        } else {
+          toast('Not in the check-in window yet. You can check in from 20 min before start to 10 min before end.', { variant: 'info' });
+        }
+      });
+    }
+
     // Page boot
     (async () => {
       // Header UI
-      $('#mobileMenuBtn')?.addEventListener('click', () => { const m = $('#mobileMenu'); if (m) m.classList.toggle('hidden'); });
-      $('#acctBtn')?.addEventListener('click', () => { const m = $('#acctMenu'); if (m) m.classList.toggle('hidden'); });
+      $('#mobileMenuBtn')?.addEventListener('click', () => { $('#mobileMenu')?.classList.toggle('hidden'); });
+      $('#acctBtn')?.addEventListener('click', () => { $('#acctMenu')?.classList.toggle('hidden'); });
       $('#yearText').textContent = new Date().getFullYear();
 
       // Require auth before loading data
@@ -532,7 +474,6 @@
           compact,
           checkedOverride: checkedSet ? checkedSet.has(ev.id) : null
         })).join('');
-        // No initCheckinButtons: links go straight to Home
       }
 
       // Load a view and hide past events
@@ -548,9 +489,7 @@
         renderListInto(listEl, rows);
         toggle(emptyEl, rows.length === 0);
 
-        if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI?.();
-        await reconcileCheckedInsFromServer();
-
+        await reconcileCheckedInsFromServer(); // purely visual
         return rows;
       }
 
@@ -573,7 +512,6 @@
       async function loadPastEvents() {
         const nowISO = new Date().toISOString();
         const sinceISO = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(); // last 60 days
-        // 1) Fetch past events
         const { data: eventsData, error: eventsErr } = await sb
           .from('events')
           .select('id,title,start_ts,end_ts,location,points')
@@ -590,7 +528,7 @@
           return;
         }
 
-        // 2) Fetch which of these the current user checked into
+        // Fetch which of these were checked in by the current user (for green badge)
         let checkedSet = new Set();
         try {
           const { data: { user } } = await sb.auth.getUser();
@@ -601,15 +539,10 @@
               .select('event_id')
               .eq('user_id', user.id)
               .in('event_id', ids);
-            if (!chkErr && Array.isArray(chk)) {
-              checkedSet = new Set(chk.map(c => c.event_id));
-            }
+            if (!chkErr && Array.isArray(chk)) checkedSet = new Set(chk.map(c => c.event_id));
           }
-        } catch (e) {
-          console.warn('past checkins fetch error', e);
-        }
+        } catch (e) { console.warn('past checkins fetch error', e); }
 
-        // 3) Render compact cards, Closed by default, green if checked
         renderListInto(pastListEl, rows, { forceClosed: true, compact: true, checkedSet });
         toggle(pastEmptyEl, rows.length === 0);
         pastLoaded = true;
@@ -619,9 +552,7 @@
         pastOpen = !pastOpen;
         toggle(pastListEl, pastOpen);
         togglePastBtn.textContent = pastOpen ? 'Hide past events' : 'Show past events';
-        if (pastOpen && !pastLoaded) {
-          await loadPastEvents();
-        }
+        if (pastOpen && !pastLoaded) await loadPastEvents();
       });
 
       // Search
@@ -667,6 +598,9 @@
 
       applySearch(searchInput.value);
       searchInput.addEventListener('input', (e) => applySearch(e.target.value));
+
+      // Attach click-to-redirect handler once
+      attachRedirectHandler(document.body);
     })();
   </script>
 

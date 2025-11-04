@@ -168,9 +168,9 @@
     const esc = s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     $("#year").textContent = new Date().getFullYear();
 
-    // --------------------------------
-    // Auth guard + initial boot
-    // --------------------------------
+    // ----------------------------
+    // Boot
+    // ----------------------------
     (async () => {
       const { data: { session } } = await sb.auth.getSession();
       if (!session) { window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html"; return; }
@@ -178,42 +178,64 @@
       const { data: { user } } = await sb.auth.getUser();
       $("#acctName").textContent = user?.user_metadata?.display_name || user?.email || "Account";
 
-      await refreshProfileSummary();   // points + initial individual rank + user team/name context
-      await loadIndividuals();         // renders individuals and syncs Tn to Summary (fallback)
-      await loadTeams();               // computes avg-based team ranks and syncs Summary team rank
+      await refreshProfileSummary();   // sets names + points + initial ranks
+      await loadIndividuals();         // renders & forces Tn overwrite for Summary
+      await loadTeams();               // renders & syncs Summary team rank
       wireSearch();
 
-      // In case TEAMS or INDIVIDUALS arrived after summary, run a final idempotent sync:
+      // Final idempotent syncs
+      syncSummaryIndividualRankFromAll(); // use full list (not just visible)
       syncSummaryTeamRank();
-      syncSummaryIndividualRankFromTable();
     })();
 
-    // --------------------------------
-    // Global Summary/Context State
-    // --------------------------------
-    let USER_TEAM_NAME = null;     // Team name used to map into TEAMS ranking
-    let USER_DISPLAY_NAME = null;  // Display name used to find user row in Individuals table
-    let TEAMS = [];                // [{ team,total,avg,rankLabel }]
-    let INDIVIDUALS = [];          // [{ name,team,points }]
+    // ----------------------------
+    // Global State
+    // ----------------------------
+    let USER_TEAM_NAME = null;
+    let USER_DISPLAY_NAME = null;
+    let USER_FALLBACK_NAME = null; // name from profiles (if present)
+    let TEAMS = [];        // [{team,total,avg,rankLabel}]
+    let INDIVIDUALS = [];  // [{name,team,points}]
 
-    function setSummaryTeamRankText(text) {
-      $("#teamRank").textContent = text ?? "—";
+    // ----------------------------
+    // Utils
+    // ----------------------------
+    function computeRankLabelsByValue(vals){
+      const labels=[],n=vals.length;let rank=1;
+      for(let i=0;i<n;){let j=i+1;while(j<n&&vals[j]===vals[i])j++;
+        const lbl=j-i>1?`T${rank}`:`${rank}`;
+        for(let k=i;k<j;k++)labels[k]=lbl;rank+=j-i;i=j;}
+      return labels;
     }
-    function setSummaryIndividualRankText(text) {
-      $("#individualRank").textContent = text ?? "—";
+    function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
+    function fmt(num, digits=1){
+      return (num == null || Number.isNaN(num)) ? '—'
+           : (Math.round(num*10**digits)/10**digits).toFixed(digits);
     }
+    function normalizeKey(s){
+      return (s||"")
+        .toString()
+        .toLowerCase()
+        .normalize('NFKD')
+        .replace(/[\u0300-\u036f]/g,'')      // strip diacritics
+        .replace(/[^a-z0-9]+/g,' ')          // non-alnum -> space (handles apostrophes)
+        .trim()
+        .replace(/\s+/g,' ');                // collapse spaces
+    }
+
+    // ----------------------------
+    // Summary setters
+    // ----------------------------
+    function setSummaryTeamRankText(text) { $("#teamRank").textContent = text ?? "—"; }
+    function setSummaryIndividualRankText(text) { $("#individualRank").textContent = text ?? "—"; }
 
     function applySummary(prof) {
       const pts = prof?.points_total ?? 0;
-
-      // Individual rank: use DB-provided rank first (with tie flag), possibly overwritten later by table-derived rank.
-      const indText = (prof?.rank == null) ? '—'
-        : (prof?.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
-
       $("#pointsTotal").textContent = pts;
-      setSummaryIndividualRankText(indText);
 
-      // Team rank will be computed from TEAMS avg list once we know USER_TEAM_NAME
+      // Show DB value first; we'll ALWAYS overwrite with table-derived Tn later
+      const dbInd = (prof?.rank == null) ? '—' : (prof?.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
+      setSummaryIndividualRankText(dbInd);
       setSummaryTeamRankText('—');
     }
 
@@ -222,13 +244,11 @@
         const { data: { user } } = await sb.auth.getUser();
         if (!user) return;
 
-        // Capture user's display name for individual-rank matching
         USER_DISPLAY_NAME = (user?.user_metadata?.display_name || user?.user_metadata?.full_name || "").trim() || null;
 
-        // Fetch profile; prefer team_name if available
         let { data: prof, error } = await sb
           .from("profiles")
-          .select("points_total, rank, individual_is_tied, team_rank, team_is_tied, team_name")
+          .select("points_total, rank, individual_is_tied, team_rank, team_is_tied, team_name, full_name, display_name")
           .eq("id", user.id)
           .single();
 
@@ -245,6 +265,10 @@
         if (prof) {
           applySummary(prof);
 
+          // names for matching
+          USER_FALLBACK_NAME = (prof.display_name || prof.full_name || "").trim() || null;
+
+          // team for matching
           const metaTeam = user?.user_metadata?.team_name || user?.user_metadata?.team || null;
           USER_TEAM_NAME = (typeof prof.team_name === "string" && prof.team_name.trim().length)
             ? prof.team_name.trim()
@@ -255,26 +279,9 @@
       }
     }
 
-    // --------------------------------
-    // Helpers
-    // --------------------------------
-    function computeRankLabelsByValue(vals){
-      const labels=[],n=vals.length;let rank=1;
-      for(let i=0;i<n;){let j=i+1;while(j<n&&vals[j]===vals[i])j++;
-        const lbl=j-i>1?`T${rank}`:`${rank}`;
-        for(let k=i;k<j;k++)labels[k]=lbl;rank+=j-i;i=j;}
-      return labels;
-    }
-    function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
-    function fmt(num, digits=1){
-      return (num == null || Number.isNaN(num)) ? '—'
-           : (Math.round(num*10**digits)/10**digits).toFixed(digits);
-    }
-    function normalizeName(s){ return (s || "").toString().trim().toLowerCase(); }
-
-    // --------------------------------
+    // ----------------------------
     // Individuals
-    // --------------------------------
+    // ----------------------------
     let showAllIndividuals = false;
     let IND_FILTER = "";
 
@@ -289,20 +296,23 @@
         points: Number(r.points ?? 0)
       }));
 
+      // Ensure consistent ordering for rank calculation
+      INDIVIDUALS.sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
+
       renderIndividuals(applyIndFilter(IND_FILTER));
       $("#indCount").textContent = showAllIndividuals ? `${INDIVIDUALS.length} total` : "Top 10";
       $("#indToggleBtn").textContent = showAllIndividuals ? "See top 10" : "See all";
 
-      // Keep Summary → Individual Rank synced with table's tie-aware labels (fallback to ensure Tn)
-      syncSummaryIndividualRankFromTable();
+      // Force Summary → Individual Rank to tie-aware Tn (using FULL list, not just visible)
+      syncSummaryIndividualRankFromAll();
+      // If we inferred team from my individual row, we can also sync team later after TEAMS load
     }
 
     function applyIndFilter(q){
       if(!q) return INDIVIDUALS;
-      const qq = q.toLowerCase();
+      const key = normalizeKey(q);
       return INDIVIDUALS.filter(r =>
-        (r.name ?? "").toLowerCase().includes(qq) ||
-        (r.team ?? "").toLowerCase().includes(qq)
+        normalizeKey(r.name).includes(key) || normalizeKey(r.team).includes(key)
       );
     }
 
@@ -331,45 +341,55 @@
       showAllIndividuals = !showAllIndividuals;
       await loadIndividuals();
       renderIndividuals(applyIndFilter(IND_FILTER));
-      syncSummaryIndividualRankFromTable();
+      syncSummaryIndividualRankFromAll();
     });
 
     function wireSearch(){
       $("#searchInput")?.addEventListener("input", (e) => {
         IND_FILTER = (e.target.value || "").trim();
         renderIndividuals(applyIndFilter(IND_FILTER));
-        syncSummaryIndividualRankFromTable();
+        // no need to resync here; summary rank uses FULL list
       });
       $("#clearSearch")?.addEventListener("click", () => {
         IND_FILTER = "";
         $("#searchInput").value = "";
         renderIndividuals(INDIVIDUALS);
-        syncSummaryIndividualRankFromTable();
       });
     }
 
-    // Compute and assign Summary Individual Rank from the visible table rows (Tn if tied)
-    function syncSummaryIndividualRankFromTable() {
-      if (!INDIVIDUALS?.length || !USER_DISPLAY_NAME) return;
-      const rows = applyIndFilter(IND_FILTER);
-      if (!rows.length) return;
+    // Overwrite Summary Individual Rank using FULL leaderboard (guarantees Tn)
+    function syncSummaryIndividualRankFromAll() {
+      if (!INDIVIDUALS?.length) return;
 
-      const pts = rows.map(r => r.points);
+      // Compute labels on the full, sorted list
+      const pts = INDIVIDUALS.map(r => r.points);
       const ranks = computeRankLabelsByValue(pts);
 
-      const me = normalizeName(USER_DISPLAY_NAME);
-      let idx = rows.findIndex(r => normalizeName(r.name) === me);
-      if (idx < 0) {
-        idx = rows.findIndex(r => normalizeName(r.name).includes(me) || me.includes(normalizeName(r.name)));
+      const keys = [
+        normalizeKey(USER_DISPLAY_NAME),
+        normalizeKey(USER_FALLBACK_NAME)
+      ].filter(Boolean);
+
+      let idx = -1;
+      for (const k of keys) {
+        idx = INDIVIDUALS.findIndex(r => normalizeKey(r.name) === k);
+        if (idx < 0) idx = INDIVIDUALS.findIndex(r => {
+          const n = normalizeKey(r.name);
+          return n.includes(k) || k.includes(n);
+        });
+        if (idx >= 0) break;
       }
+
       if (idx >= 0 && ranks[idx]) {
-        setSummaryIndividualRankText(ranks[idx]); // overwrite DB value to match table tie label
+        setSummaryIndividualRankText(ranks[idx]); // e.g., "T2"
+        // If team name still missing, infer from my row
+        if (!USER_TEAM_NAME) USER_TEAM_NAME = INDIVIDUALS[idx].team || USER_TEAM_NAME;
       }
     }
 
-    // --------------------------------
-    // Teams (avg/person rank; Summary sync)
-    // --------------------------------
+    // ----------------------------
+    // Teams (avg/person)
+    // ----------------------------
     let showAllTeams = false;
 
     async function fetchTeamTotalsWithAvg() {
@@ -388,7 +408,6 @@
     async function loadTeams(){
       let rows = await fetchTeamTotalsWithAvg();
 
-      // Sort by average desc (null => -Infinity), then total desc, then team name
       rows.sort((a,b)=>{
         const av = (a.avg == null) ? -Infinity : a.avg;
         const bv = (b.avg == null) ? -Infinity : b.avg;
@@ -397,7 +416,6 @@
         return a.team.localeCompare(b.team);
       });
 
-      // Rank labels by avg
       const avgs = rows.map(r => (r.avg == null ? -Infinity : r.avg));
       const ranks = computeRankLabelsByValue(avgs);
       rows = rows.map((r,i)=>({ ...r, rankLabel: ranks[i] }));
@@ -410,7 +428,6 @@
       $("#teamCount").textContent = showAllTeams ? `${TEAMS.length} total` : "Top 5";
       $("#teamToggleBtn").textContent = showAllTeams ? "See top 5" : "See all";
 
-      // After teams load, sync Summary team rank to this avg-based rank
       syncSummaryTeamRank();
     }
 
@@ -438,15 +455,31 @@
     });
 
     function syncSummaryTeamRank(){
-      if (!TEAMS?.length || !USER_TEAM_NAME) return;
+      if (!TEAMS?.length) return;
 
-      const want = normalizeName(USER_TEAM_NAME);
-      const exact = TEAMS.find(t => normalizeName(t.team) === want);
-      if (exact?.rankLabel) { setSummaryTeamRankText(exact.rankLabel); return; }
+      // Try multiple keys for robustness
+      const candidates = [
+        normalizeKey(USER_TEAM_NAME),
+        normalizeKey((INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_DISPLAY_NAME))||{}).team),
+        normalizeKey((INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_FALLBACK_NAME))||{}).team),
+      ].filter(Boolean);
 
-      // Looser contains match if exact fails (handles apostrophes/variants)
-      const fuzzy = TEAMS.find(t => normalizeName(t.team).includes(want) || want.includes(normalizeName(t.team)));
-      if (fuzzy?.rankLabel) setSummaryTeamRankText(fuzzy.rankLabel);
+      for (const key of candidates) {
+        if (!key) continue;
+
+        // exact key match
+        let found = TEAMS.find(t => normalizeKey(t.team) === key);
+        if (found?.rankLabel) { setSummaryTeamRankText(found.rankLabel); return; }
+
+        // fuzzy contains match (handles punctuation/apostrophes)
+        found = TEAMS.find(t => {
+          const tt = normalizeKey(t.team);
+          return tt.includes(key) || key.includes(tt);
+        });
+        if (found?.rankLabel) { setSummaryTeamRankText(found.rankLabel); return; }
+      }
+
+      // If still nothing, leave as '—'
     }
   </script>
 </body>

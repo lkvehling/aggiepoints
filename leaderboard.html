@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Aggie Points — Leaderboard</title>
 
+  <!-- Fonts + Tailwind -->
   <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
   <script src="https://cdn.tailwindcss.com"></script>
   <script>
@@ -34,11 +35,12 @@
   <header class="bg-aggieBlue text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 flex justify-between items-center py-3">
       <a href="index.html" class="font-ui text-xl font-semibold tracking-wide">Aggie Points</a>
-      <nav class="hidden md:flex gap-8 font-ui">
+      <nav class="hidden md:flex gap-8 font-ui items-center">
         <a href="index.html" class="hover:text-aggieGold">Home</a>
         <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
         <a href="events.html" class="hover:text-aggieGold">All Events</a>
         <a href="about.html" class="hover:text-aggieGold">About</a>
+        <span id="acctName" class="text-white/80"></span>
       </nav>
     </div>
   </header>
@@ -73,10 +75,13 @@
               <div class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue"><span id="teamRank">—</span></div>
             </div>
           </div>
+          <div class="mt-4">
+            <button id="logoutBtn" class="px-4 py-2 rounded-lg bg-white/0 border border-white/30 text-aggieBlue font-ui hover:bg-aggieBlue/5">Log out</button>
+          </div>
         </div>
       </section>
 
-      <!-- Search -->
+      <!-- Search Individuals -->
       <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <h3 class="font-ui text-base font-semibold text-aggieBlue">Search Individuals</h3>
         <div class="mt-3 flex items-center gap-2">
@@ -109,7 +114,7 @@
             <tbody id="indBody" class="divide-y divide-gray-100"></tbody>
           </table>
           <div id="indEmpty" class="hidden py-8 text-center font-ui text-ink/60">No individuals found.</div>
-          <div class="mt-3 flex justify-center gap-3">
+          <div class="mt-3 flex justify-center">
             <button id="indToggleBtn" class="px-4 py-2 rounded-lg border border-aggieBlue/20 font-ui hover:bg-aggieBlue/5">See all</button>
           </div>
         </div>
@@ -133,7 +138,7 @@
             <tbody id="teamBody" class="divide-y divide-gray-100"></tbody>
           </table>
           <div id="teamEmpty" class="hidden py-8 text-center font-ui text-ink/60">No teams found.</div>
-          <div class="mt-3 flex justify-center gap-3">
+          <div class="mt-3 flex justify-center">
             <button id="teamToggleBtn" class="px-4 py-2 rounded-lg border border-aggieBlue/20 font-ui hover:bg-aggieBlue/5">See all</button>
           </div>
         </div>
@@ -156,10 +161,61 @@
     const esc = s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     $("#year").textContent = new Date().getFullYear();
 
-    let showAllIndividuals = false;
-    let showAllTeams = false;
-    let INDIVIDUALS=[], TEAMS=[];
+    // ---- Auth guard + account label
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html"; return; }
 
+      const { data: { user } } = await sb.auth.getUser();
+      $("#acctName").textContent = user?.user_metadata?.display_name || user?.email || "Account";
+      $("#logoutBtn")?.addEventListener("click", async () => {
+        await sb.auth.signOut();
+        window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
+      });
+
+      // load summary AFTER we know the user
+      await refreshProfileSummary();
+
+      // then load boards
+      await loadIndividuals();
+      await loadTeams();
+      wireSearch();
+    })();
+
+    // ---- Summary (restored)
+    function applySummary(prof) {
+      const pts = prof?.points_total ?? 0;
+
+      const indText = (prof?.rank == null)
+        ? '—'
+        : (prof?.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
+
+      const teamText = (prof?.team_rank == null)
+        ? '—'
+        : (prof?.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
+
+      $("#pointsTotal").textContent = pts;
+      $("#individualRank").textContent = indText;
+      $("#teamRank").textContent = teamText;
+    }
+
+    async function refreshProfileSummary() {
+      try {
+        const { data: { user } } = await sb.auth.getUser();
+        if (!user) return;
+        const { data: prof, error } = await sb
+          .from("profiles")
+          .select("points_total, rank, team_rank, individual_is_tied, team_is_tied")
+          .eq("id", user.id)
+          .single();
+        if (!error && prof) applySummary(prof);
+        else if (error) console.warn("profiles error", error);
+      } catch (e) {
+        console.warn("profiles fetch crashed", e);
+      }
+    }
+
+    // ---- Helpers
     function computeRankLabelsByValue(vals){
       const labels=[],n=vals.length;let rank=1;
       for(let i=0;i<n;){let j=i+1;while(j<n&&vals[j]===vals[i])j++;
@@ -167,33 +223,68 @@
         for(let k=i;k<j;k++)labels[k]=lbl;rank+=j-i;i=j;}
       return labels;
     }
+    function monthRangeISO(d=new Date()){
+      const start=new Date(d.getFullYear(),d.getMonth(),1);
+      const end=new Date(d.getFullYear(),d.getMonth()+1,1);
+      return {start:start.toISOString(), end:end.toISOString()};
+    }
+    function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
+
+    // ---- Individuals: toggle top 10 / all
+    let showAllIndividuals = false;
+    let INDIVIDUALS = [];
+    let IND_FILTER = "";
 
     async function loadIndividuals(){
-      const limit = showAllIndividuals ? null : 10;
-      const {data,error} = await sb.rpc("leaderboard_top_individuals", {limit_n: limit});
-      if(error){console.warn(error);return;}
-      INDIVIDUALS = data || [];
-      renderIndividuals();
+      const limit = showAllIndividuals ? null : 10; // null/undefined means "all" for our RPC
+      const {data,error} = await sb.rpc("leaderboard_top_individuals", { limit_n: limit });
+      if(error){ console.warn("leaderboard_top_individuals", error); return; }
+
+      // Normalize + (optional) filter by search
+      INDIVIDUALS = (data || []).map(r => ({
+        name: r.name ?? "",
+        team: r.team ?? "",
+        points: Number(r.points ?? 0)
+      }));
+
+      renderIndividuals(applyIndFilter(IND_FILTER));
       $("#indCount").textContent = showAllIndividuals ? `${INDIVIDUALS.length} total` : "Top 10";
       $("#indToggleBtn").textContent = showAllIndividuals ? "See top 10" : "See all";
     }
 
-    function renderIndividuals(){
-      const body=$("#indBody"),empty=$("#indEmpty");
+    function applyIndFilter(q){
+      if(!q) return INDIVIDUALS;
+      const qq = q.toLowerCase();
+      return INDIVIDUALS.filter(r =>
+        (r.name ?? "").toLowerCase().includes(qq) ||
+        (r.team ?? "").toLowerCase().includes(qq)
+      );
+    }
+
+    function renderIndividuals(rows){
+      const body=$("#indBody"), empty=$("#indEmpty");
       body.innerHTML="";
-      if(!INDIVIDUALS.length){empty.classList.remove("hidden");return;}
+      if(!rows.length){ empty.classList.remove("hidden"); return; }
       empty.classList.add("hidden");
-      const pts=INDIVIDUALS.map(r=>r.points??0),ranks=computeRankLabelsByValue(pts);
-      INDIVIDUALS.forEach((r,i)=>{
+
+      const pts = rows.map(r=>r.points);
+      const ranks = computeRankLabelsByValue(pts);
+
+      rows.forEach((r,i)=>{
         body.insertAdjacentHTML("beforeend",`
           <tr class="hover:bg-aggieBlue/5">
             <td class="py-3 px-4 font-ui">${ranks[i]}</td>
             <td class="py-3 px-4 font-ui">${esc(r.name)}</td>
             <td class="py-3 px-4 font-ui">${esc(r.team)}</td>
             <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${r.points}</td>
-          </tr>`);
+          </tr>
+        `);
       });
     }
+
+    // ---- Teams: toggle top 5 / all
+    let showAllTeams = false;
+    let TEAMS = [];
 
     async function loadTeams(){
       const { start, end } = monthRangeISO();
@@ -201,48 +292,65 @@
       const {data,error} = await sb.rpc("team_score_participation_weighted", {
         month_start: start, month_end: end, limit_n: limit
       });
-      if(error){console.warn(error);return;}
-      TEAMS = data || [];
-      renderTeams();
+      if(error){ console.warn("team_score_participation_weighted", error); return; }
+
+      // Normalize shape (team + numeric score)
+      const rows = (data || []).map(r => ({
+        team: r.team ?? r.team_name ?? "",
+        score: toNum(r.score ?? r.points ?? r.total ?? r.value ?? 0)
+      }));
+      // Sort high → low just in case RPC doesn't already
+      rows.sort((a,b)=>b.score - a.score);
+      TEAMS = rows;
+
+      renderTeams(TEAMS);
       $("#teamCount").textContent = showAllTeams ? `${TEAMS.length} total` : "Top 5";
       $("#teamToggleBtn").textContent = showAllTeams ? "See top 5" : "See all";
     }
 
-    function renderTeams(){
-      const body=$("#teamBody"),empty=$("#teamEmpty");
+    function renderTeams(rows){
+      const body=$("#teamBody"), empty=$("#teamEmpty");
       body.innerHTML="";
-      if(!TEAMS.length){empty.classList.remove("hidden");return;}
+      if(!rows.length){ empty.classList.remove("hidden"); return; }
       empty.classList.add("hidden");
-      const vals=TEAMS.map(r=>r.score??0),ranks=computeRankLabelsByValue(vals);
-      TEAMS.forEach((r,i)=>{
+
+      const vals = rows.map(r=>r.score);
+      const ranks = computeRankLabelsByValue(vals);
+
+      rows.forEach((r,i)=>{
         body.insertAdjacentHTML("beforeend",`
           <tr class="hover:bg-aggieBlue/5">
             <td class="py-3 px-4 font-ui">${ranks[i]}</td>
             <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${esc(r.team)}</td>
-          </tr>`);
+          </tr>
+        `);
       });
     }
 
-    function monthRangeISO(d=new Date()){
-      const start=new Date(d.getFullYear(),d.getMonth(),1);
-      const end=new Date(d.getFullYear(),d.getMonth()+1,1);
-      return {start:start.toISOString(), end:end.toISOString()};
+    // ---- Toggle buttons
+    $("#indToggleBtn").addEventListener("click", async () => {
+      showAllIndividuals = !showAllIndividuals;
+      await loadIndividuals();
+      // keep current search applied
+      renderIndividuals(applyIndFilter(IND_FILTER));
+    });
+    $("#teamToggleBtn").addEventListener("click", async () => {
+      showAllTeams = !showAllTeams;
+      await loadTeams();
+    });
+
+    // ---- Search wiring (Individuals)
+    function wireSearch(){
+      $("#searchInput")?.addEventListener("input", (e) => {
+        IND_FILTER = (e.target.value || "").trim();
+        renderIndividuals(applyIndFilter(IND_FILTER));
+      });
+      $("#clearSearch")?.addEventListener("click", () => {
+        IND_FILTER = "";
+        $("#searchInput").value = "";
+        renderIndividuals(INDIVIDUALS);
+      });
     }
-
-    $("#indToggleBtn").addEventListener("click",async()=>{
-      showAllIndividuals=!showAllIndividuals;
-      await loadIndividuals();
-    });
-
-    $("#teamToggleBtn").addEventListener("click",async()=>{
-      showAllTeams=!showAllTeams;
-      await loadTeams();
-    });
-
-    (async()=>{
-      await loadIndividuals();
-      await loadTeams();
-    })();
   </script>
 </body>
 </html>

@@ -140,7 +140,7 @@
         </div>
       </section>
 
-      <!-- Search individuals (unchanged) -->
+      <!-- Search individuals -->
       <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <h3 class="font-ui text-base font-semibold text-aggieBlue">Search Individuals</h3>
         <div class="mt-3 flex items-center gap-2">
@@ -150,7 +150,7 @@
       </section>
     </aside>
 
-    <!-- Right column: Leaderboards (unchanged) -->
+    <!-- Right column: Leaderboards -->
     <section class="lg:col-span-2 space-y-6">
       <!-- Top Individuals -->
       <div class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
@@ -172,6 +172,13 @@
             <tbody id="indBody" class="divide-y divide-gray-100"></tbody>
           </table>
           <div id="indEmpty" class="hidden py-8 text-center font-ui text-ink/60">No individuals found.</div>
+
+          <!-- View more: Individuals (+20) -->
+          <div class="mt-3 flex justify-center">
+            <button id="indMoreBtn" class="px-4 py-2 rounded-lg border border-aggieBlue/20 font-ui hover:bg-aggieBlue/5">
+              View 20 more
+            </button>
+          </div>
         </div>
       </div>
 
@@ -193,7 +200,15 @@
             <tbody id="teamBody" class="divide-y divide-gray-100"></tbody>
           </table>
           <div id="teamEmpty" class="hidden py-8 text-center font-ui text-ink/60">No teams found.</div>
+
+          <!-- View more: Teams (+10) -->
+          <div class="mt-3 flex justify-center">
+            <button id="teamMoreBtn" class="px-4 py-2 rounded-lg border border-aggieBlue/20 font-ui hover:bg-aggieBlue/5">
+              View 10 more
+            </button>
+          </div>
         </div>
+      </div>
     </section>
   </main>
 
@@ -204,7 +219,7 @@
     </div>
   </footer>
 
-  <!-- Scripts (unchanged JS) -->
+  <!-- Scripts -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
 
@@ -216,6 +231,16 @@
     const esc = (s) => String(s ?? "")
       .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
       .replaceAll('"',"&quot;").replaceAll("'","&#39;");
+
+    // Global search query so we can preserve it across reloads
+    let query = "";
+
+    // Page size (initial) + “view more” increments
+    let IND_LIMIT = 10;     // start with 10
+    const IND_STEP = 20;    // add 20 each click
+
+    let TEAM_LIMIT = 5;     // start with 5
+    const TEAM_STEP = 10;   // add 10 each click
 
     // Header UI
     $("#mobileMenuBtn")?.addEventListener("click", () => toggle($("#mobileMenu")));
@@ -277,14 +302,24 @@
     let INDIVIDUALS = [];
 
     async function loadTopIndividuals() {
-      const { data, error } = await sb.rpc("leaderboard_top_individuals", { limit_n: 10 });
+      const { data, error } = await sb.rpc("leaderboard_top_individuals", { limit_n: IND_LIMIT });
       if (error) { console.warn("leaderboard_top_individuals", error); return; }
       INDIVIDUALS = (data || []).map(r => ({
         name: r.name ?? "",
         team: r.team ?? "",
         points: Number(r.points ?? 0)
       }));
-      renderIndividuals(INDIVIDUALS);
+
+      // If there’s an active search, keep it applied after reloading
+      if (query) filterIndividuals(query);
+      else renderIndividuals(INDIVIDUALS);
+
+      // Show how many are displayed
+      $("#indCount").textContent = `${(INDIVIDUALS || []).length} shown`;
+
+      // Hide the button if fewer than requested (likely no more to fetch)
+      const indMoreBtn = $("#indMoreBtn");
+      if (indMoreBtn) indMoreBtn.classList.toggle("hidden", (data || []).length < IND_LIMIT);
     }
 
     function renderIndividuals(rows) {
@@ -297,7 +332,6 @@
         return;
       }
       empty.classList.add("hidden");
-      $("#indCount").textContent = `${rows.length} shown`;
 
       const pts = rows.map(r => Number(r.points ?? 0));
       const ranks = computeRankLabelsByValue(pts);
@@ -315,12 +349,17 @@
     }
 
     function filterIndividuals(q) {
-      if (!q) return renderIndividuals(INDIVIDUALS);
+      if (!q) {
+        renderIndividuals(INDIVIDUALS);
+        $("#indCount").textContent = `${(INDIVIDUALS || []).length} shown`;
+        return;
+      }
       const filtered = INDIVIDUALS.filter(r =>
         (r.name ?? "").toLowerCase().includes(q) ||
         (r.team ?? "").toLowerCase().includes(q)
       );
       renderIndividuals(filtered);
+      $("#indCount").textContent = `${filtered.length} shown`;
     }
 
     // ===== Teams (scores hidden but used to rank) =====
@@ -329,7 +368,7 @@
       const { data, error } = await sb.rpc("team_score_participation_weighted", {
         month_start: start,
         month_end: end,
-        limit_n: 5
+        limit_n: TEAM_LIMIT
       });
       if (error) { console.warn("team_score_participation_weighted", error); return; }
 
@@ -340,6 +379,12 @@
 
       rows.sort((a,b) => b.score - a.score);
       renderTeams(rows);
+
+      $("#teamCount").textContent = `${rows.length} shown`;
+
+      // Hide button if fewer than requested (likely no more to fetch)
+      const teamMoreBtn = $("#teamMoreBtn");
+      if (teamMoreBtn) teamMoreBtn.classList.toggle("hidden", (data || []).length < TEAM_LIMIT);
     }
 
     function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
@@ -354,7 +399,6 @@
         return;
       }
       empty.classList.add("hidden");
-      $("#teamCount").textContent = `${rows.length} shown`;
 
       const vals = rows.map(r => r.score);
       const ranks = computeRankLabelsByValue(vals);
@@ -390,12 +434,11 @@
       // Summary (tie-aware like Home)
       await refreshProfileSummary();
 
-      // Load Top Individuals and Teams
+      // Load Top Individuals and Teams with initial limits
       await loadTopIndividuals();
       await loadTopTeams();
 
-      // Search wiring (unchanged)
-      let query = "";
+      // Search wiring
       $("#searchInput").addEventListener("input", (e) => {
         query = (e.target.value || "").trim().toLowerCase();
         filterIndividuals(query);
@@ -404,6 +447,17 @@
         $("#searchInput").value = "";
         query = "";
         filterIndividuals(query);
+      });
+
+      // “View more” wiring
+      $("#indMoreBtn")?.addEventListener("click", async () => {
+        IND_LIMIT += IND_STEP;   // +20
+        await loadTopIndividuals();
+      });
+
+      $("#teamMoreBtn")?.addEventListener("click", async () => {
+        TEAM_LIMIT += TEAM_STEP; // +10
+        await loadTopTeams();
       });
     })();
   </script>

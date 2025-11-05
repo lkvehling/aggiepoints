@@ -31,7 +31,8 @@
 </head>
 <body class="min-h-screen bg-aggieBg text-ink font-body">
 
-  <!-- Header / Nav -->
+  <!-- Header -->
+   <!-- Header / Nav -->
   <header class="bg-aggieBlue text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between py-3">
@@ -47,19 +48,19 @@
 
           <!-- Account dropdown -->
           <div class="relative">
-            <button id="acctBtn" aria-haspopup="menu" aria-expanded="false" class="hover:text-aggieGold flex items-center gap-2">
+            <button id="acctBtn" class="hover:text-aggieGold flex items-center gap-2">
               <span id="acctName" class="font-medium">Account</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
             </button>
-            <div id="acctMenu" role="menu" class="absolute right-0 mt-2 w-44 bg-white text-ink rounded-lg shadow-soft py-2 hidden z-50">
-              <a href="settings.html" class="block px-4 py-2 hover:bg-gray-100" role="menuitem">Settings</a>
-              <button id="logoutBtn" class="w-full text-left block px-4 py-2 hover:bg-gray-100" role="menuitem">Log out</button>
+            <div id="acctMenu" class="absolute right-0 mt-2 w-44 bg-white text-ink rounded-lg shadow-soft py-2 hidden">
+              <a href="settings.html" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
+              <button id="logoutBtn" class="w-full text-left block px-4 py-2 hover:bg-gray-100">Log out</button>
             </div>
           </div>
         </nav>
 
         <!-- Mobile menu button -->
-        <button id="mobileMenuBtn" aria-controls="mobileMenu" aria-expanded="false" class="md:hidden inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10">
+        <button id="mobileMenuBtn" class="md:hidden inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10">
           <span class="sr-only">Open main menu</span>
           <svg class="h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" fill="none">
             <path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round" />
@@ -80,6 +81,7 @@
       </div>
     </div>
   </header>
+
 
   <!-- Banner -->
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white py-8">
@@ -200,78 +202,29 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
   <script>
-    // ----------------------------
-    // Tiny helpers
-    // ----------------------------
     const $ = s=>document.querySelector(s);
     const esc = s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     $("#year").textContent = new Date().getFullYear();
 
     // ----------------------------
-    // NAV: dropdown + mobile menu wiring
+    // Boot
     // ----------------------------
-    function wireNavMenus() {
-      const acctBtn = $("#acctBtn");
-      const acctMenu = $("#acctMenu");
-      const mobileBtn = $("#mobileMenuBtn");
-      const mobileMenu = $("#mobileMenu");
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+      if (!session) { window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html"; return; }
 
-      const show = el => el.classList.remove("hidden");
-      const hide = el => el.classList.add("hidden");
-      const isShown = el => !el.classList.contains("hidden");
+      const { data: { user } } = await sb.auth.getUser();
+      $("#acctName").textContent = user?.user_metadata?.display_name || user?.email || "Account";
 
-      // Account dropdown
-      acctBtn?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        acctMenu.classList.toggle("hidden");
-        acctBtn.setAttribute("aria-expanded", String(isShown(acctMenu)));
-        // Close mobile if open
-        if (mobileMenu && isShown(mobileMenu)) { hide(mobileMenu); mobileBtn?.setAttribute("aria-expanded","false"); }
-      });
-      acctMenu?.addEventListener("click", (e) => e.stopPropagation());
+      await refreshProfileSummary();   // sets names + points + initial ranks
+      await loadIndividuals();         // renders & forces Tn overwrite for Summary
+      await loadTeams();               // renders & syncs Summary team rank
+      wireSearch();
 
-      // Mobile menu
-      mobileBtn?.addEventListener("click", (e) => {
-        e.stopPropagation();
-        mobileMenu.classList.toggle("hidden");
-        mobileBtn.setAttribute("aria-expanded", String(isShown(mobileMenu)));
-        // Close account if open
-        if (acctMenu && isShown(acctMenu)) { hide(acctMenu); acctBtn?.setAttribute("aria-expanded","false"); }
-      });
-
-      // Close on outside click
-      document.addEventListener("click", () => {
-        if (acctMenu && isShown(acctMenu)) { hide(acctMenu); acctBtn?.setAttribute("aria-expanded","false"); }
-        if (mobileMenu && isShown(mobileMenu)) { hide(mobileMenu); mobileBtn?.setAttribute("aria-expanded","false"); }
-      });
-
-      // Close on Escape
-      document.addEventListener("keydown", (e) => {
-        if (e.key === "Escape") {
-          if (acctMenu && isShown(acctMenu)) { hide(acctMenu); acctBtn?.setAttribute("aria-expanded","false"); }
-          if (mobileMenu && isShown(mobileMenu)) { hide(mobileMenu); mobileBtn?.setAttribute("aria-expanded","false"); }
-        }
-      });
-
-      // Close mobile after clicking a link
-      mobileMenu?.querySelectorAll("a,button").forEach(el => {
-        el.addEventListener("click", () => {
-          if (isShown(mobileMenu)) { hide(mobileMenu); mobileBtn?.setAttribute("aria-expanded","false"); }
-        });
-      });
-
-      // Logout handlers
-      async function doLogout() {
-        try { await sb.auth.signOut(); }
-        catch (e) { console.warn("signOut error", e); }
-        finally {
-          const dest = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
-          window.location.href = dest;
-        }
-      }
-      $("#logoutBtn")?.addEventListener("click", doLogout);
-      $("#logoutBtnMobile")?.addEventListener("click", doLogout);
-    }
+      // Final idempotent syncs
+      syncSummaryIndividualRankFromAll(); // use full list (not just visible)
+      syncSummaryTeamRank();
+    })();
 
     // ----------------------------
     // Global State
@@ -286,15 +239,10 @@
     // Utils
     // ----------------------------
     function computeRankLabelsByValue(vals){
-      // vals is assumed sorted DESC by score for global ranking
       const labels=[],n=vals.length;let rank=1;
-      for(let i=0;i<n;){
-        let j=i+1; while(j<n && vals[j]===vals[i]) j++;
-        const lbl = (j-i>1) ? `T${rank}` : `${rank}`;
-        for(let k=i;k<j;k++) labels[k]=lbl;
-        rank += (j-i);
-        i = j;
-      }
+      for(let i=0;i<n;){let j=i+1;while(j<n&&vals[j]===vals[i])j++;
+        const lbl=j-i>1?`T${rank}`:`${rank}`;
+        for(let k=i;k<j;k++)labels[k]=lbl;rank+=j-i;i=j;}
       return labels;
     }
     function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
@@ -323,7 +271,7 @@
       const pts = prof?.points_total ?? 0;
       $("#pointsTotal").textContent = pts;
 
-      // Show DB value first; we overwrite with table-derived Tn later
+      // Show DB value first; we'll ALWAYS overwrite with table-derived Tn later
       const dbInd = (prof?.rank == null) ? '—' : (prof?.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
       setSummaryIndividualRankText(dbInd);
       setSummaryTeamRankText('—');
@@ -359,10 +307,7 @@
           USER_FALLBACK_NAME = (prof.display_name || prof.full_name || "").trim() || null;
 
           // team for matching
-          const { data: { user } : { data: { user: again } } } = await sb.auth.getUser(); // noop to keep user pointer stable
-          const meta = (again||{}).user_metadata || {};
-          const metaTeam = meta.team_name || meta.team || null;
-
+          const metaTeam = user?.user_metadata?.team_name || user?.user_metadata?.team || null;
           USER_TEAM_NAME = (typeof prof.team_name === "string" && prof.team_name.trim().length)
             ? prof.team_name.trim()
             : (typeof metaTeam === "string" && metaTeam.trim().length ? metaTeam.trim() : null);
@@ -373,14 +318,14 @@
     }
 
     // ----------------------------
-    // Individuals (ALWAYS fetch full list; slice/filter for display)
+    // Individuals
     // ----------------------------
     let showAllIndividuals = false;
     let IND_FILTER = "";
 
     async function loadIndividuals(){
-      // Always fetch full list so summary rank & ties are correct globally
-      const {data,error} = await sb.rpc("leaderboard_top_individuals", { limit_n: null });
+      const limit = showAllIndividuals ? null : 10;
+      const {data,error} = await sb.rpc("leaderboard_top_individuals", { limit_n: limit });
       if(error){ console.warn("leaderboard_top_individuals", error); return; }
 
       INDIVIDUALS = (data || []).map(r => ({
@@ -389,25 +334,22 @@
         points: Number(r.points ?? 0)
       }));
 
-      // Global stable order for ranks: points desc, then name asc
+      // Ensure consistent ordering for rank calculation
       INDIVIDUALS.sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
 
-      renderIndividuals(getVisibleIndividuals());
-      updateIndividualsHeader();
+      renderIndividuals(applyIndFilter(IND_FILTER));
+      $("#indCount").textContent = showAllIndividuals ? `${INDIVIDUALS.length} total` : "Top 10";
+      $("#indToggleBtn").textContent = showAllIndividuals ? "See top 10" : "See all";
 
-      // Force Summary → Individual Rank to tie-aware Tn using the FULL list
+      // Force Summary → Individual Rank to tie-aware Tn (using FULL list, not just visible)
       syncSummaryIndividualRankFromAll();
+      // If we inferred team from my individual row, we can also sync team later after TEAMS load
     }
 
-    function getVisibleIndividuals(){
-      const sliced = showAllIndividuals ? INDIVIDUALS : INDIVIDUALS.slice(0, 10);
-      return applyIndFilter(sliced, IND_FILTER);
-    }
-
-    function applyIndFilter(rows, q){
-      if(!q) return rows;
+    function applyIndFilter(q){
+      if(!q) return INDIVIDUALS;
       const key = normalizeKey(q);
-      return rows.filter(r =>
+      return INDIVIDUALS.filter(r =>
         normalizeKey(r.name).includes(key) || normalizeKey(r.team).includes(key)
       );
     }
@@ -418,7 +360,6 @@
       if(!rows.length){ empty.classList.remove("hidden"); return; }
       empty.classList.add("hidden");
 
-      // Ties for the visible block (summary uses full list for global Tn)
       const pts = rows.map(r=>r.points);
       const ranks = computeRankLabelsByValue(pts);
 
@@ -434,28 +375,23 @@
       });
     }
 
-    function updateIndividualsHeader(){
-      $("#indCount").textContent = showAllIndividuals ? `${INDIVIDUALS.length} total` : "Top 10";
-      $("#indToggleBtn").textContent = showAllIndividuals ? "See top 10" : "See all";
-    }
-
-    // Toggle shows Top 10 vs All without re-fetching
-    $("#indToggleBtn").addEventListener("click", () => {
+    $("#indToggleBtn").addEventListener("click", async () => {
       showAllIndividuals = !showAllIndividuals;
-      renderIndividuals(getVisibleIndividuals());
-      updateIndividualsHeader();
+      await loadIndividuals();
+      renderIndividuals(applyIndFilter(IND_FILTER));
+      syncSummaryIndividualRankFromAll();
     });
 
-    // Search wiring
     function wireSearch(){
       $("#searchInput")?.addEventListener("input", (e) => {
         IND_FILTER = (e.target.value || "").trim();
-        renderIndividuals(getVisibleIndividuals());
+        renderIndividuals(applyIndFilter(IND_FILTER));
+        // no need to resync here; summary rank uses FULL list
       });
       $("#clearSearch")?.addEventListener("click", () => {
         IND_FILTER = "";
         $("#searchInput").value = "";
-        renderIndividuals(getVisibleIndividuals());
+        renderIndividuals(INDIVIDUALS);
       });
     }
 
@@ -463,8 +399,9 @@
     function syncSummaryIndividualRankFromAll() {
       if (!INDIVIDUALS?.length) return;
 
+      // Compute labels on the full, sorted list
       const pts = INDIVIDUALS.map(r => r.points);
-      const ranks = computeRankLabelsByValue(pts); // global Tn labels for full list
+      const ranks = computeRankLabelsByValue(pts);
 
       const keys = [
         normalizeKey(USER_DISPLAY_NAME),
@@ -512,9 +449,9 @@
       rows.sort((a,b)=>{
         const av = (a.avg == null) ? -Infinity : a.avg;
         const bv = (b.avg == null) ? -Infinity : b.avg;
-        if (bv !== av) return bv - av;            // primary: avg desc
-        if (b.total !== a.total) return b.total - a.total; // tiebreaker: total desc
-        return a.team.localeCompare(b.team);      // final: name asc
+        if (bv !== av) return bv - av;
+        if (b.total !== a.total) return b.total - a.total;
+        return a.team.localeCompare(b.team);
       });
 
       const avgs = rows.map(r => (r.avg == null ? -Infinity : r.avg));
@@ -529,7 +466,6 @@
       $("#teamCount").textContent = showAllTeams ? `${TEAMS.length} total` : "Top 5";
       $("#teamToggleBtn").textContent = showAllTeams ? "See top 5" : "See all";
 
-      // Update summary team rank now that teams are known
       syncSummaryTeamRank();
     }
 
@@ -559,7 +495,7 @@
     function syncSummaryTeamRank(){
       if (!TEAMS?.length) return;
 
-      // Candidates for matching the user's team
+      // Try multiple keys for robustness
       const candidates = [
         normalizeKey(USER_TEAM_NAME),
         normalizeKey((INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_DISPLAY_NAME))||{}).team),
@@ -569,11 +505,11 @@
       for (const key of candidates) {
         if (!key) continue;
 
-        // Exact
+        // exact key match
         let found = TEAMS.find(t => normalizeKey(t.team) === key);
         if (found?.rankLabel) { setSummaryTeamRankText(found.rankLabel); return; }
 
-        // Fuzzy contains (handles punctuation/apostrophes)
+        // fuzzy contains match (handles punctuation/apostrophes)
         found = TEAMS.find(t => {
           const tt = normalizeKey(t.team);
           return tt.includes(key) || key.includes(tt);
@@ -581,34 +517,8 @@
         if (found?.rankLabel) { setSummaryTeamRankText(found.rankLabel); return; }
       }
 
-      // Leave as '—' if not found
+      // If still nothing, leave as '—'
     }
-
-    // ----------------------------
-    // Boot
-    // ----------------------------
-    (async () => {
-      wireNavMenus(); // make menus work immediately
-
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) {
-        const dest = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
-        window.location.href = dest;
-        return;
-      }
-
-      const { data: { user } } = await sb.auth.getUser();
-      $("#acctName").textContent = user?.user_metadata?.display_name || user?.email || "Account";
-
-      await refreshProfileSummary();   // sets names + points + initial ranks
-      await loadIndividuals();         // renders & forces Tn overwrite for Summary
-      await loadTeams();               // renders & syncs Summary team rank
-      wireSearch();
-
-      // Final idempotent syncs
-      syncSummaryIndividualRankFromAll(); // use FULL list
-      syncSummaryTeamRank();              // ensure rank text is set if match exists
-    })();
   </script>
 </body>
 </html>

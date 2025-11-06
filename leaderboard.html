@@ -202,10 +202,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
   <script>
-    let INDIVIDUALS = [];         // visible rows
-    let INDIVIDUALS_ALL = [];     // full list (for rank truth)
-    let IND_RANK_BY_NAME = new Map(); // "normalized name" -> "rank label", e.g., "T3"
-
     const $ = s=>document.querySelector(s);
     const esc = s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     $("#year").textContent = new Date().getFullYear();
@@ -236,8 +232,9 @@
     let USER_TEAM_NAME = null;
     let USER_DISPLAY_NAME = null;
     let USER_FALLBACK_NAME = null; // name from profiles (if present)
-    let TEAMS = [];        // [{team,total,avg,rankLabel}]
-    let INDIVIDUALS = [];  // [{name,team,points}]
+    let TEAMS = [];                // [{team,total,avg,rankLabel}]
+    // DO NOT re-declare INDIVIDUALS here (it's already declared above)
+
 
     // ----------------------------
     // Utils
@@ -408,7 +405,14 @@
         team: r.team ?? "",
         points: Number(r.points ?? 0),
       })).sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
-    
+
+      // If profile didn't give us a team, infer from my full-list row
+      if (!USER_TEAM_NAME) {
+        const meKeys = [normalizeKey(USER_DISPLAY_NAME), normalizeKey(USER_FALLBACK_NAME)].filter(Boolean);
+        const me = INDIVIDUALS_ALL.find(r => meKeys.some(k => normalizeKey(r.name) === k));
+        if (me?.team) USER_TEAM_NAME = me.team;
+      }
+
       // Build rank labels on FULL list (tie-aware) and store in a lookup by name
       IND_RANK_BY_NAME.clear();
       {
@@ -494,33 +498,38 @@
 
     // Overwrite Summary Individual Rank using FULL leaderboard (guarantees Tn)
     function syncSummaryIndividualRankFromAll() {
-      if (!INDIVIDUALS?.length) return;
-
-      // Compute labels on the full, sorted list
-      const pts = INDIVIDUALS.map(r => r.points);
-      const ranks = computeRankLabelsByValue(pts);
-
-      const keys = [
+      if (!INDIVIDUALS_ALL?.length) return;
+    
+      // Prefer the precomputed map (tie-aware) from the FULL list
+      const meKeys = [
         normalizeKey(USER_DISPLAY_NAME),
         normalizeKey(USER_FALLBACK_NAME)
       ].filter(Boolean);
-
-      let idx = -1;
-      for (const k of keys) {
-        idx = INDIVIDUALS.findIndex(r => normalizeKey(r.name) === k);
-        if (idx < 0) idx = INDIVIDUALS.findIndex(r => {
-          const n = normalizeKey(r.name);
-          return n.includes(k) || k.includes(n);
-        });
-        if (idx >= 0) break;
+    
+      // Find my row in the FULL list (exact or fuzzy)
+      let meIdx = -1;
+      let meRow = null;
+    
+      for (const k of meKeys) {
+        meIdx = INDIVIDUALS_ALL.findIndex(r => normalizeKey(r.name) === k);
+        if (meIdx < 0) {
+          meIdx = INDIVIDUALS_ALL.findIndex(r => {
+            const n = normalizeKey(r.name);
+            return n.includes(k) || k.includes(n);
+          });
+        }
+        if (meIdx >= 0) { meRow = INDIVIDUALS_ALL[meIdx]; break; }
       }
-
-      if (idx >= 0 && ranks[idx]) {
-        setSummaryIndividualRankText(ranks[idx]); // e.g., "T2"
-        // If team name still missing, infer from my row
-        if (!USER_TEAM_NAME) USER_TEAM_NAME = INDIVIDUALS[idx].team || USER_TEAM_NAME;
+    
+      if (meIdx >= 0) {
+        const labelFromMap = IND_RANK_BY_NAME.get(normalizeKey(meRow.name));
+        if (labelFromMap) setSummaryIndividualRankText(labelFromMap);
+    
+        // If team name still missing, infer from my full-list row
+        if (!USER_TEAM_NAME && meRow?.team) USER_TEAM_NAME = meRow.team;
       }
     }
+
 
     // ----------------------------
     // Teams (avg/person)

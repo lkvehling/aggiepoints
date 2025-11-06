@@ -202,6 +202,10 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
   <script>
+    let INDIVIDUALS = [];         // visible rows
+    let INDIVIDUALS_ALL = [];     // full list (for rank truth)
+    let IND_RANK_BY_NAME = new Map(); // "normalized name" -> "rank label", e.g., "T3"
+
     const $ = s=>document.querySelector(s);
     const esc = s=>String(s??"").replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;");
     $("#year").textContent = new Date().getFullYear();
@@ -395,27 +399,51 @@
     let IND_FILTER = "";
 
     async function loadIndividuals(){
-      const limit = showAllIndividuals ? null : 10;
-      const {data,error} = await sb.rpc("leaderboard_top_individuals", { limit_n: limit });
-      if(error){ console.warn("leaderboard_top_individuals", error); return; }
-
-      INDIVIDUALS = (data || []).map(r => ({
+      // 1) FULL list for rank truth
+      const full = await sb.rpc("leaderboard_top_individuals"); // or pass a huge limit if required
+      if (full.error) { console.warn("leaderboard_top_individuals (full)", full.error); }
+    
+      INDIVIDUALS_ALL = (full.data || []).map(r => ({
         name: r.name ?? "",
         team: r.team ?? "",
-        points: Number(r.points ?? 0)
-      }));
-
-      // Ensure consistent ordering for rank calculation
-      INDIVIDUALS.sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
-
+        points: Number(r.points ?? 0),
+      })).sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
+    
+      // Build rank labels on FULL list (tie-aware) and store in a lookup by name
+      IND_RANK_BY_NAME.clear();
+      {
+        const pts = INDIVIDUALS_ALL.map(r => r.points);
+        const labels = computeRankLabelsByValue(pts); // produces "1", "T2", ...
+        INDIVIDUALS_ALL.forEach((r,i)=>{
+          IND_RANK_BY_NAME.set(normalizeKey(r.name), labels[i]);
+        });
+      }
+    
+      // 2) VISIBLE list (Top-10 or All) for the table
+      const limit = showAllIndividuals ? null : 10;
+      let vis;
+      if (limit == null) {
+        vis = full; // reuse
+      } else {
+        vis = await sb.rpc("leaderboard_top_individuals", { limit_n: limit });
+      }
+      if (vis.error) { console.warn("leaderboard_top_individuals (visible)", vis.error); }
+    
+      INDIVIDUALS = (vis.data || []).map(r => ({
+        name: r.name ?? "",
+        team: r.team ?? "",
+        points: Number(r.points ?? 0),
+      })).sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
+    
       renderIndividuals(applyIndFilter(IND_FILTER));
-      $("#indCount").textContent = showAllIndividuals ? `${INDIVIDUALS.length} total` : "Top 10";
+    
+      $("#indCount").textContent = showAllIndividuals ? `${INDIVIDUALS_ALL.length} total` : "Top 10";
       $("#indToggleBtn").textContent = showAllIndividuals ? "See top 10" : "See all";
-
-      // Force Summary → Individual Rank to tie-aware Tn (using FULL list, not just visible)
+    
+      // Summary rank uses FULL map (tie aware, works even if you're not visible)
       syncSummaryIndividualRankFromAll();
-      // If we inferred team from my individual row, we can also sync team later after TEAMS load
     }
+
 
     function applyIndFilter(q){
       if(!q) return INDIVIDUALS;
@@ -430,14 +458,12 @@
       body.innerHTML="";
       if(!rows.length){ empty.classList.remove("hidden"); return; }
       empty.classList.add("hidden");
-
-      const pts = rows.map(r=>r.points);
-      const ranks = computeRankLabelsByValue(pts);
-
-      rows.forEach((r,i)=>{
+    
+      rows.forEach((r)=>{
+        const rankLbl = IND_RANK_BY_NAME.get(normalizeKey(r.name)) || "—";
         body.insertAdjacentHTML("beforeend",`
           <tr class="hover:bg-aggieBlue/5">
-            <td class="py-3 px-4 font-ui">${ranks[i]}</td>
+            <td class="py-3 px-4 font-ui">${rankLbl}</td>
             <td class="py-3 px-4 font-ui">${esc(r.name)}</td>
             <td class="py-3 px-4 font-ui">${esc(r.team)}</td>
             <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${r.points}</td>

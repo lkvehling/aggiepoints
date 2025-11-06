@@ -260,6 +260,77 @@
         .trim()
         .replace(/\s+/g,' ');                // collapse spaces
     }
+    
+  // ----- Header interactivity (mobile menu + account dropdown) -----
+  (function () {
+    const btn = document.getElementById('mobileMenuBtn');
+    const menu = document.getElementById('mobileMenu');
+    const acctBtn = document.getElementById('acctBtn');
+    const acctMenu = document.getElementById('acctMenu');
+
+    function toggle(el, force) {
+      if (!el) return;
+      const willShow = force ?? el.classList.contains('hidden');
+      el.classList.toggle('hidden', !willShow);
+      return willShow;
+    }
+
+    // Mobile menu toggle
+    if (btn && menu) {
+      btn.setAttribute('aria-expanded', 'false');
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = toggle(menu);
+        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+
+      // Close on any nav link click (nice on mobile)
+      menu.querySelectorAll('a,button').forEach(el => {
+        el.addEventListener('click', () => {
+          menu.classList.add('hidden');
+          btn.setAttribute('aria-expanded', 'false');
+        });
+      });
+    }
+
+    // Account dropdown toggle
+    if (acctBtn && acctMenu) {
+      acctBtn.setAttribute('aria-haspopup', 'menu');
+      acctBtn.setAttribute('aria-expanded', 'false');
+
+      acctBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const open = toggle(acctMenu);
+        acctBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+      });
+    }
+
+    // Close both when clicking outside
+    document.addEventListener('click', () => {
+      if (menu && !menu.classList.contains('hidden')) {
+        menu.classList.add('hidden');
+        btn?.setAttribute('aria-expanded', 'false');
+      }
+      if (acctMenu && !acctMenu.classList.contains('hidden')) {
+        acctMenu.classList.add('hidden');
+        acctBtn?.setAttribute('aria-expanded', 'false');
+      }
+    });
+
+    // Close on Escape
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        if (menu && !menu.classList.contains('hidden')) {
+          menu.classList.add('hidden');
+          btn?.setAttribute('aria-expanded', 'false');
+        }
+        if (acctMenu && !acctMenu.classList.contains('hidden')) {
+          acctMenu.classList.add('hidden');
+          acctBtn?.setAttribute('aria-expanded', 'false');
+        }
+      }
+    });
+  })();
 
     // ----------------------------
     // Summary setters

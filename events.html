@@ -281,7 +281,7 @@
 
     // Build Home redirect URL
     function homeCheckinUrl(eventId) {
-      const url = new URL('index.html', location.origin);
+      const url = new URL('aggiepoints/index.html', location.origin);
       url.searchParams.set('checkin_event_id', eventId);
       return url.toString();
     }

@@ -82,6 +82,14 @@
                    placeholder="Password" />
           </label>
 
+          <!-- Access Banner -->
+          <div class="rounded-xl border border-aggieBlue/10 bg-aggieBg p-3">
+            <p class="font-ui text-sm text-ink/70">
+              <span class="font-semibold text-aggieBlue">Student-athlete access only</span> for now.
+              Coach/Admin login is <span class="font-semibold">coming soon</span>.
+            </p>
+          </div>
+
           <button id="loginBtn" type="button"
                   class="mt-2 inline-flex items-center justify-center rounded-lg bg-aggieGold px-4 py-2 font-ui font-semibold text-aggieBlue hover:brightness-95">
             Login
@@ -101,6 +109,7 @@
               </a>
             </p>
           </div>
+        </div> <!-- ✅ closes grid -->
       </form>
     </div>
   </main>
@@ -112,12 +121,64 @@
     </div>
   </footer>
 
+  <!-- Access Notice Modal -->
+  <div id="accessModal" class="fixed inset-0 z-50 hidden">
+    <!-- backdrop -->
+    <div class="absolute inset-0 bg-black/50" onclick="closeAccessModal()"></div>
+
+    <!-- modal -->
+    <div class="relative mx-auto mt-24 w-[92%] max-w-lg rounded-2xl bg-white shadow-soft border border-aggieBlue/10">
+      <div class="p-6">
+        <div class="flex items-start justify-between gap-4">
+          <div>
+            <h2 class="font-heading text-xl font-extrabold text-aggieBlue">Access Notice</h2>
+            <p class="mt-2 font-ui text-sm text-ink/70">
+              Registration and login are currently limited to <span class="font-semibold">UC Davis student-athletes</span>.
+              Coach and admin access is <span class="font-semibold">coming soon</span>.
+            </p>
+          </div>
+
+          <button type="button" onclick="closeAccessModal()"
+                  class="shrink-0 rounded-lg px-2 py-1 font-ui text-ink/60 hover:text-aggieBlue hover:bg-aggieBg"
+                  aria-label="Close">
+            ✕
+          </button>
+        </div>
+
+        <div class="mt-5 rounded-xl bg-aggieBg border border-aggieBlue/10 p-4">
+          <p class="font-ui text-sm text-ink/70">
+            If you’re a coach/admin and need access sooner, please reach out via SAAC.
+          </p>
+        </div>
+
+        <div class="mt-6 flex flex-col sm:flex-row gap-3">
+          <button type="button" onclick="closeAccessModal()"
+                  class="inline-flex w-full items-center justify-center rounded-lg bg-aggieGold px-4 py-2 font-ui font-semibold text-aggieBlue hover:brightness-95">
+            Got it
+          </button>
+          <a href="about.html"
+             class="inline-flex w-full items-center justify-center rounded-lg border border-aggieBlue/20 px-4 py-2 font-ui font-semibold text-aggieBlue hover:bg-aggieBg">
+            Learn more
+          </a>
+        </div>
+
+        <label class="mt-4 flex items-center gap-2 font-ui text-sm text-ink/70">
+          <input id="dontShowAgain" type="checkbox" class="h-4 w-4 rounded border-gray-300">
+          Don’t show this again on this device
+        </label>
+      </div>
+    </div>
+  </div>
+
   <!-- Supabase + App config -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
 
   <script>
+    // Footer year
     document.getElementById('yearText').textContent = new Date().getFullYear();
+
+    // Existing behavior
     redirectIfLoggedIn();
 
     const emailEl = document.getElementById("email");
@@ -151,6 +212,36 @@
         show(msgEl, /email|password/i.test(e?.message||"") ? "Incorrect email or password." : (e?.message || "Login failed."));
       } finally { setDisabled(btn, false); }
     }
+
+    // ===== Access modal behavior (new) =====
+    const ACCESS_MODAL_KEY = "aggiepoints_hide_access_modal";
+
+    function openAccessModal() {
+      document.getElementById("accessModal")?.classList.remove("hidden");
+      document.body.classList.add("overflow-hidden");
+    }
+
+    function closeAccessModal() {
+      const dontShow = document.getElementById("dontShowAgain")?.checked;
+      if (dontShow) localStorage.setItem(ACCESS_MODAL_KEY, "1");
+
+      document.getElementById("accessModal")?.classList.add("hidden");
+      document.body.classList.remove("overflow-hidden");
+    }
+
+    // Show on page load unless user opted out
+    window.addEventListener("DOMContentLoaded", () => {
+      const hide = localStorage.getItem(ACCESS_MODAL_KEY) === "1";
+      if (!hide) openAccessModal();
+    });
+
+    // ESC to close
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") {
+        const modal = document.getElementById("accessModal");
+        if (modal && !modal.classList.contains("hidden")) closeAccessModal();
+      }
+    });
   </script>
 </body>
 </html>

@@ -105,7 +105,7 @@
 
     <!-- Sidebar -->
     <aside class="space-y-6 lg:col-span-1">
-      <!-- This section is hidden automatically when logged out -->
+      <!-- Hidden automatically when logged out -->
       <section id="summaryCard" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10 p-4">
         <h2 class="font-ui text-lg font-semibold text-aggieBlue mb-3">Your Summary</h2>
         <div class="space-y-3">
@@ -154,7 +154,6 @@
           <table class="tbl min-w-full">
             <thead>
               <tr class="text-left border-b border-gray-200">
-                <!-- tighter header spacing for mobile -->
                 <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80">Rk</th>
                 <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80">Name</th>
                 <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
@@ -223,8 +222,10 @@
     let USER_TEAM_NAME = null;
     let USER_DISPLAY_NAME = null;
     let USER_FALLBACK_NAME = null;
+
     let TEAMS = [];
-    let INDIVIDUALS = [];
+    let INDIVIDUALS = [];        // what we render (top 10 or all)
+    let INDIVIDUALS_ALL = null;  // full list for accurate personal rank/team inference
 
     // ----------------------------
     // Utils
@@ -254,8 +255,6 @@
         .trim()
         .replace(/\s+/g,' ');
     }
-
-    // Canonicalize team strings so "Women's Gymnastics", "UC Davis Gymnastics", "Gymnastics (W)" all match
     function canonTeam(s){
       return normalizeKey(s)
         .replace(/\b(uc|ucd|uc davis|davis|aggies|ucdavis)\b/g, " ")
@@ -346,7 +345,11 @@
 
       const dbInd = (prof?.rank == null) ? '—' : (prof?.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
       setSummaryIndividualRankText(dbInd);
-      setSummaryTeamRankText('—');
+
+      // If DB provides a team_rank, show it as a fallback immediately,
+      // but we still try to sync to the *table's* rank label after TEAMS loads.
+      const dbTeam = (prof?.team_rank == null) ? null : (prof?.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
+      setSummaryTeamRankText(dbTeam ?? "—");
     }
 
     async function refreshProfileSummary() {
@@ -365,7 +368,7 @@
         if (error) {
           const fb = await sb
             .from("profiles")
-            .select("points_total, rank, individual_is_tied, team_rank, team_is_tied")
+            .select("points_total, rank, individual_is_tied, team_rank, team_is_tied, team_name, full_name, display_name")
             .eq("id", user.id)
             .single();
           prof = fb.data;
@@ -392,28 +395,36 @@
     let showAllIndividuals = false;
     let IND_FILTER = "";
 
-    async function loadIndividuals(){
-      const limit = showAllIndividuals ? null : 10;
-
+    async function rpcIndividuals(limit){
       const {data,error} = await sb.rpc("leaderboard_top_individuals", { limit_n: limit });
-      if(error){ console.warn("leaderboard_top_individuals", error); return; }
-
-      INDIVIDUALS = (data || []).map(r => ({
+      if(error){ console.warn("leaderboard_top_individuals", error); return []; }
+      const rows = (data || []).map(r => ({
         name: r.name ?? "",
         team: r.team ?? "",
         points: Number(r.points ?? 0)
       }));
+      rows.sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
+      return rows;
+    }
 
-      INDIVIDUALS.sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
+    async function loadIndividuals(){
+      // If showing all and we already have the full list (from summary fetch), reuse it
+      if (showAllIndividuals && Array.isArray(INDIVIDUALS_ALL)) {
+        INDIVIDUALS = INDIVIDUALS_ALL.slice();
+      } else {
+        const limit = showAllIndividuals ? null : 10;
+        INDIVIDUALS = await rpcIndividuals(limit);
+      }
 
       renderIndividuals(applyIndFilter(IND_FILTER));
       $("#indCount").textContent = showAllIndividuals ? `${INDIVIDUALS.length} total` : "Top 10";
       $("#indToggleBtn").textContent = showAllIndividuals ? "See top 10" : "See all";
+    }
 
-      // If logged in, compute my individual rank AND infer my team from the leaderboard row
-      if (!document.getElementById("summaryCard")?.classList.contains("hidden")) {
-        syncSummaryIndividualRankFromAll(); // sets USER_TEAM_NAME fallback from my row
-      }
+    // Fetch FULL individuals list only when logged in so summary rank/team always works
+    async function ensureIndividualsAllForSummary(){
+      if (Array.isArray(INDIVIDUALS_ALL)) return;
+      INDIVIDUALS_ALL = await rpcIndividuals(null);
     }
 
     function applyIndFilter(q){
@@ -449,9 +460,10 @@
       showAllIndividuals = !showAllIndividuals;
       await loadIndividuals();
       renderIndividuals(applyIndFilter(IND_FILTER));
+
+      // After toggling, if logged in, resync summary based on full list (not just visible)
       if (!document.getElementById("summaryCard")?.classList.contains("hidden")) {
-        syncSummaryIndividualRankFromAll();
-        // after toggling individuals, we can re-sync team too (if team inferred from my row changed)
+        syncSummaryIndividualRankFromAll(); // uses INDIVIDUALS_ALL if available
         syncSummaryTeamRank();
       }
     });
@@ -468,11 +480,12 @@
       });
     }
 
-    // Overwrite Summary Individual Rank using FULL leaderboard (guarantees Tn)
+    // Use FULL leaderboard to compute the true Tn rank (works even if user isn't top 10)
     function syncSummaryIndividualRankFromAll() {
-      if (!INDIVIDUALS?.length) return;
+      const rows = Array.isArray(INDIVIDUALS_ALL) ? INDIVIDUALS_ALL : INDIVIDUALS;
+      if (!rows?.length) return;
 
-      const pts = INDIVIDUALS.map(r => r.points);
+      const pts = rows.map(r => r.points);
       const ranks = computeRankLabelsByValue(pts);
 
       const keys = [
@@ -482,8 +495,8 @@
 
       let idx = -1;
       for (const k of keys) {
-        idx = INDIVIDUALS.findIndex(r => normalizeKey(r.name) === k);
-        if (idx < 0) idx = INDIVIDUALS.findIndex(r => {
+        idx = rows.findIndex(r => normalizeKey(r.name) === k);
+        if (idx < 0) idx = rows.findIndex(r => {
           const n = normalizeKey(r.name);
           return n.includes(k) || k.includes(n);
         });
@@ -492,8 +505,7 @@
 
       if (idx >= 0 && ranks[idx]) {
         setSummaryIndividualRankText(ranks[idx]); // "T2" or "2"
-        // IMPORTANT: always prefer team inferred from the leaderboard row (this matches what users see)
-        const inferred = (INDIVIDUALS[idx].team || "").trim();
+        const inferred = (rows[idx].team || "").trim();
         if (inferred) USER_TEAM_NAME = inferred;
       }
     }
@@ -539,10 +551,6 @@
 
       document.getElementById("teamCount").textContent = showAllTeams ? `${TEAMS.length} total` : "Top 5";
       document.getElementById("teamToggleBtn").textContent = showAllTeams ? "See top 5" : "See all";
-
-      if (!document.getElementById("summaryCard")?.classList.contains("hidden")) {
-        syncSummaryTeamRank();
-      }
     }
 
     function renderTeams(rows){
@@ -566,16 +574,20 @@
     document.getElementById("teamToggleBtn").addEventListener("click", async () => {
       showAllTeams = !showAllTeams;
       await loadTeams();
+      // If logged in, update summary after the table changes (rankLabel set already)
+      if (!document.getElementById("summaryCard")?.classList.contains("hidden")) syncSummaryTeamRank();
     });
 
-    // Fixed: make Summary Team Rank reflect the EXACT rankLabel shown in the Teams table
+    // Make Summary Team Rank reflect the EXACT rankLabel shown in the Teams table
     function syncSummaryTeamRank(){
       if (!TEAMS?.length) return;
 
       const candidatesRaw = [
         USER_TEAM_NAME,
-        (INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_DISPLAY_NAME))||{}).team,
-        (INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_FALLBACK_NAME))||{}).team,
+        (Array.isArray(INDIVIDUALS_ALL) ? INDIVIDUALS_ALL : INDIVIDUALS)
+          .find(r => normalizeKey(r.name) === normalizeKey(USER_DISPLAY_NAME))?.team,
+        (Array.isArray(INDIVIDUALS_ALL) ? INDIVIDUALS_ALL : INDIVIDUALS)
+          .find(r => normalizeKey(r.name) === normalizeKey(USER_FALLBACK_NAME))?.team,
       ].filter(Boolean);
 
       if (!candidatesRaw.length) return;
@@ -586,8 +598,7 @@
         const u = canonTeam(userTeam);
         const t = canonTeam(teamName);
         if (!u || !t) return -Infinity;
-
-        if (u === t) return 1_000_000; // perfect canonical match
+        if (u === t) return 1_000_000;
 
         const uTok = tokens(u);
         const tTok = tokens(t);
@@ -612,13 +623,14 @@
         }
       }
 
-      if (best?.rankLabel && bestScore > 0) {
-        setSummaryTeamRankText(best.rankLabel); // "4" or "T4"
+      // Lower the threshold slightly so minor naming mismatches still show something
+      if (best?.rankLabel && Number.isFinite(bestScore) && bestScore > -Infinity) {
+        setSummaryTeamRankText(best.rankLabel);
       }
     }
 
     // ----------------------------
-    // Logout wiring (only matters when logged in)
+    // Logout wiring
     // ----------------------------
     async function logout() {
       try { await sb.auth.signOut(); } catch (e) {}
@@ -632,9 +644,10 @@
     // ----------------------------
     (async () => {
       const { data: { session } } = await sb.auth.getSession();
+      const loggedIn = !!session?.user;
 
-      if (session?.user) {
-        // ensure "logged-in" nav state
+      if (loggedIn) {
+        // Logged in: keep full nav
         document.getElementById("acctWrap")?.classList.remove("hidden");
 
         document.getElementById("loginLink")?.classList.add("hidden");
@@ -656,7 +669,7 @@
 
         await refreshProfileSummary();
       } else {
-        // logged out UI adjustments
+        // Logged out: ONLY show Leaderboard, About, Login, Register
         document.getElementById("acctWrap")?.classList.add("hidden");
         document.getElementById("summaryCard")?.classList.add("hidden");
 
@@ -670,7 +683,7 @@
         document.getElementById("settingsLinkMobile")?.classList.add("hidden");
         document.getElementById("logoutBtnMobile")?.classList.add("hidden");
 
-        // hide links you don't want for public users
+        // hide links you don't want for public users (Home + All Events)
         document.getElementById("homeLink")?.classList.add("hidden");
         document.getElementById("eventsLink")?.classList.add("hidden");
         document.getElementById("homeLinkMobile")?.classList.add("hidden");
@@ -685,10 +698,11 @@
       await loadTeams();
       wireSearch();
 
-      // If logged in, make sure summary reflects what tables show
-      if (session?.user) {
-        syncSummaryIndividualRankFromAll(); // also sets USER_TEAM_NAME from my row
-        syncSummaryTeamRank();             // uses TEAMS rankLabel
+      // Logged-in: fetch full individuals list so your personal rank + team rank ALWAYS populate
+      if (loggedIn) {
+        await ensureIndividualsAllForSummary();
+        syncSummaryIndividualRankFromAll(); // sets USER_TEAM_NAME if found
+        syncSummaryTeamRank();              // uses TEAMS rankLabel
       }
     })();
   </script>

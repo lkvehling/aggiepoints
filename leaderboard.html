@@ -29,6 +29,7 @@
     .tbl thead th{letter-spacing:.02em}
   </style>
 </head>
+
 <body class="min-h-screen bg-aggieBg text-ink font-body">
 
   <!-- Header / Nav -->
@@ -151,10 +152,11 @@
           <table class="tbl min-w-full">
             <thead>
               <tr class="text-left border-b border-gray-200">
-                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80">Rank</th>
-                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80">Name</th>
-                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
-                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80">Points</th>
+                <!-- tighter header spacing for mobile -->
+                <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80">Rk</th>
+                <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80">Name</th>
+                <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
+                <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Pts</th>
               </tr>
             </thead>
             <tbody id="indBody" class="divide-y divide-gray-100"></tbody>
@@ -181,10 +183,10 @@
           <table class="tbl min-w-full">
             <thead>
               <tr class="text-left border-b border-gray-200">
-                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80">Rank</th>
-                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
-                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Avg / Person</th>
-                <th class="py-3 px-4 text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Total Points</th>
+                <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80">Rk</th>
+                <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80">Team</th>
+                <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Avg</th>
+                <th class="py-2 px-2 sm:py-3 sm:px-4 text-[10px] sm:text-xs uppercase tracking-wide text-aggieBlue/80 text-right">Total</th>
               </tr>
             </thead>
             <tbody id="teamBody" class="divide-y divide-gray-100"></tbody>
@@ -251,7 +253,21 @@
         .replace(/\s+/g,' ');
     }
 
-    // ----- Header interactivity (mobile menu + account dropdown) -----
+    // Canonicalize team strings so "Women's Gymnastics", "UC Davis Gymnastics", "Gymnastics (W)" all match
+    function canonTeam(s){
+      return normalizeKey(s)
+        .replace(/\b(uc|ucd|uc davis|davis|aggies|ucdavis)\b/g, " ")
+        .replace(/\b(women|womens|woman|girls|female|men|mens|man|boys|male)\b/g, " ")
+        .replace(/\b(team|squad|varsity|club)\b/g, " ")
+        .replace(/\b(w)\b/g, " ")
+        .replace(/\b(m)\b/g, " ")
+        .trim()
+        .replace(/\s+/g, " ");
+    }
+
+    // ----------------------------
+    // Header interactivity (mobile menu + account dropdown)
+    // ----------------------------
     (function () {
       const btn = document.getElementById('mobileMenuBtn');
       const menu = document.getElementById('mobileMenu');
@@ -392,9 +408,9 @@
       $("#indCount").textContent = showAllIndividuals ? `${INDIVIDUALS.length} total` : "Top 10";
       $("#indToggleBtn").textContent = showAllIndividuals ? "See top 10" : "See all";
 
-      // Only update summary ranks when logged in
+      // If logged in, compute my individual rank AND infer my team from the leaderboard row
       if (!document.getElementById("summaryCard")?.classList.contains("hidden")) {
-        syncSummaryIndividualRankFromAll();
+        syncSummaryIndividualRankFromAll(); // sets USER_TEAM_NAME fallback from my row
       }
     }
 
@@ -418,10 +434,10 @@
       rows.forEach((r,i)=>{
         body.insertAdjacentHTML("beforeend",`
           <tr class="hover:bg-aggieBlue/5">
-            <td class="py-3 px-4 font-ui">${ranks[i]}</td>
-            <td class="py-3 px-4 font-ui">${esc(r.name)}</td>
-            <td class="py-3 px-4 font-ui">${esc(r.team)}</td>
-            <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${r.points}</td>
+            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base">${ranks[i]}</td>
+            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base">${esc(r.name)}</td>
+            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base">${esc(r.team)}</td>
+            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base font-semibold text-aggieBlue text-right">${r.points}</td>
           </tr>
         `);
       });
@@ -433,6 +449,8 @@
       renderIndividuals(applyIndFilter(IND_FILTER));
       if (!document.getElementById("summaryCard")?.classList.contains("hidden")) {
         syncSummaryIndividualRankFromAll();
+        // after toggling individuals, we can re-sync team too (if team inferred from my row changed)
+        syncSummaryTeamRank();
       }
     });
 
@@ -448,6 +466,7 @@
       });
     }
 
+    // Overwrite Summary Individual Rank using FULL leaderboard (guarantees Tn)
     function syncSummaryIndividualRankFromAll() {
       if (!INDIVIDUALS?.length) return;
 
@@ -470,8 +489,10 @@
       }
 
       if (idx >= 0 && ranks[idx]) {
-        document.getElementById("individualRank").textContent = ranks[idx];
-        if (!USER_TEAM_NAME) USER_TEAM_NAME = INDIVIDUALS[idx].team || USER_TEAM_NAME;
+        setSummaryIndividualRankText(ranks[idx]); // "T2" or "2"
+        // IMPORTANT: always prefer team inferred from the leaderboard row (this matches what users see)
+        const inferred = (INDIVIDUALS[idx].team || "").trim();
+        if (inferred) USER_TEAM_NAME = inferred;
       }
     }
 
@@ -531,10 +552,10 @@
       rows.forEach((r)=>{
         body.insertAdjacentHTML("beforeend",`
           <tr class="hover:bg-aggieBlue/5">
-            <td class="py-3 px-4 font-ui">${r.rankLabel}</td>
-            <td class="py-3 px-4 font-ui font-semibold text-aggieBlue">${esc(r.team)}</td>
-            <td class="py-3 px-4 font-ui text-right">${fmt(r.avg,1)}</td>
-            <td class="py-3 px-4 font-ui text-right">${r.total}</td>
+            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base">${r.rankLabel}</td>
+            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base font-semibold text-aggieBlue">${esc(r.team)}</td>
+            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base text-right">${fmt(r.avg,1)}</td>
+            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base text-right">${r.total}</td>
           </tr>
         `);
       });
@@ -545,75 +566,60 @@
       await loadTeams();
     });
 
+    // Fixed: make Summary Team Rank reflect the EXACT rankLabel shown in the Teams table
     function syncSummaryTeamRank(){
-  if (!TEAMS?.length) return;
+      if (!TEAMS?.length) return;
 
-  // Build a list of candidate team strings we might know about the user
-  const candidatesRaw = [
-    USER_TEAM_NAME,
-    (INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_DISPLAY_NAME))||{}).team,
-    (INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_FALLBACK_NAME))||{}).team,
-  ].filter(Boolean);
+      const candidatesRaw = [
+        USER_TEAM_NAME,
+        (INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_DISPLAY_NAME))||{}).team,
+        (INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_FALLBACK_NAME))||{}).team,
+      ].filter(Boolean);
 
-  // If still nothing, we can't compute
-  if (!candidatesRaw.length) return;
+      if (!candidatesRaw.length) return;
 
-  // Helper: tokenize normalized string
-  const tokens = (s) => normalizeKey(s).split(" ").filter(Boolean);
+      const tokens = (s) => canonTeam(s).split(" ").filter(Boolean);
 
-  // Score how well teamName matches userTeam: more shared tokens + exact match bonus
-  function scoreMatch(userTeam, teamName){
-    const u = normalizeKey(userTeam);
-    const t = normalizeKey(teamName);
-    if (!u || !t) return -Infinity;
+      function scoreMatch(userTeam, teamName){
+        const u = canonTeam(userTeam);
+        const t = canonTeam(teamName);
+        if (!u || !t) return -Infinity;
 
-    if (u === t) return 1_000_000; // perfect match
+        if (u === t) return 1_000_000; // perfect canonical match
 
-    const uTok = tokens(u);
-    const tTok = tokens(t);
+        const uTok = tokens(u);
+        const tTok = tokens(t);
 
-    // token overlap
-    let overlap = 0;
-    for (const tok of uTok) if (tTok.includes(tok)) overlap++;
+        let overlap = 0;
+        for (const tok of uTok) if (tTok.includes(tok)) overlap++;
 
-    // prefer matches where ALL user tokens appear in team tokens
-    const allUserTokensPresent = uTok.length > 0 && overlap === uTok.length;
+        const allUserTokensPresent = uTok.length > 0 && overlap === uTok.length;
+        const lengthPenalty = Math.abs(tTok.length - uTok.length);
+        const containsBonus = (t.includes(u) || u.includes(t)) ? 5 : 0;
 
-    // slight preference for shorter/closer names (avoids accidental super-long contains)
-    const lengthPenalty = Math.abs(tTok.length - uTok.length);
+        return (allUserTokensPresent ? 200 : 0) + overlap * 25 + containsBonus - lengthPenalty;
+      }
 
-    // contains bonus (but not too strong)
-    const containsBonus = (t.includes(u) || u.includes(t)) ? 5 : 0;
+      let best = null;
+      let bestScore = -Infinity;
 
-    // final score
-    return (allUserTokensPresent ? 100 : 0) + overlap * 10 + containsBonus - lengthPenalty;
-  }
+      for (const cand of candidatesRaw) {
+        for (const teamRow of TEAMS) {
+          const s = scoreMatch(cand, teamRow.team);
+          if (s > bestScore) { bestScore = s; best = teamRow; }
+        }
+      }
 
-  // Choose best team row across all candidates
-  let best = null;
-  let bestScore = -Infinity;
-
-  for (const cand of candidatesRaw) {
-    for (const teamRow of TEAMS) {
-      const s = scoreMatch(cand, teamRow.team);
-      if (s > bestScore) { bestScore = s; best = teamRow; }
+      if (best?.rankLabel && bestScore > 0) {
+        setSummaryTeamRankText(best.rankLabel); // "4" or "T4"
+      }
     }
-  }
-
-  // If we found a reasonable match, use the SAME label shown in the leaderboard table
-  if (best?.rankLabel && bestScore > 0) {
-    setSummaryTeamRankText(best.rankLabel); // e.g. "4" or "T4"
-  }
-}
-
 
     // ----------------------------
     // Logout wiring (only matters when logged in)
     // ----------------------------
     async function logout() {
-      try {
-        await sb.auth.signOut();
-      } catch (e) {}
+      try { await sb.auth.signOut(); } catch (e) {}
       window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
     }
     document.getElementById("logoutBtn")?.addEventListener("click", logout);
@@ -644,13 +650,15 @@
         if (sub) sub.textContent = "See top individuals and teams. (Public view)";
       }
 
+      // Load leaderboards
       await loadIndividuals();
       await loadTeams();
       wireSearch();
 
+      // If logged in, make sure summary reflects what tables show
       if (session?.user) {
-        syncSummaryIndividualRankFromAll();
-        syncSummaryTeamRank();
+        syncSummaryIndividualRankFromAll(); // also sets USER_TEAM_NAME from my row
+        syncSummaryTeamRank();             // uses TEAMS rankLabel
       }
     })();
   </script>

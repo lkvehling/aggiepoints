@@ -31,8 +31,7 @@
 </head>
 <body class="min-h-screen bg-aggieBg text-ink font-body">
 
-  <!-- Header -->
-   <!-- Header / Nav -->
+  <!-- Header / Nav -->
   <header class="bg-aggieBlue text-white">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="flex items-center justify-between py-3">
@@ -46,8 +45,11 @@
           <a href="events.html" class="hover:text-aggieGold">All Events</a>
           <a href="about.html" class="hover:text-aggieGold">About</a>
 
+          <!-- Login link shown only when logged out -->
+          <a id="loginLink" href="login.html" class="hover:text-aggieGold hidden">Login</a>
+
           <!-- Account dropdown -->
-          <div class="relative">
+          <div id="acctWrap" class="relative">
             <button id="acctBtn" class="hover:text-aggieGold flex items-center gap-2">
               <span id="acctName" class="font-medium">Account</span>
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
@@ -76,18 +78,22 @@
         <a href="leaderboard.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Leaderboard</a>
         <a href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
         <a href="about.html" class="block px-3 py-2 rounded-md hover:bg-white/10">About</a>
-        <a href="settings.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Settings</a>
+
+        <!-- These are private; we hide them when logged out -->
+        <a id="settingsLinkMobile" href="settings.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Settings</a>
         <button id="logoutBtnMobile" class="w-full text-left block px-3 py-2 rounded-md hover:bg-white/10">Log out</button>
+
+        <!-- Login shown only when logged out -->
+        <a id="loginLinkMobile" href="login.html" class="block px-3 py-2 rounded-md hover:bg-white/10 hidden">Login</a>
       </div>
     </div>
   </header>
-
 
   <!-- Banner -->
   <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white py-8">
     <div class="mx-auto max-w-7xl px-4">
       <h1 class="font-heading text-3xl sm:text-4xl font-extrabold">Leaderboard</h1>
-      <p class="font-ui text-white/90 mt-1">See top individuals and teams.</p>
+      <p id="subtitle" class="font-ui text-white/90 mt-1">See top individuals and teams.</p>
     </div>
   </section>
 
@@ -96,7 +102,8 @@
 
     <!-- Sidebar -->
     <aside class="space-y-6 lg:col-span-1">
-      <section class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10 p-4">
+      <!-- This section is hidden automatically when logged out -->
+      <section id="summaryCard" class="card bg-white rounded-2xl shadow-soft border border-aggieBlue/10 p-4">
         <h2 class="font-ui text-lg font-semibold text-aggieBlue mb-3">Your Summary</h2>
         <div class="space-y-3">
           <div>
@@ -159,7 +166,7 @@
         </div>
       </div>
 
-      <!-- Teams (Avg-based ranking; no roster display) -->
+      <!-- Teams -->
       <div class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
         <div class="flex items-center justify-between">
           <h3 class="font-ui text-lg font-semibold text-aggieBlue">Teams</h3>
@@ -207,42 +214,25 @@
     $("#year").textContent = new Date().getFullYear();
 
     // ----------------------------
-    // Boot
-    // ----------------------------
-    (async () => {
-      const { data: { session } } = await sb.auth.getSession();
-      if (!session) { window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html"; return; }
-
-      const { data: { user } } = await sb.auth.getUser();
-      $("#acctName").textContent = user?.user_metadata?.display_name || user?.email || "Account";
-
-      await refreshProfileSummary();   // sets names + points + initial ranks
-      await loadIndividuals();         // renders & forces Tn overwrite for Summary
-      await loadTeams();               // renders & syncs Summary team rank
-      wireSearch();
-
-      // Final idempotent syncs
-      syncSummaryIndividualRankFromAll(); // use full list (not just visible)
-      syncSummaryTeamRank();
-    })();
-
-    // ----------------------------
     // Global State
     // ----------------------------
     let USER_TEAM_NAME = null;
     let USER_DISPLAY_NAME = null;
-    let USER_FALLBACK_NAME = null; // name from profiles (if present)
-    let TEAMS = [];        // [{team,total,avg,rankLabel}]
-    let INDIVIDUALS = [];  // [{name,team,points}]
+    let USER_FALLBACK_NAME = null;
+    let TEAMS = [];
+    let INDIVIDUALS = [];
 
     // ----------------------------
     // Utils
     // ----------------------------
     function computeRankLabelsByValue(vals){
       const labels=[],n=vals.length;let rank=1;
-      for(let i=0;i<n;){let j=i+1;while(j<n&&vals[j]===vals[i])j++;
+      for(let i=0;i<n;){
+        let j=i+1;while(j<n&&vals[j]===vals[i])j++;
         const lbl=j-i>1?`T${rank}`:`${rank}`;
-        for(let k=i;k<j;k++)labels[k]=lbl;rank+=j-i;i=j;}
+        for(let k=i;k<j;k++)labels[k]=lbl;
+        rank+=j-i;i=j;
+      }
       return labels;
     }
     function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
@@ -255,71 +245,53 @@
         .toString()
         .toLowerCase()
         .normalize('NFKD')
-        .replace(/[\u0300-\u036f]/g,'')      // strip diacritics
-        .replace(/[^a-z0-9]+/g,' ')          // non-alnum -> space (handles apostrophes)
+        .replace(/[\u0300-\u036f]/g,'')
+        .replace(/[^a-z0-9]+/g,' ')
         .trim()
-        .replace(/\s+/g,' ');                // collapse spaces
-    }
-    
-  // ----- Header interactivity (mobile menu + account dropdown) -----
-  (function () {
-    const btn = document.getElementById('mobileMenuBtn');
-    const menu = document.getElementById('mobileMenu');
-    const acctBtn = document.getElementById('acctBtn');
-    const acctMenu = document.getElementById('acctMenu');
-
-    function toggle(el, force) {
-      if (!el) return;
-      const willShow = force ?? el.classList.contains('hidden');
-      el.classList.toggle('hidden', !willShow);
-      return willShow;
+        .replace(/\s+/g,' ');
     }
 
-    // Mobile menu toggle
-    if (btn && menu) {
-      btn.setAttribute('aria-expanded', 'false');
-      btn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const open = toggle(menu);
-        btn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      });
+    // ----- Header interactivity (mobile menu + account dropdown) -----
+    (function () {
+      const btn = document.getElementById('mobileMenuBtn');
+      const menu = document.getElementById('mobileMenu');
+      const acctBtn = document.getElementById('acctBtn');
+      const acctMenu = document.getElementById('acctMenu');
 
-      // Close on any nav link click (nice on mobile)
-      menu.querySelectorAll('a,button').forEach(el => {
-        el.addEventListener('click', () => {
-          menu.classList.add('hidden');
-          btn.setAttribute('aria-expanded', 'false');
+      function toggle(el, force) {
+        if (!el) return;
+        const willShow = force ?? el.classList.contains('hidden');
+        el.classList.toggle('hidden', !willShow);
+        return willShow;
+      }
+
+      if (btn && menu) {
+        btn.setAttribute('aria-expanded', 'false');
+        btn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const open = toggle(menu);
+          btn.setAttribute('aria-expanded', open ? 'true' : 'false');
         });
-      });
-    }
 
-    // Account dropdown toggle
-    if (acctBtn && acctMenu) {
-      acctBtn.setAttribute('aria-haspopup', 'menu');
-      acctBtn.setAttribute('aria-expanded', 'false');
-
-      acctBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        const open = toggle(acctMenu);
-        acctBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
-      });
-    }
-
-    // Close both when clicking outside
-    document.addEventListener('click', () => {
-      if (menu && !menu.classList.contains('hidden')) {
-        menu.classList.add('hidden');
-        btn?.setAttribute('aria-expanded', 'false');
+        menu.querySelectorAll('a,button').forEach(el => {
+          el.addEventListener('click', () => {
+            menu.classList.add('hidden');
+            btn.setAttribute('aria-expanded', 'false');
+          });
+        });
       }
-      if (acctMenu && !acctMenu.classList.contains('hidden')) {
-        acctMenu.classList.add('hidden');
-        acctBtn?.setAttribute('aria-expanded', 'false');
-      }
-    });
 
-    // Close on Escape
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape') {
+      if (acctBtn && acctMenu) {
+        acctBtn.setAttribute('aria-haspopup', 'menu');
+        acctBtn.setAttribute('aria-expanded', 'false');
+        acctBtn.addEventListener('click', (e) => {
+          e.stopPropagation();
+          const open = toggle(acctMenu);
+          acctBtn.setAttribute('aria-expanded', open ? 'true' : 'false');
+        });
+      }
+
+      document.addEventListener('click', () => {
         if (menu && !menu.classList.contains('hidden')) {
           menu.classList.add('hidden');
           btn?.setAttribute('aria-expanded', 'false');
@@ -328,9 +300,21 @@
           acctMenu.classList.add('hidden');
           acctBtn?.setAttribute('aria-expanded', 'false');
         }
-      }
-    });
-  })();
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          if (menu && !menu.classList.contains('hidden')) {
+            menu.classList.add('hidden');
+            btn?.setAttribute('aria-expanded', 'false');
+          }
+          if (acctMenu && !acctMenu.classList.contains('hidden')) {
+            acctMenu.classList.add('hidden');
+            acctBtn?.setAttribute('aria-expanded', 'false');
+          }
+        }
+      });
+    })();
 
     // ----------------------------
     // Summary setters
@@ -342,7 +326,6 @@
       const pts = prof?.points_total ?? 0;
       $("#pointsTotal").textContent = pts;
 
-      // Show DB value first; we'll ALWAYS overwrite with table-derived Tn later
       const dbInd = (prof?.rank == null) ? '—' : (prof?.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
       setSummaryIndividualRankText(dbInd);
       setSummaryTeamRankText('—');
@@ -373,11 +356,8 @@
 
         if (prof) {
           applySummary(prof);
-
-          // names for matching
           USER_FALLBACK_NAME = (prof.display_name || prof.full_name || "").trim() || null;
 
-          // team for matching
           const metaTeam = user?.user_metadata?.team_name || user?.user_metadata?.team || null;
           USER_TEAM_NAME = (typeof prof.team_name === "string" && prof.team_name.trim().length)
             ? prof.team_name.trim()
@@ -396,6 +376,7 @@
 
     async function loadIndividuals(){
       const limit = showAllIndividuals ? null : 10;
+
       const {data,error} = await sb.rpc("leaderboard_top_individuals", { limit_n: limit });
       if(error){ console.warn("leaderboard_top_individuals", error); return; }
 
@@ -405,16 +386,16 @@
         points: Number(r.points ?? 0)
       }));
 
-      // Ensure consistent ordering for rank calculation
       INDIVIDUALS.sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
 
       renderIndividuals(applyIndFilter(IND_FILTER));
       $("#indCount").textContent = showAllIndividuals ? `${INDIVIDUALS.length} total` : "Top 10";
       $("#indToggleBtn").textContent = showAllIndividuals ? "See top 10" : "See all";
 
-      // Force Summary → Individual Rank to tie-aware Tn (using FULL list, not just visible)
-      syncSummaryIndividualRankFromAll();
-      // If we inferred team from my individual row, we can also sync team later after TEAMS load
+      // Only update summary ranks when logged in
+      if (!document.getElementById("summaryCard")?.classList.contains("hidden")) {
+        syncSummaryIndividualRankFromAll();
+      }
     }
 
     function applyIndFilter(q){
@@ -446,31 +427,30 @@
       });
     }
 
-    $("#indToggleBtn").addEventListener("click", async () => {
+    document.getElementById("indToggleBtn").addEventListener("click", async () => {
       showAllIndividuals = !showAllIndividuals;
       await loadIndividuals();
       renderIndividuals(applyIndFilter(IND_FILTER));
-      syncSummaryIndividualRankFromAll();
+      if (!document.getElementById("summaryCard")?.classList.contains("hidden")) {
+        syncSummaryIndividualRankFromAll();
+      }
     });
 
     function wireSearch(){
-      $("#searchInput")?.addEventListener("input", (e) => {
+      document.getElementById("searchInput")?.addEventListener("input", (e) => {
         IND_FILTER = (e.target.value || "").trim();
         renderIndividuals(applyIndFilter(IND_FILTER));
-        // no need to resync here; summary rank uses FULL list
       });
-      $("#clearSearch")?.addEventListener("click", () => {
+      document.getElementById("clearSearch")?.addEventListener("click", () => {
         IND_FILTER = "";
-        $("#searchInput").value = "";
+        document.getElementById("searchInput").value = "";
         renderIndividuals(INDIVIDUALS);
       });
     }
 
-    // Overwrite Summary Individual Rank using FULL leaderboard (guarantees Tn)
     function syncSummaryIndividualRankFromAll() {
       if (!INDIVIDUALS?.length) return;
 
-      // Compute labels on the full, sorted list
       const pts = INDIVIDUALS.map(r => r.points);
       const ranks = computeRankLabelsByValue(pts);
 
@@ -490,14 +470,13 @@
       }
 
       if (idx >= 0 && ranks[idx]) {
-        setSummaryIndividualRankText(ranks[idx]); // e.g., "T2"
-        // If team name still missing, infer from my row
+        document.getElementById("individualRank").textContent = ranks[idx];
         if (!USER_TEAM_NAME) USER_TEAM_NAME = INDIVIDUALS[idx].team || USER_TEAM_NAME;
       }
     }
 
     // ----------------------------
-    // Teams (avg/person)
+    // Teams
     // ----------------------------
     let showAllTeams = false;
 
@@ -505,6 +484,7 @@
       const { data, error } = await sb
         .from('v_team_totals_with_avg')
         .select('team_name,total_points,avg_points_per_person');
+
       if (error) { console.warn('v_team_totals_with_avg error', error); return []; }
 
       return (data || []).map(r => ({
@@ -534,14 +514,16 @@
       const visible = showAllTeams ? TEAMS : TEAMS.slice(0, 5);
       renderTeams(visible);
 
-      $("#teamCount").textContent = showAllTeams ? `${TEAMS.length} total` : "Top 5";
-      $("#teamToggleBtn").textContent = showAllTeams ? "See top 5" : "See all";
+      document.getElementById("teamCount").textContent = showAllTeams ? `${TEAMS.length} total` : "Top 5";
+      document.getElementById("teamToggleBtn").textContent = showAllTeams ? "See top 5" : "See all";
 
-      syncSummaryTeamRank();
+      if (!document.getElementById("summaryCard")?.classList.contains("hidden")) {
+        syncSummaryTeamRank();
+      }
     }
 
     function renderTeams(rows){
-      const body=$("#teamBody"), empty=$("#teamEmpty");
+      const body=document.getElementById("teamBody"), empty=document.getElementById("teamEmpty");
       body.innerHTML="";
       if(!rows.length){ empty.classList.remove("hidden"); return; }
       empty.classList.add("hidden");
@@ -558,7 +540,7 @@
       });
     }
 
-    $("#teamToggleBtn").addEventListener("click", async () => {
+    document.getElementById("teamToggleBtn").addEventListener("click", async () => {
       showAllTeams = !showAllTeams;
       await loadTeams();
     });
@@ -566,7 +548,6 @@
     function syncSummaryTeamRank(){
       if (!TEAMS?.length) return;
 
-      // Try multiple keys for robustness
       const candidates = [
         normalizeKey(USER_TEAM_NAME),
         normalizeKey((INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_DISPLAY_NAME))||{}).team),
@@ -574,22 +555,63 @@
       ].filter(Boolean);
 
       for (const key of candidates) {
-        if (!key) continue;
-
-        // exact key match
         let found = TEAMS.find(t => normalizeKey(t.team) === key);
-        if (found?.rankLabel) { setSummaryTeamRankText(found.rankLabel); return; }
+        if (found?.rankLabel) { document.getElementById("teamRank").textContent = found.rankLabel; return; }
 
-        // fuzzy contains match (handles punctuation/apostrophes)
         found = TEAMS.find(t => {
           const tt = normalizeKey(t.team);
           return tt.includes(key) || key.includes(tt);
         });
-        if (found?.rankLabel) { setSummaryTeamRankText(found.rankLabel); return; }
+        if (found?.rankLabel) { document.getElementById("teamRank").textContent = found.rankLabel; return; }
+      }
+    }
+
+    // ----------------------------
+    // Logout wiring (only matters when logged in)
+    // ----------------------------
+    async function logout() {
+      try {
+        await sb.auth.signOut();
+      } catch (e) {}
+      window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : "login.html";
+    }
+    document.getElementById("logoutBtn")?.addEventListener("click", logout);
+    document.getElementById("logoutBtnMobile")?.addEventListener("click", logout);
+
+    // ----------------------------
+    // Boot (PUBLIC)
+    // ----------------------------
+    (async () => {
+      const { data: { session } } = await sb.auth.getSession();
+
+      if (session?.user) {
+        const { data: { user } } = await sb.auth.getUser();
+        document.getElementById("acctName").textContent = user?.user_metadata?.display_name || user?.email || "Account";
+        await refreshProfileSummary();
+      } else {
+        // logged out UI adjustments
+        document.getElementById("acctWrap")?.classList.add("hidden");
+        document.getElementById("summaryCard")?.classList.add("hidden");
+
+        document.getElementById("loginLink")?.classList.remove("hidden");
+        document.getElementById("loginLinkMobile")?.classList.remove("hidden");
+
+        document.getElementById("settingsLinkMobile")?.classList.add("hidden");
+        document.getElementById("logoutBtnMobile")?.classList.add("hidden");
+
+        const sub = document.getElementById("subtitle");
+        if (sub) sub.textContent = "See top individuals and teams. (Public view)";
       }
 
-      // If still nothing, leave as '—'
-    }
+      await loadIndividuals();
+      await loadTeams();
+      wireSearch();
+
+      if (session?.user) {
+        syncSummaryIndividualRankFromAll();
+        syncSummaryTeamRank();
+      }
+    })();
   </script>
 </body>
 </html>

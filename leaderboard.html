@@ -546,25 +546,66 @@
     });
 
     function syncSummaryTeamRank(){
-      if (!TEAMS?.length) return;
+  if (!TEAMS?.length) return;
 
-      const candidates = [
-        normalizeKey(USER_TEAM_NAME),
-        normalizeKey((INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_DISPLAY_NAME))||{}).team),
-        normalizeKey((INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_FALLBACK_NAME))||{}).team),
-      ].filter(Boolean);
+  // Build a list of candidate team strings we might know about the user
+  const candidatesRaw = [
+    USER_TEAM_NAME,
+    (INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_DISPLAY_NAME))||{}).team,
+    (INDIVIDUALS.find(r => normalizeKey(r.name) === normalizeKey(USER_FALLBACK_NAME))||{}).team,
+  ].filter(Boolean);
 
-      for (const key of candidates) {
-        let found = TEAMS.find(t => normalizeKey(t.team) === key);
-        if (found?.rankLabel) { document.getElementById("teamRank").textContent = found.rankLabel; return; }
+  // If still nothing, we can't compute
+  if (!candidatesRaw.length) return;
 
-        found = TEAMS.find(t => {
-          const tt = normalizeKey(t.team);
-          return tt.includes(key) || key.includes(tt);
-        });
-        if (found?.rankLabel) { document.getElementById("teamRank").textContent = found.rankLabel; return; }
-      }
+  // Helper: tokenize normalized string
+  const tokens = (s) => normalizeKey(s).split(" ").filter(Boolean);
+
+  // Score how well teamName matches userTeam: more shared tokens + exact match bonus
+  function scoreMatch(userTeam, teamName){
+    const u = normalizeKey(userTeam);
+    const t = normalizeKey(teamName);
+    if (!u || !t) return -Infinity;
+
+    if (u === t) return 1_000_000; // perfect match
+
+    const uTok = tokens(u);
+    const tTok = tokens(t);
+
+    // token overlap
+    let overlap = 0;
+    for (const tok of uTok) if (tTok.includes(tok)) overlap++;
+
+    // prefer matches where ALL user tokens appear in team tokens
+    const allUserTokensPresent = uTok.length > 0 && overlap === uTok.length;
+
+    // slight preference for shorter/closer names (avoids accidental super-long contains)
+    const lengthPenalty = Math.abs(tTok.length - uTok.length);
+
+    // contains bonus (but not too strong)
+    const containsBonus = (t.includes(u) || u.includes(t)) ? 5 : 0;
+
+    // final score
+    return (allUserTokensPresent ? 100 : 0) + overlap * 10 + containsBonus - lengthPenalty;
+  }
+
+  // Choose best team row across all candidates
+  let best = null;
+  let bestScore = -Infinity;
+
+  for (const cand of candidatesRaw) {
+    for (const teamRow of TEAMS) {
+      const s = scoreMatch(cand, teamRow.team);
+      if (s > bestScore) { bestScore = s; best = teamRow; }
     }
+  }
+
+  // If we found a reasonable match, use the SAME label shown in the leaderboard table
+  if (best?.rankLabel && bestScore > 0) {
+    setSummaryTeamRankText(best.rankLabel); // e.g. "4" or "T4"
+  }
+}
+
 
     // ----------------------------
     // Logout wiring (only matters when logged in)

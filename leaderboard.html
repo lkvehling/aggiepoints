@@ -41,15 +41,16 @@
         </a>
 
         <nav class="hidden md:flex items-center gap-8 font-ui">
-          <a href="index.html" class="hover:text-aggieGold">Home</a>
+          <a id="homeLink" href="index.html" class="hover:text-aggieGold">Home</a>
           <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
-          <a href="events.html" class="hover:text-aggieGold">All Events</a>
+          <a id="eventsLink" href="events.html" class="hover:text-aggieGold">All Events</a>
           <a href="about.html" class="hover:text-aggieGold">About</a>
 
-          <!-- Login link shown only when logged out -->
+          <!-- Public-only links (shown only when logged out) -->
           <a id="loginLink" href="login.html" class="hover:text-aggieGold hidden">Login</a>
+          <a id="registerLink" href="register.html" class="hover:text-aggieGold hidden">Register</a>
 
-          <!-- Account dropdown -->
+          <!-- Account dropdown (shown only when logged in) -->
           <div id="acctWrap" class="relative">
             <button id="acctBtn" class="hover:text-aggieGold flex items-center gap-2">
               <span id="acctName" class="font-medium">Account</span>
@@ -75,17 +76,18 @@
     <!-- Mobile menu -->
     <div id="mobileMenu" class="md:hidden hidden border-t border-white/10">
       <div class="space-y-1 px-4 pb-4 pt-2 font-ui">
-        <a href="index.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Home</a>
+        <a id="homeLinkMobile" href="index.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Home</a>
         <a href="leaderboard.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Leaderboard</a>
-        <a href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
+        <a id="eventsLinkMobile" href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
         <a href="about.html" class="block px-3 py-2 rounded-md hover:bg-white/10">About</a>
 
-        <!-- These are private; we hide them when logged out -->
+        <!-- Private (logged-in) -->
         <a id="settingsLinkMobile" href="settings.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Settings</a>
         <button id="logoutBtnMobile" class="w-full text-left block px-3 py-2 rounded-md hover:bg-white/10">Log out</button>
 
-        <!-- Login shown only when logged out -->
+        <!-- Public-only (logged-out) -->
         <a id="loginLinkMobile" href="login.html" class="block px-3 py-2 rounded-md hover:bg-white/10 hidden">Login</a>
+        <a id="registerLinkMobile" href="register.html" class="block px-3 py-2 rounded-md hover:bg-white/10 hidden">Register</a>
       </div>
     </div>
   </header>
@@ -632,25 +634,53 @@
       const { data: { session } } = await sb.auth.getSession();
 
       if (session?.user) {
+        // ensure "logged-in" nav state
+        document.getElementById("acctWrap")?.classList.remove("hidden");
+
+        document.getElementById("loginLink")?.classList.add("hidden");
+        document.getElementById("loginLinkMobile")?.classList.add("hidden");
+        document.getElementById("registerLink")?.classList.add("hidden");
+        document.getElementById("registerLinkMobile")?.classList.add("hidden");
+
+        document.getElementById("homeLink")?.classList.remove("hidden");
+        document.getElementById("eventsLink")?.classList.remove("hidden");
+        document.getElementById("homeLinkMobile")?.classList.remove("hidden");
+        document.getElementById("eventsLinkMobile")?.classList.remove("hidden");
+
+        document.getElementById("settingsLinkMobile")?.classList.remove("hidden");
+        document.getElementById("logoutBtnMobile")?.classList.remove("hidden");
+        document.getElementById("summaryCard")?.classList.remove("hidden");
+
         const { data: { user } } = await sb.auth.getUser();
         document.getElementById("acctName").textContent = user?.user_metadata?.display_name || user?.email || "Account";
+
         await refreshProfileSummary();
       } else {
         // logged out UI adjustments
         document.getElementById("acctWrap")?.classList.add("hidden");
         document.getElementById("summaryCard")?.classList.add("hidden");
 
+        // show public-only links
         document.getElementById("loginLink")?.classList.remove("hidden");
         document.getElementById("loginLinkMobile")?.classList.remove("hidden");
+        document.getElementById("registerLink")?.classList.remove("hidden");
+        document.getElementById("registerLinkMobile")?.classList.remove("hidden");
 
+        // hide private links/buttons
         document.getElementById("settingsLinkMobile")?.classList.add("hidden");
         document.getElementById("logoutBtnMobile")?.classList.add("hidden");
+
+        // hide links you don't want for public users
+        document.getElementById("homeLink")?.classList.add("hidden");
+        document.getElementById("eventsLink")?.classList.add("hidden");
+        document.getElementById("homeLinkMobile")?.classList.add("hidden");
+        document.getElementById("eventsLinkMobile")?.classList.add("hidden");
 
         const sub = document.getElementById("subtitle");
         if (sub) sub.textContent = "See top individuals and teams. (Public view)";
       }
 
-      // Load leaderboards
+      // Load leaderboards (public)
       await loadIndividuals();
       await loadTeams();
       wireSearch();

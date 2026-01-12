@@ -523,11 +523,23 @@
       });
 
       document.getElementById("clearSearch")?.addEventListener("click", () => {
-        IND_FILTER = "";
-        const inp = document.getElementById("searchInput");
-        if (inp) inp.value = "";
-        renderIndividualsSmart();
-      });
+        // reset state
+      IND_FILTER = "";
+  TEAM_FILTER = "";
+
+  // reset UI inputs
+  const inp = document.getElementById("searchInput");
+  if (inp) inp.value = "";
+
+  const sel = document.getElementById("teamFilter");
+  if (sel) sel.value = ""; // back to "All Teams"
+
+  // optional: go back to top-10 mode when clearing everything
+  showAllIndividuals = false;
+
+  renderIndividualsSmart();
+});
+
 
       document.getElementById("teamFilter")?.addEventListener("change", (e) => {
         TEAM_FILTER = (e.target.value || "").trim();

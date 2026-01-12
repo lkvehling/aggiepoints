@@ -316,7 +316,7 @@
     })();
 
     // ----------------------------
-    // Individuals (FULL fetch once)
+    // Individuals (FULL fetch once, compute GLOBAL ranks once)
     // ----------------------------
     async function loadIndividualsAll(){
       // Pull ALL rows once so search always works across everyone
@@ -329,7 +329,16 @@
         points: Number(r.points ?? 0)
       }));
 
+      // Sort globally by points desc
       INDIVIDUALS_ALL.sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
+
+      // Compute GLOBAL rank labels (Ties handled globally)
+      const globalPts = INDIVIDUALS_ALL.map(r => r.points);
+      const globalRankLabels = computeRankLabelsByValue(globalPts);
+      INDIVIDUALS_ALL = INDIVIDUALS_ALL.map((r, i) => ({
+        ...r,
+        globalRankLabel: globalRankLabels[i] // <- THIS is what we display even when filtered
+      }));
 
       buildTeamFilterOptions();
       renderIndividualsSmart();
@@ -344,10 +353,8 @@
       const teams = Array.from(new Set(INDIVIDUALS_ALL.map(r => (r.team || "").trim()).filter(Boolean)))
         .sort((a,b)=> a.localeCompare(b));
 
-      // reset options
       sel.innerHTML = `<option value="">All Teams</option>` + teams.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
 
-      // restore if possible
       if (teams.includes(current)) sel.value = current;
     }
 
@@ -366,19 +373,18 @@
 
     function getIndividualsToShow(){
       const filtered = applyFilters(INDIVIDUALS_ALL);
-
       const searchingOrFiltering = !!(IND_FILTER || TEAM_FILTER);
 
-      // If user is filtering/searching: show ALL matches (this is the bug fix you asked for)
+      // When searching/filtering: show ALL matches (no re-rank)
       if (searchingOrFiltering) return { rows: filtered, mode: "matches" };
 
-      // Otherwise: normal behavior (top 10 vs all)
+      // Otherwise: top 10 vs all behavior
       if (showAllIndividuals) return { rows: filtered, mode: "all" };
       return { rows: filtered.slice(0, 10), mode: "top10", total: filtered.length };
     }
 
     function renderIndividualsSmart(){
-      const { rows, mode, total } = getIndividualsToShow();
+      const { rows, mode } = getIndividualsToShow();
 
       const note = document.getElementById("filterNote");
       const toggleBtn = document.getElementById("indToggleBtn");
@@ -404,9 +410,6 @@
           $("#indCount").textContent = "Top 10";
           toggleBtn.textContent = "See all";
         }
-
-        // If you want “Top 10 (of N)” uncomment:
-        // if (mode === "top10") $("#indCount").textContent = `Top 10 (of ${total})`;
       }
 
       renderIndividuals(rows);
@@ -418,13 +421,10 @@
       if(!rows.length){ empty.classList.remove("hidden"); return; }
       empty.classList.add("hidden");
 
-      const pts = rows.map(r=>r.points);
-      const ranks = computeRankLabelsByValue(pts);
-
-      rows.forEach((r,i)=>{
+      rows.forEach((r)=>{
         body.insertAdjacentHTML("beforeend",`
           <tr class="hover:bg-aggieBlue/5">
-            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base">${ranks[i]}</td>
+            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base">${r.globalRankLabel ?? "—"}</td>
             <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base">${esc(r.name)}</td>
             <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base">${esc(r.team)}</td>
             <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base font-semibold text-aggieBlue text-right">${r.points}</td>
@@ -434,7 +434,6 @@
     }
 
     document.getElementById("indToggleBtn").addEventListener("click", () => {
-      // Toggle only makes sense when not searching/filtering; renderIndividualsSmart() already hides the button otherwise
       showAllIndividuals = !showAllIndividuals;
       renderIndividualsSmart();
     });
@@ -540,7 +539,6 @@
       const loggedIn = !!session?.user;
 
       if (loggedIn) {
-        // Logged in: show Home + All Events + Account; hide Login/Register
         document.getElementById("acctWrap")?.classList.remove("hidden");
 
         document.getElementById("loginLink")?.classList.add("hidden");
@@ -559,7 +557,6 @@
         const { data: { user } } = await sb.auth.getUser();
         document.getElementById("acctName").textContent = user?.user_metadata?.display_name || user?.email || "Account";
       } else {
-        // Logged out: ONLY Leaderboard + About + Login + Register
         document.getElementById("acctWrap")?.classList.add("hidden");
 
         document.getElementById("loginLink")?.classList.remove("hidden");
@@ -579,10 +576,8 @@
         if (sub) sub.textContent = "See top individuals and teams. (Public view)";
       }
 
-      // Wire UI controls
       wireSearchAndFilter();
 
-      // Load leaderboards (public for everyone)
       await loadIndividualsAll();
       await loadTeams();
     })();

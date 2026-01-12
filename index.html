@@ -277,10 +277,11 @@
     if (!user) return;
 
     const { data: prof, error } = await sb
-      .from('profiles')
+      .from('profile_summary_v1')
       .select('points_total, rank, team_rank, individual_is_tied, team_is_tied')
       .eq('id', user.id)
       .single();
+
 
     if (!error && prof) applySummary(prof);
   }
@@ -406,11 +407,12 @@ function isOpenNow(ev) {
 
     // Load Profile
     try {
-      const { data: prof, error: pErr } = await sb
-        .from('profiles')
-        .select('display_name, points_total, rank, team_rank, individual_is_tied, team_is_tied')
+      const { data: prof, error } = await sb
+        .from('profile_summary_v1')
+        .select('points_total, rank, team_rank, individual_is_tied, team_is_tied')
         .eq('id', user.id)
         .single();
+
       if (!pErr && prof) applySummary(prof);
       else console.error('profiles error', pErr);
     } catch (e) {

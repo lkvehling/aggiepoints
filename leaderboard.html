@@ -106,40 +106,36 @@
     <!-- Sidebar -->
     <aside class="space-y-6 lg:col-span-1">
 
-      <!-- NEW: Summary card (only visible when logged in) -->
-      <section id="summaryCard" class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6 hidden">
-        <div class="flex items-start justify-between gap-4">
-          <div>
-            <h3 class="font-ui text-base font-semibold text-aggieBlue">Your Summary</h3>
-            <p class="mt-1 text-xs font-ui text-ink/60">Your live standings.</p>
-          </div>
-          <a href="events.html" class="shrink-0 px-3 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95">
-            Check in
-          </a>
-        </div>
-
-        <div class="mt-4 grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <div class="rounded-xl border border-aggieBlue/10 bg-aggieBlue/5 p-4">
-            <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Total Points</div>
-            <div id="sumPoints" class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">—</div>
-          </div>
-
-          <div class="rounded-xl border border-aggieBlue/10 bg-white p-4">
-            <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Individual Rank</div>
-            <div class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">
-              <span id="sumIndRank">—</span>
+      <!-- NEW: Summary card (matches index.html layout exactly) -->
+      <section id="summaryCard" class="lg:col-span-1 order-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10 hidden">
+        <div class="p-4">
+          <h2 class="font-ui text-lg font-semibold text-aggieBlue mb-3">Your Summary</h2>
+          <div class="space-y-3">
+            <!-- Big points number -->
+            <div>
+              <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Total Points</div>
+              <div id="pointsTotal" class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">—</div>
+            </div>
+            <!-- Side-by-side ranks -->
+            <div class="grid grid-cols-2 gap-4">
+              <div>
+                <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Individual Rank</div>
+                <div class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">
+                  <span id="individualRank">—</span>
+                </div>
+              </div>
+              <div>
+                <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Team Rank</div>
+                <div class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">
+                  <span id="teamRank">—</span>
+                </div>
+              </div>
             </div>
           </div>
 
-          <div class="rounded-xl border border-aggieBlue/10 bg-white p-4">
-            <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Team Rank (Avg/Teammate)</div>
-            <div class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">
-              <span id="sumTeamRank">—</span>
-            </div>
-            <div class="mt-1 font-ui text-xs text-ink/60">
-              <span id="sumTeamName">—</span>
-              <span id="sumTeamAvgWrap" class="hidden"> · Avg <span id="sumTeamAvg">—</span></span>
-            </div>
+          <div class="mt-5 flex gap-3">
+            <a href="leaderboard.html" class="px-4 py-2 rounded-lg bg-aggieBlue text-white font-ui hover:bg-aggieBlue/90">Leaderboards</a>
+            <a href="events.html" class="px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95">All Events</a>
           </div>
         </div>
       </section>
@@ -355,68 +351,46 @@
     })();
 
     // ----------------------------
-    // NEW: Summary card (uses profile_summary_v1)
+    // NEW: Summary card logic (same IDs + tie logic as index.html)
+    // Uses profile_summary_v1 so team_rank is based on avg/team.
     // ----------------------------
-    function applySummaryRow(row){
-      if (!row) return;
+    function applySummary(prof) {
+      const pts = prof?.points_total ?? 0;
 
-      const points = row.points_total ?? 0;
+      $("#pointsTotal") && ($("#pointsTotal").textContent = pts);
 
-      const indRank = (row.rank == null)
+      $("#individualRank").textContent = (prof.rank == null)
         ? '—'
-        : (row.individual_is_tied ? `T${row.rank}` : String(row.rank));
+        : (prof.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
 
-      const teamRank = (row.team_rank == null)
+      $("#teamRank").textContent = (prof.team_rank == null)
         ? '—'
-        : (row.team_is_tied ? `T${row.team_rank}` : String(row.team_rank));
-
-      const teamName = (row.team_name && String(row.team_name).trim()) ? row.team_name : '—';
-
-      const avg = row.team_avg_points;
-
-      $("#sumPoints").textContent = points;
-      $("#sumIndRank").textContent = indRank;
-      $("#sumTeamRank").textContent = teamRank;
-      $("#sumTeamName").textContent = teamName;
-
-      const wrap = document.getElementById("sumTeamAvgWrap");
-      const avgEl = document.getElementById("sumTeamAvg");
-      if (wrap && avgEl) {
-        if (avg == null || Number.isNaN(Number(avg))) {
-          wrap.classList.add("hidden");
-        } else {
-          avgEl.textContent = fmt(Number(avg), 1);
-          wrap.classList.remove("hidden");
-        }
-      }
+        : (prof.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
     }
 
-    async function loadSummaryIfLoggedIn(){
+    async function loadSummaryIfLoggedIn() {
       const { data: { session } } = await sb.auth.getSession();
-      const loggedIn = !!session?.user;
       const card = document.getElementById("summaryCard");
       if (!card) return;
 
-      if (!loggedIn) {
+      if (!session?.user) {
         card.classList.add("hidden");
         return;
       }
 
       card.classList.remove("hidden");
 
-      const userId = session.user.id;
-      const { data, error } = await sb
+      const { data: prof, error } = await sb
         .from("profile_summary_v1")
-        .select("points_total, rank, individual_is_tied, team_rank, team_is_tied, team_name, team_avg_points")
-        .eq("id", userId)
+        .select("points_total, rank, team_rank, individual_is_tied, team_is_tied")
+        .eq("id", session.user.id)
         .single();
 
       if (error) {
         console.warn("profile_summary_v1 summary error", error);
         return;
       }
-
-      applySummaryRow(data);
+      if (prof) applySummary(prof);
     }
 
     // ----------------------------
@@ -441,7 +415,7 @@
       const globalRankLabels = computeRankLabelsByValue(globalPts);
       INDIVIDUALS_ALL = INDIVIDUALS_ALL.map((r, i) => ({
         ...r,
-        globalRankLabel: globalRankLabels[i] // <- THIS is what we display even when filtered
+        globalRankLabel: globalRankLabels[i] // <- display even when filtered
       }));
 
       buildTeamFilterOptions();
@@ -680,7 +654,7 @@
         if (sub) sub.textContent = "See top individuals and teams. (Public view)";
       }
 
-      // NEW: summary card if logged in
+      // NEW: summary card (index.html style) if logged in
       await loadSummaryIfLoggedIn();
 
       wireSearchAndFilter();

@@ -105,13 +105,26 @@
 
     <!-- Sidebar -->
     <aside class="space-y-6 lg:col-span-1">
-      <!-- Search Individuals -->
+      <!-- Search + Filter -->
       <section class="card rounded-2xl bg-white shadow-soft p-5 sm:p-6">
-        <h3 class="font-ui text-base font-semibold text-aggieBlue">Search Individuals</h3>
-        <div class="mt-3 flex items-center gap-2">
-          <input id="searchInput" type="search" placeholder="Search by name or team…" class="w-full rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieGold/60" />
-          <button id="clearSearch" class="px-3 py-2 rounded-lg font-ui border border-aggieBlue/10 hover:bg-aggieBlue/5">Clear</button>
+        <h3 class="font-ui text-base font-semibold text-aggieBlue">Find Individuals</h3>
+
+        <div class="mt-3">
+          <label class="block font-ui text-xs uppercase tracking-wide text-ink/60">Search</label>
+          <div class="mt-2 flex items-center gap-2">
+            <input id="searchInput" type="search" placeholder="Search by name…" class="w-full rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui focus:outline-none focus:ring-2 focus:ring-aggieGold/60" />
+            <button id="clearSearch" class="px-3 py-2 rounded-lg font-ui border border-aggieBlue/10 hover:bg-aggieBlue/5">Clear</button>
+          </div>
         </div>
+
+        <div class="mt-4">
+          <label for="teamFilter" class="block font-ui text-xs uppercase tracking-wide text-ink/60">Team</label>
+          <select id="teamFilter" class="mt-2 w-full rounded-xl border border-aggieBlue/10 px-4 py-2 font-ui bg-white focus:outline-none focus:ring-2 focus:ring-aggieGold/60">
+            <option value="">All Teams</option>
+          </select>
+        </div>
+
+        <p id="filterNote" class="mt-3 text-xs font-ui text-ink/60 hidden"></p>
       </section>
     </aside>
 
@@ -138,6 +151,8 @@
             <tbody id="indBody" class="divide-y divide-gray-100"></tbody>
           </table>
           <div id="indEmpty" class="hidden py-8 text-center font-ui text-ink/60">No individuals found.</div>
+
+          <!-- Toggle only applies when NOT filtering/searching -->
           <div class="mt-3 flex justify-center">
             <button id="indToggleBtn" class="px-4 py-2 rounded-lg border border-aggieBlue/20 font-ui hover:bg-aggieBlue/5">See all</button>
           </div>
@@ -195,11 +210,14 @@
     // ----------------------------
     // Global State
     // ----------------------------
-    let INDIVIDUALS = [];
+    let INDIVIDUALS_ALL = [];  // ALWAYS full dataset (for search + filter)
     let TEAMS = [];
-    let showAllIndividuals = false;
+
+    let showAllIndividuals = false; // only applies when not searching/filtering
     let showAllTeams = false;
+
     let IND_FILTER = "";
+    let TEAM_FILTER = ""; // exact match on team name (from dropdown)
 
     // ----------------------------
     // Utils
@@ -298,32 +316,100 @@
     })();
 
     // ----------------------------
-    // Individuals
+    // Individuals (FULL fetch once)
     // ----------------------------
-    async function loadIndividuals(){
-      const limit = showAllIndividuals ? null : 10;
-      const {data,error} = await sb.rpc("leaderboard_top_individuals", { limit_n: limit });
-      if(error){ console.warn("leaderboard_top_individuals", error); INDIVIDUALS=[]; return; }
+    async function loadIndividualsAll(){
+      // Pull ALL rows once so search always works across everyone
+      const {data,error} = await sb.rpc("leaderboard_top_individuals", { limit_n: null });
+      if(error){ console.warn("leaderboard_top_individuals", error); INDIVIDUALS_ALL=[]; return; }
 
-      INDIVIDUALS = (data || []).map(r => ({
+      INDIVIDUALS_ALL = (data || []).map(r => ({
         name: r.name ?? "",
         team: r.team ?? "",
         points: Number(r.points ?? 0)
       }));
 
-      INDIVIDUALS.sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
+      INDIVIDUALS_ALL.sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
 
-      renderIndividuals(applyIndFilter(IND_FILTER));
-      $("#indCount").textContent = showAllIndividuals ? `${INDIVIDUALS.length} total` : "Top 10";
-      $("#indToggleBtn").textContent = showAllIndividuals ? "See top 10" : "See all";
+      buildTeamFilterOptions();
+      renderIndividualsSmart();
     }
 
-    function applyIndFilter(q){
-      if(!q) return INDIVIDUALS;
-      const key = normalizeKey(q);
-      return INDIVIDUALS.filter(r =>
-        normalizeKey(r.name).includes(key) || normalizeKey(r.team).includes(key)
-      );
+    function buildTeamFilterOptions(){
+      const sel = document.getElementById("teamFilter");
+      if (!sel) return;
+
+      const current = sel.value;
+
+      const teams = Array.from(new Set(INDIVIDUALS_ALL.map(r => (r.team || "").trim()).filter(Boolean)))
+        .sort((a,b)=> a.localeCompare(b));
+
+      // reset options
+      sel.innerHTML = `<option value="">All Teams</option>` + teams.map(t => `<option value="${esc(t)}">${esc(t)}</option>`).join("");
+
+      // restore if possible
+      if (teams.includes(current)) sel.value = current;
+    }
+
+    function applyFilters(rows){
+      let out = rows;
+
+      if (TEAM_FILTER) out = out.filter(r => (r.team || "").trim() === TEAM_FILTER);
+
+      if (IND_FILTER) {
+        const key = normalizeKey(IND_FILTER);
+        out = out.filter(r => normalizeKey(r.name).includes(key));
+      }
+
+      return out;
+    }
+
+    function getIndividualsToShow(){
+      const filtered = applyFilters(INDIVIDUALS_ALL);
+
+      const searchingOrFiltering = !!(IND_FILTER || TEAM_FILTER);
+
+      // If user is filtering/searching: show ALL matches (this is the bug fix you asked for)
+      if (searchingOrFiltering) return { rows: filtered, mode: "matches" };
+
+      // Otherwise: normal behavior (top 10 vs all)
+      if (showAllIndividuals) return { rows: filtered, mode: "all" };
+      return { rows: filtered.slice(0, 10), mode: "top10", total: filtered.length };
+    }
+
+    function renderIndividualsSmart(){
+      const { rows, mode, total } = getIndividualsToShow();
+
+      const note = document.getElementById("filterNote");
+      const toggleBtn = document.getElementById("indToggleBtn");
+
+      if (mode === "matches") {
+        $("#indCount").textContent = `${rows.length} match${rows.length===1?"":"es"}`;
+        if (toggleBtn) toggleBtn.classList.add("hidden");
+        if (note) {
+          const bits = [];
+          if (TEAM_FILTER) bits.push(`Team: ${TEAM_FILTER}`);
+          if (IND_FILTER) bits.push(`Search: “${IND_FILTER}”`);
+          note.textContent = bits.length ? `Showing matches • ${bits.join(" • ")}` : "";
+          note.classList.toggle("hidden", !bits.length);
+        }
+      } else {
+        if (toggleBtn) toggleBtn.classList.remove("hidden");
+        if (note) note.classList.add("hidden");
+
+        if (mode === "all") {
+          $("#indCount").textContent = `${rows.length} total`;
+          toggleBtn.textContent = "See top 10";
+        } else {
+          $("#indCount").textContent = "Top 10";
+          toggleBtn.textContent = "See all";
+        }
+
+        // If you want “Top 10 (of N)” uncomment:
+        // if (mode === "top10") $("#indCount").textContent = `Top 10 (of ${total})`;
+      }
+
+      renderIndividuals(rows);
     }
 
     function renderIndividuals(rows){
@@ -347,21 +433,28 @@
       });
     }
 
-    document.getElementById("indToggleBtn").addEventListener("click", async () => {
+    document.getElementById("indToggleBtn").addEventListener("click", () => {
+      // Toggle only makes sense when not searching/filtering; renderIndividualsSmart() already hides the button otherwise
       showAllIndividuals = !showAllIndividuals;
-      await loadIndividuals();
-      renderIndividuals(applyIndFilter(IND_FILTER));
+      renderIndividualsSmart();
     });
 
-    function wireSearch(){
+    function wireSearchAndFilter(){
       document.getElementById("searchInput")?.addEventListener("input", (e) => {
         IND_FILTER = (e.target.value || "").trim();
-        renderIndividuals(applyIndFilter(IND_FILTER));
+        renderIndividualsSmart();
       });
+
       document.getElementById("clearSearch")?.addEventListener("click", () => {
         IND_FILTER = "";
-        document.getElementById("searchInput").value = "";
-        renderIndividuals(INDIVIDUALS);
+        const inp = document.getElementById("searchInput");
+        if (inp) inp.value = "";
+        renderIndividualsSmart();
+      });
+
+      document.getElementById("teamFilter")?.addEventListener("change", (e) => {
+        TEAM_FILTER = (e.target.value || "").trim();
+        renderIndividualsSmart();
       });
     }
 
@@ -486,10 +579,12 @@
         if (sub) sub.textContent = "See top individuals and teams. (Public view)";
       }
 
+      // Wire UI controls
+      wireSearchAndFilter();
+
       // Load leaderboards (public for everyone)
-      await loadIndividuals();
+      await loadIndividualsAll();
       await loadTeams();
-      wireSearch();
     })();
   </script>
 </body>

@@ -47,12 +47,49 @@
         <a href="index.html" class="flex items-center">
           <span class="font-ui text-xl font-semibold tracking-wide">Aggie Points</span>
         </a>
+
+        <!-- Desktop nav (PUBLIC) -->
         <nav class="hidden md:flex items-center gap-8 font-ui">
           <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
           <a href="about.html" class="hover:text-aggieGold">About</a>
           <a href="login.html" class="hover:text-aggieGold">Login</a>
           <a href="register.html" class="hover:text-aggieGold">Register</a>
         </nav>
+
+        <!-- Mobile menu button (PUBLIC) -->
+        <button id="mobileMenuBtn"
+          class="md:hidden inline-flex items-center justify-center rounded-lg border border-white/20 bg-white/10 px-3 py-2 hover:bg-white/15"
+          aria-label="Open menu"
+          aria-expanded="false"
+          aria-controls="mobileMenu">
+          <!-- hamburger -->
+          <svg id="iconHamburger" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               class="h-5 w-5">
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+          <!-- X -->
+          <svg id="iconClose" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24"
+               fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+               class="hidden h-5 w-5">
+            <line x1="18" y1="6" x2="6" y2="18"></line>
+            <line x1="6" y1="6" x2="18" y2="18"></line>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Mobile dropdown panel (PUBLIC) -->
+      <div id="mobileMenu" class="md:hidden hidden pb-4">
+        <div class="rounded-2xl border border-white/15 bg-white/10 p-3">
+          <nav class="flex flex-col gap-1 font-ui">
+            <a href="leaderboard.html" class="rounded-xl px-3 py-2 hover:bg-white/10">Leaderboard</a>
+            <a href="about.html" class="rounded-xl px-3 py-2 hover:bg-white/10">About</a>
+            <a href="login.html" class="rounded-xl px-3 py-2 hover:bg-white/10">Login</a>
+            <a href="register.html" class="rounded-xl px-3 py-2 hover:bg-white/10">Register</a>
+          </nav>
+        </div>
       </div>
     </div>
   </header>
@@ -98,7 +135,7 @@
                    placeholder="e.g. 123456789" />
           </label>
 
-          <!-- UPDATED: Team starts blank + required -->
+          <!-- Team starts blank + required -->
           <label class="block">
             <span class="font-ui text-sm uppercase tracking-wide text-ink/60">Team</span>
             <select id="team" required
@@ -131,7 +168,7 @@
             </select>
           </label>
 
-          <!-- UPDATED: Graduation Year starts blank + required -->
+          <!-- Graduation Year starts blank + required -->
           <label class="block">
             <span class="font-ui text-sm uppercase tracking-wide text-ink/60">Graduation Year</span>
             <select id="year" required
@@ -175,15 +212,44 @@
     // Year
     document.getElementById('yearText').textContent = new Date().getFullYear();
 
-    // If your auth-config.js exposes redirectIfLoggedIn(), use it; otherwise quick check:
+    // Public vs non-public behavior:
+    // - This page is PUBLIC
+    // - If already logged in, redirect away
     (async () => {
       if (typeof redirectIfLoggedIn === 'function') {
         redirectIfLoggedIn();
       } else {
         const { data: { session } } = await sb.auth.getSession();
-        if (session) window.location.href = typeof APP_HOME !== 'undefined' ? APP_HOME : 'index.html';
+        if (session) window.location.href = (typeof APP_HOME !== 'undefined' ? APP_HOME : 'index.html');
       }
     })();
+
+    // ===== Mobile menu behavior (PUBLIC) =====
+    const mobileBtn  = document.getElementById("mobileMenuBtn");
+    const mobileMenu = document.getElementById("mobileMenu");
+    const iconHam    = document.getElementById("iconHamburger");
+    const iconClose  = document.getElementById("iconClose");
+
+    function setMobileOpen(open) {
+      if (!mobileMenu || !mobileBtn) return;
+      mobileMenu.classList.toggle("hidden", !open);
+      mobileBtn.setAttribute("aria-expanded", open ? "true" : "false");
+      iconHam?.classList.toggle("hidden", open);
+      iconClose?.classList.toggle("hidden", !open);
+    }
+
+    mobileBtn?.addEventListener("click", () => {
+      const isHidden = mobileMenu.classList.contains("hidden");
+      setMobileOpen(isHidden);
+    });
+
+    window.addEventListener("resize", () => {
+      if (window.matchMedia("(min-width: 768px)").matches) setMobileOpen(false);
+    });
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") setMobileOpen(false);
+    });
 
     // Elements
     const emailEl = document.getElementById("email");
@@ -195,7 +261,7 @@
     const btn     = document.getElementById("registerBtn");
     const msgEl   = document.getElementById("msg");
 
-    // Tiny helpers (so prior calls work)
+    // Tiny helpers
     function setDisabled(el, v){ if(el){ el.disabled = !!v; el.classList.toggle('opacity-60', !!v); } }
     function clear(el){ if(el){ el.textContent = ""; el.className = "font-ui text-sm"; } }
     function show(el, text, ok=false){
@@ -238,7 +304,6 @@
         show(msgEl, "Account created! Please log in.", true);
         setTimeout(() => (window.location.href = "login.html"), 800);
       } catch (e) {
-        // Friendly error mapping
         const msg = e?.message || "Registration failed.";
         if (/User already registered/i.test(msg)) {
           show(msgEl, "That email is already registered. Try logging in.");

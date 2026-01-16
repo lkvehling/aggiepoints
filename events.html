@@ -173,16 +173,32 @@
     </div>
   </footer>
 
-  <!-- Supabase (no checkin.js) -->
+  <!-- Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="auth-config.js"></script>
 
   <script>
     // ===== Helpers =====
     const $  = (s) => document.querySelector(s);
-    const $$ = (s) => Array.from(document.querySelectorAll(s));
     const toggle = (el, show) => { if (!el) return; el.classList[show ? 'remove' : 'add']('hidden'); };
     const TZ = 'America/Los_Angeles';
+
+    // ---- Supabase client (FIX: ensure sb exists) ----
+    // Expect auth-config.js to define SUPABASE_URL and SUPABASE_ANON_KEY (or similar).
+    const SUPABASE_URL_RESOLVED =
+      (typeof SUPABASE_URL !== 'undefined' && SUPABASE_URL) ||
+      (typeof window !== 'undefined' && window.SUPABASE_URL) ||
+      '';
+
+    const SUPABASE_KEY_RESOLVED =
+      (typeof SUPABASE_ANON_KEY !== 'undefined' && SUPABASE_ANON_KEY) ||
+      (typeof window !== 'undefined' && window.SUPABASE_ANON_KEY) ||
+      '';
+
+    if (!SUPABASE_URL_RESOLVED || !SUPABASE_KEY_RESOLVED) {
+      console.error('Missing SUPABASE_URL / SUPABASE_ANON_KEY. Check auth-config.js.');
+    }
+    const sb = supabase.createClient(SUPABASE_URL_RESOLVED, SUPABASE_KEY_RESOLVED);
 
     // Time helpers
     const toPT  = (ts) => new Date(new Date(ts).toLocaleString('en-US', { timeZone: TZ }));
@@ -279,14 +295,20 @@
       catch { return new Set(); }
     }
 
-    // Build Home redirect URL
-    function homeCheckinUrl(eventId) {
-      const url = new URL('/aggiepoints/index.html', location.origin);
-      url.searchParams.set('checkin_event_id', eventId);
-      return url.toString();
+    // ---- Redirect URL builder (FIX: works on custom domain OR GitHub Pages repo path) ----
+    function basePath() {
+      // If deployed under /aggiepoints/, keep that.
+      const p = location.pathname || '';
+      const i = p.indexOf('/aggiepoints/');
+      return i !== -1 ? '/aggiepoints/' : '/';
     }
 
-
+    function homeCheckinUrl(eventId) {
+      // Always redirect to index.html (relative to correct base)
+      const url = new URL(basePath() + 'index.html', location.origin);
+      if (eventId) url.searchParams.set('checkin_event_id', eventId);
+      return url.toString();
+    }
 
     // Row renderer
     function eventRow(ev, opts = {}) {
@@ -304,7 +326,6 @@
       const closedBadge  = `<span class="inline-flex items-center rounded-lg bg-gray-200 text-gray-700 ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} font-ui">Closed</span>`;
       const notOpenBadge = `<span class="inline-flex items-center rounded-lg bg-gray-200 text-gray-700 ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} font-ui">Not Open Yet</span>`;
 
-      // Render a clickable button when today (for UX), but the click handler re-checks window at click time.
       let action;
       if (checkedOverride === true) {
         action = checkedBadge;
@@ -315,11 +336,11 @@
       } else if (today) {
         action = canNow
           ? `<button class="checkin-redirect ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95"
-                     data-event-id="${ev.id}" data-start="${ev.start_ts}" data-end="${ev.end_ts}" data-title="${escapeHtml(ev.title)}">
+                     data-event-id="${ev.id}" data-start="${ev.start_ts}" data-end="${ev.end_ts}">
                Check in
              </button>`
           : `<button class="checkin-redirect ${compact?'px-2 py-0.5 text-[11px]':'px-3 py-1.5 text-sm'} rounded-lg bg-gray-200 text-gray-700 font-ui"
-                     data-event-id="${ev.id}" data-start="${ev.start_ts}" data-end="${ev.end_ts}" data-title="${escapeHtml(ev.title)}">
+                     data-event-id="${ev.id}" data-start="${ev.start_ts}" data-end="${ev.end_ts}">
                Not Open Yet
              </button>`;
       } else {
@@ -333,7 +354,7 @@
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10c0 7-7.5 10.5-7.5 10.5S4.5 17 4.5 10a7.5 7.5 0 1115 0z" />
           </svg>
-          <a href="${mapsLink(ev.location)}" target="_blank" rel="noopener noreferrer" class="truncate hover:underline" aria-label="Open ${escapeHtml(ev.location)} in Google Maps">
+          <a href="${mapsLink(ev.location)}" target="_blank" rel="noopener noreferrer" class="truncate hover:underline">
             ${escapeHtml(ev.location)}
           </a>
         </p>` : '';
@@ -368,7 +389,6 @@
       `;
     }
 
-    // Reconcile server-checked events (optional, for green badge only)
     async function reconcileCheckedInsFromServer() {
       try {
         const slots = Array.from(document.querySelectorAll('.checkin-slot[data-event-id]'));
@@ -376,18 +396,19 @@
         if (!eventIds.length) return;
         const { data: { user } } = await sb.auth.getUser();
         if (!user) return;
+
         const { data: rows, error } = await sb
           .from('checkins')
           .select('event_id')
           .eq('user_id', user.id)
           .in('event_id', eventIds);
+
         if (error) { console.warn('reconcile error', error); return; }
         const serverSet = new Set((rows || []).map(r => r.event_id));
 
         document.querySelectorAll('.checkin-slot').forEach(slot => {
           const id = slot.getAttribute('data-event-id');
-          if (!id) return;
-          if (serverSet.has(id)) {
+          if (id && serverSet.has(id)) {
             slot.innerHTML = `<span class="px-3 py-1.5 rounded-lg bg-green-100 text-green-700 font-ui text-sm">Checked in</span>`;
           }
         });
@@ -396,14 +417,17 @@
       }
     }
 
-    // Labels
     function ordinal(n){const s=["th","st","nd","rd"],v=n%100;return s[(v-20)%10]||s[v]||s[0];}
     function startOfDayPT(d){const c=new Date(d);c.setHours(0,0,0,0);return c;}
     function formatThisWeekRangeLabel(){
       const today=startOfDayPT(nowPT());const end=new Date(today);end.setDate(end.getDate()+7);
       const sameMonth=today.getMonth()===end.getMonth();const sameYear=today.getFullYear()===end.getFullYear();
-      if(sameMonth&&sameYear){const monthFull=today.toLocaleString('en-US',{timeZone:TZ,month:'long'});return `${monthFull} ${today.getDate()}–${end.getDate()}${ordinal(end.getDate())}, ${today.getFullYear()}`;}
-      const left=today.toLocaleString('en-US',{timeZone:TZ,month:'short',day:'numeric'});const rightMonth=end.toLocaleString('en-US',{timeZone:TZ,month:'short'});
+      if(sameMonth&&sameYear){
+        const monthFull=today.toLocaleString('en-US',{timeZone:TZ,month:'long'});
+        return `${monthFull} ${today.getDate()}–${end.getDate()}${ordinal(end.getDate())}, ${today.getFullYear()}`;
+      }
+      const left=today.toLocaleString('en-US',{timeZone:TZ,month:'short',day:'numeric'});
+      const rightMonth=end.toLocaleString('en-US',{timeZone:TZ,month:'short'});
       return `${left} – ${rightMonth} ${end.getDate()}${ordinal(end.getDate())}, ${end.getFullYear()}`;
     }
     function formatThisMonthLabel(){const n=nowPT();const m=n.toLocaleString('en-US',{timeZone:TZ,month:'long'});return `${m} ${n.getFullYear()}`;}
@@ -420,20 +444,18 @@
       return session;
     }
 
-    // Delegated click: re-check window at click time then redirect (no checkin.js)
+    // Delegated click: re-check window at click time then redirect
     function attachRedirectHandler(root) {
       root.addEventListener('click', (e) => {
         const btn = e.target.closest('.checkin-redirect');
         if (!btn) return;
-        const slot = btn.closest('.checkin-slot');
-        if (!slot) return;
-        const id = slot.getAttribute('data-event-id');
-        const start = slot.getAttribute('data-start');
-        const end = slot.getAttribute('data-end');
 
-        // Re-check time window at the moment of click
+        const id = btn.getAttribute('data-event-id');
+        const start = btn.getAttribute('data-start');
+        const end = btn.getAttribute('data-end');
+
         if (isTodayPT(start) && isCheckinWindow(start, end)) {
-          window.location.href = homeCheckinUrl(id);
+          window.location.href = homeCheckinUrl(id); // ✅ redirects to index.html
         } else if (isTodayPT(start) && nowPT() > closeAtPT(end)) {
           toast('This event is now closed for check-in.', { variant: 'warn' });
         } else {
@@ -444,15 +466,12 @@
 
     // Page boot
     (async () => {
-      // Header UI
       $('#mobileMenuBtn')?.addEventListener('click', () => { $('#mobileMenu')?.classList.toggle('hidden'); });
       $('#acctBtn')?.addEventListener('click', () => { $('#acctMenu')?.classList.toggle('hidden'); });
       $('#yearText').textContent = new Date().getFullYear();
 
-      // Require auth before loading data
       const session = await ensureAuthed(); if (!session) return;
 
-      // Account label + react to auth state
       try {
         const { data: { user } } = await sb.auth.getUser();
         if (user) $('#acctName').textContent = user.user_metadata?.display_name || user.email || 'Account';
@@ -461,15 +480,16 @@
         });
       } catch {}
 
-      const doLogout = async () => { await sb.auth.signOut(); window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; };
+      const doLogout = async () => {
+        await sb.auth.signOut();
+        window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html';
+      };
       $('#logoutBtn')?.addEventListener('click', doLogout);
       $('#logoutBtnMobile')?.addEventListener('click', doLogout);
 
-      // Set section labels
       $('#weekRangeText').textContent  = formatThisWeekRangeLabel();
       $('#monthRangeText').textContent = formatThisMonthLabel();
 
-      // Render helper
       function renderListInto(listEl, rows, { forceClosed = false, compact = false, checkedSet = null } = {}) {
         listEl.innerHTML = (rows || []).map(ev => eventRow(ev, {
           forceClosed,
@@ -478,7 +498,6 @@
         })).join('');
       }
 
-      // Load a view and hide past events
       async function loadSection(viewName, listEl, emptyEl) {
         const { data, error } = await sb
           .from(viewName)
@@ -491,7 +510,7 @@
         renderListInto(listEl, rows);
         toggle(emptyEl, rows.length === 0);
 
-        await reconcileCheckedInsFromServer(); // purely visual
+        await reconcileCheckedInsFromServer();
         return rows;
       }
 
@@ -499,12 +518,11 @@
       const monthListEl = $('#monthList');
       const upcomingListEl = $('#upcomingList'), upcomingEmptyEl = $('#upcomingEmpty');
 
-      // Load base views
       await loadSection('events_this_week', weekListEl, weekEmptyEl);
       await loadSection('events_this_month_excl_week', monthListEl, null);
       await loadSection('events_upcoming', upcomingListEl, upcomingEmptyEl);
 
-      // ---- Past Events (lazy load, collapsed) ----
+      // Past Events
       const pastListEl = $('#pastList');
       const pastEmptyEl = $('#pastEmpty');
       const togglePastBtn = $('#togglePastBtn');
@@ -513,7 +531,7 @@
 
       async function loadPastEvents() {
         const nowISO = new Date().toISOString();
-        const sinceISO = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString(); // last 60 days
+        const sinceISO = new Date(Date.now() - 60 * 24 * 60 * 60 * 1000).toISOString();
         const { data: eventsData, error: eventsErr } = await sb
           .from('events')
           .select('id,title,start_ts,end_ts,location,points')
@@ -530,7 +548,6 @@
           return;
         }
 
-        // Fetch which of these were checked in by the current user (for green badge)
         let checkedSet = new Set();
         try {
           const { data: { user } } = await sb.auth.getUser();
@@ -601,7 +618,6 @@
       applySearch(searchInput.value);
       searchInput.addEventListener('input', (e) => applySearch(e.target.value));
 
-      // Attach click-to-redirect handler once
       attachRedirectHandler(document.body);
     })();
   </script>

@@ -106,17 +106,15 @@
     <!-- Sidebar -->
     <aside class="space-y-6 lg:col-span-1">
 
-      <!-- NEW: Summary card (matches index.html layout exactly) -->
+      <!-- Summary card -->
       <section id="summaryCard" class="lg:col-span-1 order-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10 hidden">
         <div class="p-4">
           <h2 class="font-ui text-lg font-semibold text-aggieBlue mb-3">Your Summary</h2>
           <div class="space-y-3">
-            <!-- Big points number -->
             <div>
               <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Total Points</div>
               <div id="pointsTotal" class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">—</div>
             </div>
-            <!-- Side-by-side ranks -->
             <div class="grid grid-cols-2 gap-4">
               <div>
                 <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Individual Rank</div>
@@ -187,7 +185,6 @@
           </table>
           <div id="indEmpty" class="hidden py-8 text-center font-ui text-ink/60">No individuals found.</div>
 
-          <!-- Toggle only applies when NOT filtering/searching -->
           <div class="mt-3 flex justify-center">
             <button id="indToggleBtn" class="px-4 py-2 rounded-lg border border-aggieBlue/20 font-ui hover:bg-aggieBlue/5">See all</button>
           </div>
@@ -245,19 +242,20 @@
     // ----------------------------
     // Global State
     // ----------------------------
-    let INDIVIDUALS_ALL = [];  // ALWAYS full dataset (for search + filter)
+    let INDIVIDUALS_ALL = [];
     let TEAMS = [];
 
-    let showAllIndividuals = false; // only applies when not searching/filtering
+    let showAllIndividuals = false;
     let showAllTeams = false;
 
     let IND_FILTER = "";
-    let TEAM_FILTER = ""; // exact match on team name (from dropdown)
+    let TEAM_FILTER = "";
 
     // ----------------------------
     // Utils
     // ----------------------------
     function computeRankLabelsByValue(vals){
+      // Good for integers (individual points)
       const labels=[],n=vals.length;let rank=1;
       for(let i=0;i<n;){
         let j=i+1;while(j<n&&vals[j]===vals[i])j++;
@@ -267,6 +265,29 @@
       }
       return labels;
     }
+
+    // NEW: robust tie ranking using a precomputed "tie key" (handles floats)
+    // - keys must be in the same sorted order as the rows
+    // - null keys get "—" and do NOT consume rank numbers
+    function computeRankLabelsByKey(keys){
+      const labels = new Array(keys.length).fill("—");
+      let rank = 1;
+
+      for (let i = 0; i < keys.length; ) {
+        if (keys[i] == null) { i++; continue; }
+
+        let j = i + 1;
+        while (j < keys.length && keys[j] === keys[i]) j++;
+
+        const lbl = (j - i > 1) ? `T${rank}` : `${rank}`;
+        for (let k = i; k < j; k++) labels[k] = lbl;
+
+        rank += (j - i);
+        i = j;
+      }
+      return labels;
+    }
+
     function toNum(x){ const n = Number(x); return Number.isFinite(n) ? n : 0; }
     function fmt(num, digits=1){
       return (num == null || Number.isNaN(num)) ? '—'
@@ -284,7 +305,7 @@
     }
 
     // ----------------------------
-    // Header interactivity (mobile menu + account dropdown)
+    // Header interactivity
     // ----------------------------
     (function () {
       const btn = document.getElementById('mobileMenuBtn');
@@ -351,12 +372,10 @@
     })();
 
     // ----------------------------
-    // NEW: Summary card logic (same IDs + tie logic as index.html)
-    // Uses profile_summary_v1 so team_rank is based on avg/team.
+    // Summary card
     // ----------------------------
     function applySummary(prof) {
       const pts = prof?.points_total ?? 0;
-
       $("#pointsTotal") && ($("#pointsTotal").textContent = pts);
 
       $("#individualRank").textContent = (prof.rank == null)
@@ -394,10 +413,9 @@
     }
 
     // ----------------------------
-    // Individuals (FULL fetch once, compute GLOBAL ranks once)
+    // Individuals
     // ----------------------------
     async function loadIndividualsAll(){
-      // Pull ALL rows once so search always works across everyone
       const {data,error} = await sb.rpc("leaderboard_top_individuals", { limit_n: null });
       if(error){ console.warn("leaderboard_top_individuals", error); INDIVIDUALS_ALL=[]; return; }
 
@@ -407,15 +425,14 @@
         points: Number(r.points ?? 0)
       }));
 
-      // Sort globally by points desc
       INDIVIDUALS_ALL.sort((a,b)=> (b.points - a.points) || a.name.localeCompare(b.name));
 
-      // Compute GLOBAL rank labels (Ties handled globally)
       const globalPts = INDIVIDUALS_ALL.map(r => r.points);
       const globalRankLabels = computeRankLabelsByValue(globalPts);
+
       INDIVIDUALS_ALL = INDIVIDUALS_ALL.map((r, i) => ({
         ...r,
-        globalRankLabel: globalRankLabels[i] // <- display even when filtered
+        globalRankLabel: globalRankLabels[i]
       }));
 
       buildTeamFilterOptions();
@@ -453,10 +470,8 @@
       const filtered = applyFilters(INDIVIDUALS_ALL);
       const searchingOrFiltering = !!(IND_FILTER || TEAM_FILTER);
 
-      // When searching/filtering: show ALL matches (no re-rank)
       if (searchingOrFiltering) return { rows: filtered, mode: "matches" };
 
-      // Otherwise: top 10 vs all behavior
       if (showAllIndividuals) return { rows: filtered, mode: "all" };
       return { rows: filtered.slice(0, 10), mode: "top10", total: filtered.length };
     }
@@ -523,23 +538,18 @@
       });
 
       document.getElementById("clearSearch")?.addEventListener("click", () => {
-        // reset state
-      IND_FILTER = "";
-  TEAM_FILTER = "";
+        IND_FILTER = "";
+        TEAM_FILTER = "";
 
-  // reset UI inputs
-  const inp = document.getElementById("searchInput");
-  if (inp) inp.value = "";
+        const inp = document.getElementById("searchInput");
+        if (inp) inp.value = "";
 
-  const sel = document.getElementById("teamFilter");
-  if (sel) sel.value = ""; // back to "All Teams"
+        const sel = document.getElementById("teamFilter");
+        if (sel) sel.value = "";
 
-  // optional: go back to top-10 mode when clearing everything
-  showAllIndividuals = false;
-
-  renderIndividualsSmart();
-});
-
+        showAllIndividuals = false;
+        renderIndividualsSmart();
+      });
 
       document.getElementById("teamFilter")?.addEventListener("change", (e) => {
         TEAM_FILTER = (e.target.value || "").trim();
@@ -548,7 +558,7 @@
     }
 
     // ----------------------------
-    // Teams
+    // Teams (FIXED TIES)
     // ----------------------------
     async function fetchTeamTotalsWithAvg() {
       const { data, error } = await sb
@@ -575,8 +585,13 @@
         return a.team.localeCompare(b.team);
       });
 
-      const avgs = rows.map(r => (r.avg == null ? -Infinity : r.avg));
-      const ranks = computeRankLabelsByValue(avgs);
+      // Tie-key at the SAME precision you display (1 decimal) to avoid float noise
+      const tieKeys = rows.map(r => {
+        if (r.avg == null) return null;
+        return Number((Math.round(r.avg * 10) / 10).toFixed(1));
+      });
+
+      const ranks = computeRankLabelsByKey(tieKeys);
       rows = rows.map((r,i)=>({ ...r, rankLabel: ranks[i] }));
 
       TEAMS = rows;
@@ -597,7 +612,7 @@
       rows.forEach((r)=>{
         body.insertAdjacentHTML("beforeend",`
           <tr class="hover:bg-aggieBlue/5">
-            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base">${r.rankLabel}</td>
+            <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base">${r.rankLabel ?? "—"}</td>
             <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base font-semibold text-aggieBlue">${esc(r.team)}</td>
             <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base text-right">${fmt(r.avg,1)}</td>
             <td class="py-2 px-2 sm:py-3 sm:px-4 font-ui text-sm sm:text-base text-right">${r.total}</td>
@@ -622,7 +637,7 @@
     document.getElementById("logoutBtnMobile")?.addEventListener("click", logout);
 
     // ----------------------------
-    // Boot: nav rules + public leaderboard
+    // Boot
     // ----------------------------
     (async () => {
       const { data: { session } } = await sb.auth.getSession();
@@ -666,7 +681,6 @@
         if (sub) sub.textContent = "See top individuals and teams. (Public view)";
       }
 
-      // NEW: summary card (index.html style) if logged in
       await loadSummaryIfLoggedIn();
 
       wireSearchAndFilter();

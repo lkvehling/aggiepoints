@@ -1,468 +1,288 @@
-<!doctype html> 
+<!doctype html>
 <html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Aggie Points — Home</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aggie Points</title>
+<meta name="description" content="Aggie Points — check in at UC Davis Aggie athletics events, earn points, and climb the leaderboard. Download on the App Store.">
+<meta property="og:title" content="Aggie Points">
+<meta property="og:description" content="Support every Aggie team. Check in, earn points, climb the leaderboard.">
+<meta property="og:image" content="https://aggiepoints.com/icon.png">
+<meta name="theme-color" content="#022952">
+<meta name="apple-itunes-app" content="app-id=6801409261">
+<link rel="icon" href="favicon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-start: #022952;
+    --navy-end: #0A3B7A;
+    --navy: #0A3B7A;
+    --gold: #FFC107;
+    --gold-dark: #C9930A;
+    --page-bg: #F4F7FF;
+    --ink: #0B1B33;
+    --muted: #4A5B75;
+    --card: #FFFFFF;
+    --border: rgba(10, 59, 122, 0.12);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page-bg);
+    color: var(--ink);
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  a { color: inherit; }
 
-  <!-- Fonts (Raleway, Montserrat, Merriweather) -->
-  <link href="https://fonts.googleapis.com/css2?family=Merriweather:wght@300;400;700&family=Montserrat:wght@400;600;700&family=Raleway:wght@300;600;800&display=swap" rel="stylesheet">
+  .hero {
+    background: linear-gradient(90deg, var(--navy-start), var(--navy-end));
+    color: #fff;
+    padding: 72px 16px 88px;
+    overflow: hidden;
+  }
+  .hero-inner {
+    max-width: 1080px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    gap: 48px;
+    align-items: center;
+  }
+  .pill {
+    display: inline-block;
+    background: rgba(255, 255, 255, 0.14);
+    color: var(--gold);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    padding: 6px 14px;
+    border-radius: 999px;
+  }
+  h1 {
+    font-size: clamp(40px, 6vw, 64px);
+    line-height: 1.05;
+    font-weight: 800;
+    margin: 20px 0 16px;
+    letter-spacing: -0.02em;
+  }
+  h1 span { color: var(--gold); }
+  .lede {
+    font-size: 19px;
+    color: rgba(255, 255, 255, 0.85);
+    max-width: 34em;
+    margin: 0 0 32px;
+  }
+  .cta-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: center; }
+  .store-btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--gold);
+    color: var(--navy-start);
+    text-decoration: none;
+    font-weight: 800;
+    font-size: 18px;
+    padding: 16px 28px;
+    border-radius: 14px;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+  }
+  .store-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25); }
+  .store-btn svg { width: 22px; height: 22px; }
+  .store-btn small { display: block; font-weight: 500; font-size: 12px; line-height: 1.1; }
+  .store-btn b { display: block; line-height: 1.15; }
+  .note { font-size: 14px; color: rgba(255, 255, 255, 0.7); }
 
-  <!-- Tailwind CDN -->
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          colors: {
-            aggieBlue: "#022851",
-            aggieGold: "#FFBF00",
-            aggieBg: "#F7F7F7",
-            ink: "#333333",
-          },
-          fontFamily: {
-            heading: ["Raleway", "Helvetica Neue", "Arial", "sans-serif"],
-            ui: ["Montserrat", "Helvetica Neue", "Arial", "sans-serif"],
-            body: ["Merriweather", "Georgia", "serif"],
-          },
-          boxShadow: {
-            soft: "0 6px 24px rgba(2, 40, 81, 0.08)",
-          }
-        }
-      }
-    }
-  </script>
+  .hero-art { display: flex; justify-content: center; }
+  .hero-art img {
+    width: min(320px, 100%);
+    border-radius: 22%;
+    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.35);
+    transform: rotate(-4deg);
+  }
 
-  <style>
-    :root { --aggie-blue:#022851; --aggie-gold:#FFBF00; }
-    .card { transition: transform .15s ease, box-shadow .15s ease; }
-    .card:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(2,40,81,.12); }
-  </style>
+  .new {
+    max-width: 1080px;
+    margin: -44px auto 0;
+    padding: 0 16px;
+    position: relative;
+  }
+  .new-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 22px 26px;
+    display: flex;
+    gap: 16px;
+    align-items: center;
+    box-shadow: 0 12px 30px rgba(2, 41, 82, 0.08);
+  }
+  .new-card .badge {
+    flex: none;
+    width: 44px; height: 44px;
+    border-radius: 12px;
+    background: var(--gold);
+    color: var(--navy-start);
+    display: grid; place-items: center;
+    font-weight: 800; font-size: 22px;
+  }
+  .new-card p { margin: 0; font-size: 17px; color: var(--muted); }
+  .new-card strong { color: var(--ink); }
+
+  section.features {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 72px 16px 24px;
+  }
+  .eyebrow {
+    color: var(--gold-dark);
+    font-weight: 700;
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    margin: 0 0 8px;
+  }
+  h2 { font-size: clamp(28px, 4vw, 38px); line-height: 1.15; margin: 0 0 36px; font-weight: 800; letter-spacing: -0.01em; }
+  .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 20px; }
+  .feature {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 18px;
+    padding: 28px 26px;
+  }
+  .icon {
+    width: 52px; height: 52px;
+    border-radius: 14px;
+    background: linear-gradient(90deg, var(--navy-start), var(--navy-end));
+    color: var(--gold);
+    display: grid; place-items: center;
+    margin-bottom: 18px;
+  }
+  .icon svg { width: 26px; height: 26px; }
+  .feature h3 { font-size: 21px; margin: 0 0 8px; font-weight: 700; }
+  .feature p { margin: 0; color: var(--muted); font-size: 16px; }
+
+  section.download {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 16px 80px;
+  }
+  .download-card {
+    background: linear-gradient(90deg, var(--navy-start), var(--navy-end));
+    color: #fff;
+    border-radius: 22px;
+    padding: 40px;
+    display: flex;
+    gap: 40px;
+    align-items: center;
+    justify-content: space-between;
+  }
+  .download-card h2 { margin: 0 0 10px; }
+  .download-card p { margin: 0 0 24px; color: rgba(255, 255, 255, 0.8); font-size: 17px; }
+  .qr {
+    flex: none;
+    background: #fff;
+    border-radius: 16px;
+    padding: 14px;
+    text-align: center;
+    color: var(--navy-start);
+    font-weight: 700;
+    font-size: 14px;
+  }
+  .qr img { display: block; width: 160px; height: 160px; margin-bottom: 6px; }
+
+  footer {
+    text-align: center;
+    color: var(--muted);
+    font-size: 14px;
+    padding: 0 16px 40px;
+  }
+
+  @media (max-width: 860px) {
+    .hero { padding: 48px 16px 80px; }
+    .hero-inner { grid-template-columns: 1fr; gap: 32px; }
+    .hero-art { order: -1; justify-content: flex-start; }
+    .hero-art img { width: 120px; transform: none; }
+    .grid { grid-template-columns: 1fr; }
+    .download-card { flex-direction: column; align-items: flex-start; padding: 28px 22px; }
+    .qr { display: none; }
+  }
+</style>
 </head>
-<body class="min-h-screen bg-aggieBg text-ink font-body">
+<body>
 
-  <!-- Header / Nav -->
-  <header class="bg-aggieBlue text-white">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center justify-between py-3">
-        <a href="index.html" class="flex items-center">
-          <span class="font-ui text-xl font-semibold tracking-wide">Aggie Points</span>
+<header class="hero">
+  <div class="hero-inner">
+    <div>
+      <span class="pill">All-new for 2026–27</span>
+      <h1>Show up for every <span>Aggie</span> team.</h1>
+      <p class="lede">Check in at UC Davis athletics events, earn points for your team, and see where you stand on the live leaderboard.</p>
+      <div class="cta-row">
+        <a class="store-btn" href="https://apps.apple.com/app/aggie-points/id6801409261">
+          <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3v11.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L11 14.17V3h1zM5 19h14v2H5z"/></svg>
+          <span><small>Download on the</small><b>App Store</b></span>
         </a>
-
-        <nav class="hidden md:flex items-center gap-8 font-ui">
-          <a href="index.html" class="hover:text-aggieGold">Home</a>
-          <a href="leaderboard.html" class="hover:text-aggieGold">Leaderboard</a>
-          <a href="events.html" class="hover:text-aggieGold">All Events</a>
-          <a href="about.html" class="hover:text-aggieGold">About</a>
-
-          <!-- Account dropdown -->
-          <div class="relative">
-            <button id="acctBtn" class="hover:text-aggieGold flex items-center gap-2">
-              <span id="acctName" class="font-medium">Account</span>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none"><path d="M6 9l6 6 6-6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>
-            </button>
-            <div id="acctMenu" class="absolute right-0 mt-2 w-44 bg-white text-ink rounded-lg shadow-soft py-2 hidden">
-              <a href="settings.html" class="block px-4 py-2 hover:bg-gray-100">Settings</a>
-              <button id="logoutBtn" class="w-full text-left block px-4 py-2 hover:bg-gray-100">Log out</button>
-            </div>
-          </div>
-        </nav>
-
-        <!-- Mobile menu button -->
-        <button id="mobileMenuBtn" class="md:hidden inline-flex items-center justify-center p-2 rounded-md hover:bg-white/10">
-          <span class="sr-only">Open main menu</span>
-          <svg class="h-6 w-6" viewBox="0 0 24 24" stroke="currentColor" fill="none">
-            <path d="M4 6h16M4 12h16M4 18h16" stroke-width="2" stroke-linecap="round" />
-          </svg>
-        </button>
+        <span class="note">Free for iPhone · sign in with your @ucdavis.edu email</span>
       </div>
     </div>
-
-    <!-- Mobile menu -->
-    <div id="mobileMenu" class="md:hidden hidden border-t border-white/10">
-      <div class="space-y-1 px-4 pb-4 pt-2 font-ui">
-        <a href="index.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Home</a>
-        <a href="leaderboard.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Leaderboard</a>
-        <a href="events.html" class="block px-3 py-2 rounded-md hover:bg-white/10">All Events</a>
-        <a href="about.html" class="block px-3 py-2 rounded-md hover:bg-white/10">About</a>
-        <a href="settings.html" class="block px-3 py-2 rounded-md hover:bg-white/10">Settings</a>
-        <button id="logoutBtnMobile" class="w-full text-left block px-3 py-2 rounded-md hover:bg-white/10">Log out</button>
-      </div>
+    <div class="hero-art">
+      <img src="icon.png" alt="Aggie Points app icon">
     </div>
-  </header>
-
-  <!-- Page Header -->
-  <section class="bg-gradient-to-r from-aggieBlue to-[#0a3b7b] text-white">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-10">
-      <h1 class="font-heading text-3xl sm:text-4xl font-extrabold tracking-tight">Welcome to Aggie Points</h1>
-      <p class="mt-1 font-ui text-white/90">See your points and check in to today’s events.</p>
-    </div>
-  </section>
-
-  <!-- Main Content -->
-  <main class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-8">
-
-    <!-- Grid: mobile order - Your Points (1), Today's Events (2), Quick Links (3) -->
-    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-
-      <!-- Your Points (Summary) -->
-      <section class="lg:col-span-1 order-1 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-        <div class="p-4">
-          <h2 class="font-ui text-lg font-semibold text-aggieBlue mb-3">Your Summary</h2>
-          <div class="space-y-3">
-            <!-- Big points number -->
-            <div>
-              <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Total Points</div>
-              <div id="pointsTotal" class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">—</div>
-            </div>
-            <!-- Side-by-side ranks -->
-            <div class="grid grid-cols-2 gap-4">
-              <div>
-                <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Individual Rank</div>
-                <div class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">
-                  <span id="individualRank">—</span>
-                </div>
-              </div>
-              <div>
-                <div class="font-ui text-xs uppercase tracking-wide text-ink/60">Team Rank</div>
-                <div class="mt-1 text-3xl font-heading font-extrabold text-aggieBlue">
-                  <span id="teamRank">—</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <div class="mt-5 flex gap-3">
-            <a href="leaderboard.html" class="px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui hover:brightness-95">Leaderboards</a>
-            <a href="events.html" class="px-4 py-2 rounded-lg bg-aggieBlue text-white font-ui hover:bg-aggieBlue/90">All Events</a>
-          </div>
-        </div>
-      </section>
-
-      <!-- Today's Events -->
-      <section id="today" class="lg:col-span-2 order-2 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-        <div class="p-6">
-          <div class="flex items-end justify-between">
-            <h2 class="font-ui text-xl font-semibold text-aggieBlue">Today’s Events</h2>
-            <div class="text-sm font-ui text-ink/60"><span id="todayDate">—</span></div>
-          </div>
-
-          <div id="todayList" class="mt-4 space-y-4"></div>
-          <div id="todayEmpty" class="hidden mt-4 text-center font-ui text-ink/60">No events today.</div>
-        </div>
-      </section>
-
-      <!-- Quick Links -->
-      <section class="lg:col-span-1 order-3 card bg-white rounded-2xl shadow-soft border border-aggieBlue/10">
-        <div class="p-6">
-          <h2 class="font-ui text-xl font-semibold text-aggieBlue mb-4">Event Quick Links</h2>
-          <ul class="space-y-2 font-ui">
-            <li><a href="events.html#week" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">This Week</a></li>
-            <li><a href="events.html#month" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">This Month</a></li>
-            <li><a href="events.html#upcoming" class="block px-3 py-2 rounded-lg hover:bg-aggieBlue/5">All Upcoming</a></li>
-          </ul>
-        </div>
-      </section>
-
-    </div>
-  </main>
-
-  <!-- Footer -->
-  <footer class="border-t border-gray-200">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6 text-sm font-ui text-ink/60">
-      © <span id="yearText"></span> Aggie Points. UC Davis-inspired theme.
-    </div>
-  </footer>
-
-  <!-- Supabase -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="auth-config.js"></script>
-  <!-- shared check-in module -->
-  <script src="checkin.js"></script>
-
-  <script>
-  // ========= Helpers =========
-  const $  = (s) => document.querySelector(s);
-  const $$ = (s) => Array.from(document.querySelectorAll(s));
-  const toggle = (el) => el.classList.toggle('hidden');
-  const escapeHtml = (s) => (s ?? '').toString()
-    .replace(/&/g,'&amp;').replace(/</g,'&lt;')
-    .replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-
-  const TZ = 'America/Los_Angeles';
-  const fmtDate = (ts) => new Date(ts).toLocaleDateString([], {timeZone:TZ, weekday:'short', month:'short', day:'numeric'});
-  const fmtTime = (ts) => new Date(ts).toLocaleTimeString([], {timeZone:TZ, hour:'numeric', minute:'2-digit'});
-
-  // Google Maps link for location text
-  function mapsLink(locationText) {
-    if (!locationText) return null;
-    return "https://www.google.com/maps/search/?api=1&query=" + encodeURIComponent(locationText);
-  }
-
-  function toast(message, { variant = 'error', timeout = 4500 } = {}) {
-    const root = document.querySelector('#toast-root > div');
-    if (!root) return;
-
-    const variants = {
-      success: 'bg-green-100 text-green-900 ring-1 ring-green-300',
-      error:   'bg-red-100 text-red-900 ring-1 ring-red-300',
-      info:    'bg-aggieBlue/10 text-aggieBlue ring-1 ring-aggieBlue/30',
-      warn:    'bg-yellow-100 text-yellow-900 ring-1 ring-yellow-300'
-    };
-    const cls = variants[variant] || variants.info;
-
-    const el = document.createElement('div');
-    el.setAttribute('role', 'status');
-    el.className = [
-      'pointer-events-auto','max-w-sm','w-[360px]','rounded-2xl','shadow-soft',
-      'px-4','py-3','font-ui','text-sm','backdrop-blur','flex','items-start','gap-3',cls
-    ].join(' ');
-    el.innerHTML = `
-      <div class="shrink-0 pt-0.5">
-        ${variant === 'success' ? '✅' : variant === 'warn' ? '⚠️' : variant === 'info' ? 'ℹ️' : '❌'}
-      </div>
-      <div class="min-w-0 leading-snug">${message}</div>
-      <button class="ml-auto shrink-0 opacity-70 hover:opacity-100" aria-label="Close">✕</button>
-    `;
-    el.querySelector('button').addEventListener('click', () => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); });
-    root.appendChild(el);
-    if (timeout > 0) setTimeout(() => { el.classList.add('animate-fade-out'); setTimeout(() => el.remove(), 150); }, timeout);
-  }
-
-  (function injectToastAnim(){
-    const style = document.createElement('style');
-    style.textContent = `@keyframes toast-fade-out { to { opacity: 0; transform: translateY(-4px); } } .animate-fade-out { animation: toast-fade-out .15s ease forwards; }`;
-    document.head.appendChild(style);
-  })();
-
-  function showCheckinError(err) {
-    const code = err?.code;
-    const details = err?.details || '';
-
-    if (code === '22P02' || /invalid input syntax for type uuid/i.test(details)) return 'Invalid event id. Please refresh and try again.';
-    if (code === '23503' || /foreign key/i.test(details))               return 'This event no longer exists. Please refresh the page.';
-    if (code === 'PGRST301' || code === '401' || /JWT|auth/i.test(details)) return 'You must be signed in to check in.';
-    if (/Missing required input parameter: event_id/i.test(details))    return 'Check-in misconfigured (missing event id). Please contact an admin.';
-    if (code === '42501')                                               return 'You do not have permission to check in to this event.';
-    if (/outside_geofence/i.test(details))                              return 'You must be at the venue to check in. If you are here, please close the tab, ensure precision location is on, move closer to center of event, and reopen Aggie Points.';
-    if (/outside_time_window/i.test(details))                           return 'This event is not currently active (20 min before start → 10 min before end).';
-    if (/missing_lat_lng/i.test(details))                               return 'We need your location to check in. Please turn on location access ("Privacy & Security" > "Location Services") for your browser (Safari/Chrome) and try again!';
-    if (/low_accuracy/i.test(details))                                  return 'Your location is not precise enough. Please check in using a smartphone with Precision Location enabled. Also can close the tab, move closer to center of event, and reopen Aggie Points.';
-    if (/missing_accuracy/i.test(details))                              return 'We could not read your GPS accuracy. Try again on a smartphone with GPS enabled.';
-    return err?.message || 'Check-in failed. Please try again.';
-  }
-
-  function applySummary(prof) {
-    const pts = prof?.points_total ?? 0;
-
-    const ind = prof?.rank_label ?? (prof?.rank != null ? String(prof.rank) : '—');
-    const tr  = prof?.team_rank_label ?? (prof?.team_rank != null ? String(prof.team_rank) : '—');
-
-    const $id = (s) => document.querySelector(s);
-    $id('#pointsTotal')    && ($id('#pointsTotal').textContent    = pts);
-    $('#individualRank').textContent = (prof.rank == null)
-      ? '—'
-      : (prof.individual_is_tied ? `T${prof.rank}` : String(prof.rank));
-    $('#teamRank').textContent = (prof.team_rank == null)
-      ? '—'
-      : (prof.team_is_tied ? `T${prof.team_rank}` : String(prof.team_rank));
-
-    // Back-compat if old IDs still exist anywhere
-    $id('#rank') && ($id('#rank').textContent = ind);
-    $id('#team') && ($id('#team').textContent = tr);
-  }
-
-  async function refreshProfilePoints() {
-    const { data: { user } } = await sb.auth.getUser();
-    if (!user) return;
-
-    const { data: prof, error } = await sb
-      .from('profile_summary_v1')
-      .select('points_total, rank, team_rank, individual_is_tied, team_is_tied')
-      .eq('id', user.id)
-      .single();
-
-
-    if (!error && prof) applySummary(prof);
-  }
-
-  // --- Open/Closed helper (mirror backend window: -15m + 0m) ---
-function isOpenNow(ev) {
-  const now = Date.now();               // current UTC instant (ms since epoch)
-  const start = Date.parse(ev.start_ts); // start_ts is an ISO UTC string
-  const end = Date.parse(ev.end_ts);     // end_ts likewise
-
-  const openFrom = start - 15 * 60 * 1000; // 15 minutes before start
-  const openTo = end;                      // until exact end
-  return now >= openFrom && now <= openTo;
-}
-
-  // Event card renderer (points moved to middle line; no "More" link; closed state supported)
-  function todayRow(ev) {
-    const checkedIn = !!ev.user_checked_in;
-    const open = isOpenNow(ev);
-
-    const whenLine = `${fmtDate(ev.start_ts)} · ${fmtTime(ev.start_ts)}–${fmtTime(ev.end_ts)}`;
-
-    // BIGGER points badge on the middle (date/time) line
-    const pointsHTML = typeof ev.points === 'number' ? `
-      <span class="inline-flex items-center rounded-full bg-aggieGold/20 px-2.5 py-1 text-sm md:text-base font-ui font-semibold text-aggieBlue">
-        +${ev.points} pts
-      </span>` : '';
-
-    let actionHTML = '';
-    if (checkedIn) {
-      actionHTML = `<span class="px-3 py-2 rounded-lg bg-green-100 text-green-700 font-ui text-sm">✓ Checked in</span>`;
-    } else if (open) {
-      actionHTML = `<button
-        class="checkin-btn px-4 py-2 rounded-lg bg-aggieGold text-aggieBlue font-ui font-semibold hover:brightness-95"
-        data-event-id="${ev.id}"
-        data-event-name="${escapeHtml(ev.title)}"
-        data-event-points="${ev.points ?? ''}">
-        Check in
-      </button>`;
-    } else {
-      /* Closed pill (used previously) */
-      actionHTML = `<span class="px-3 py-2 rounded-lg bg-gray-200 text-gray-700 font-ui text-sm">Closed</span>`;
-    }
-
-    const hasLoc = !!(ev.location && ev.location.trim());
-    const locHTML = hasLoc ? `
-      <p class="font-ui text-sm text-aggieBlue mt-0.5 flex items-center gap-1.5">
-        <svg xmlns="http://www.w3.org/2000/svg" class="w-4 h-4 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M15 10a3 3 0 11-6 0 3 3 0 016 0z" />
-          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.5 10c0 7-7.5 10.5-7.5 10.5S4.5 17 4.5 10a7.5 7.5 0 1115 0z" />
-        </svg>
-        <a href="${mapsLink(ev.location)}" target="_blank" rel="noopener noreferrer" class="truncate hover:underline" aria-label="Open ${escapeHtml(ev.location)} in Google Maps">
-          ${escapeHtml(ev.location)}
-        </a>
-      </p>` : '';
-
-    return `
-      <article class="rounded-2xl border border-aggieBlue/10 bg-white p-4 shadow-soft" id="event-${ev.id}">
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
-          <div class="min-w-0">
-            <h3 class="font-ui text-ink text-base md:text-lg font-semibold leading-tight truncate">
-              ${escapeHtml(ev.title)}
-            </h3>
-
-            <!-- Middle line: date (single-line, truncates) + BIG points (no wrap) -->
-            <div class="mt-0.5 flex items-center gap-2">
-              <p class="font-ui text-xs sm:text-sm md:text-base text-ink/80
-                        flex-1 min-w-0 truncate whitespace-nowrap">
-                ${whenLine}
-              </p>
-              <span class="shrink-0 whitespace-nowrap">
-                ${pointsHTML}
-              </span>
-            </div>
-
-
-            ${locHTML}
-          </div>
-
-          <div class="flex items-center gap-3">
-            ${actionHTML}
-          </div>
-        </div>
-      </article>`;
-  }
-
-  async function ensureAuthed() {
-    const { data: { session } } = await sb.auth.getSession();
-    if (!session) {
-      window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html';
-      return null;
-    }
-    return session;
-  }
-
-  // ========= Boot =========
-  (async () => {
-    // Header interactions
-    $('#mobileMenuBtn')?.addEventListener('click', () => toggle($('#mobileMenu')));
-    $('#acctBtn')?.addEventListener('click', () => toggle($('#acctMenu')));
-    $('#yearText').textContent = new Date().getFullYear();
-
-    // Auth
-    const session = await ensureAuthed(); if (!session) return;
-    const { data: { user } } = await sb.auth.getUser();
-    $('#acctName').textContent = user?.user_metadata?.display_name || user?.email || 'Account';
-    const doLogout = async () => { await sb.auth.signOut(); window.location.href = (typeof LOGIN_PAGE !== 'undefined' && LOGIN_PAGE) ? LOGIN_PAGE : 'login.html'; };
-    $('#logoutBtn')?.addEventListener('click', doLogout);
-    $('#logoutBtnMobile')?.addEventListener('click', doLogout);
-
-    // Keep header/data fresh on auth state changes
-    sb.auth.onAuthStateChange(async (_event, sess) => {
-      if (sess?.user) {
-        $('#acctName').textContent = sess.user.user_metadata?.display_name || sess.user.email || 'Account';
-        await refreshProfilePoints();
-      }
-    });
-    await refreshProfilePoints();
-
-    // Today header (in PT)
-    const todayPT = new Date(new Date().toLocaleString('en-US', { timeZone: TZ }));
-    $('#todayDate').textContent = todayPT.toLocaleDateString([], { weekday:'long', month:'long', day:'numeric' });
-
-    // Load Profile
-    try {
-      const { data: prof, error } = await sb
-        .from('profile_summary_v1')
-        .select('points_total, rank, team_rank, individual_is_tied, team_is_tied')
-        .eq('id', user.id)
-        .single();
-
-      if (!pErr && prof) applySummary(prof);
-      else console.error('profiles error', pErr);
-    } catch (e) {
-      console.error('profiles fetch crashed', e);
-    }
-
-    // ----- Load Today’s Events (expects ALL today) -----
-    const list = $('#todayList');
-    const empty = $('#todayEmpty');
-    try {
-      const { data: todays, error: tErr } = await sb
-        .from('events_today')
-        .select('id, title, start_ts, end_ts, location, points, user_checked_in')
-        .order('start_ts', { ascending: true });
-
-      if (tErr) {
-        console.error('events_today error', tErr);
-        list.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">Could not load today’s events.</div>`;
-      } else {
-        const rows = (todays || []).map(todayRow).join('');
-        list.innerHTML = rows;
-        empty.classList.toggle('hidden', (todays || []).length > 0);
-
-        // Wire buttons
-        if (typeof window.initCheckinButtons === 'function') initCheckinButtons();
-        if (typeof window.syncCheckedInUI === 'function') window.syncCheckedInUI();
-
-        // Deep-link focus: index.html?event=<uuid>#today
-        (function focusDeepLinkedEvent() {
-          const params = new URLSearchParams(location.search);
-          const focusId = params.get('event');
-          if (!focusId) return;
-          const target = document.getElementById(`event-${focusId}`);
-          if (!target) return;
-          target.scrollIntoView({ behavior: 'smooth', block: 'center' });
-          target.classList.add('ring-2','ring-aggieGold','rounded-xl');
-          setTimeout(() => target.classList.remove('ring-2','ring-aggieGold'), 2500);
-        })();
-      }
-    } catch (e) {
-      console.error('events_today fetch crashed', e);
-      list.innerHTML = `<div class="mt-4 text-center text-red-600 font-ui">Could not load today’s events.</div>`;
-      empty.classList.add('hidden');
-    }
-  })();
-  </script>
-
-  <!-- Toast root -->
-  <div id="toast-root" class="fixed inset-0 pointer-events-none z-[1000]">
-    <div class="absolute top-4 right-4 space-y-3"></div>
   </div>
+</header>
+
+<div class="new">
+  <div class="new-card">
+    <div class="badge" aria-hidden="true">★</div>
+    <p><strong>Aggie Points has been rebuilt from the ground up as an iPhone app.</strong> The old web check-in is retired. Everything now happens in the app.</p>
+  </div>
+</div>
+
+<section class="features">
+  <p class="eyebrow">What's new</p>
+  <h2>Faster check-ins, live standings, and reminders</h2>
+  <div class="grid">
+    <article class="feature">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21s-7-6.2-7-11.5A7 7 0 0 1 19 9.5C19 14.8 12 21 12 21z"/><path d="M9 9.5l2 2 4-4"/></svg></div>
+      <h3>GPS one-tap check-in</h3>
+      <p>Arrive at the venue and tap once. No codes, sign-in sheets, or forms. Your location confirms you're there.</p>
+    </article>
+    <article class="feature">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg></div>
+      <h3>Live leaderboards</h3>
+      <p>Individual, team, and per-roster rankings update as points come in, so you can see exactly where you and your team stand.</p>
+    </article>
+    <article class="feature">
+      <div class="icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg></div>
+      <h3>Location and notification services</h3>
+      <p>Location services verify check-ins at the event. Notifications remind you 15 minutes before that day's events, so you never miss points.</p>
+    </article>
+  </div>
+</section>
+
+<section class="download">
+  <div class="download-card">
+    <div>
+      <h2>Get Aggie Points</h2>
+      <p>Download the app, pick your team, and start earning at the next event.</p>
+      <a class="store-btn" href="https://apps.apple.com/app/aggie-points/id6801409261">
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 3v11.17l3.59-3.58L17 12l-5 5-5-5 1.41-1.41L11 14.17V3h1zM5 19h14v2H5z"/></svg>
+        <span><small>Download on the</small><b>App Store</b></span>
+      </a>
+    </div>
+    <div class="qr">
+      <img src="appstore-qr.svg" alt="QR code linking to Aggie Points on the App Store">
+      Scan with your iPhone
+    </div>
+  </div>
+</section>
+
+<footer>Aggie Points · Go Ags!</footer>
+
 </body>
 </html>

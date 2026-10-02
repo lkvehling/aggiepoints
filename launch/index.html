@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aggie Points Launch</title>
+<meta name="description" content="Live Aggie Points registration race — which team will get 100% of its roster signed up first?">
+<meta name="theme-color" content="#022952">
+<link rel="icon" href="../favicon.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-start: #022952;
+    --navy-end: #0A3B7A;
+    --gold: #FFC107;
+    --tile: rgba(255, 255, 255, 0.08);
+    --tile-strong: rgba(255, 255, 255, 0.14);
+    --track: rgba(255, 255, 255, 0.16);
+    --ease: cubic-bezier(.3, .9, .3, 1);
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background: linear-gradient(90deg, var(--navy-start), var(--navy-end));
+    background-attachment: fixed;
+    color: #fff;
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    -webkit-font-smoothing: antialiased;
+    overflow: hidden;
+  }
+  body.idle { cursor: none; }
+
+  /* ---- Stage (projector) mode: fixed 1280x720 canvas scaled to fit ---- */
+  #stage { position: absolute; width: 1280px; height: 720px; transform-origin: 0 0; }
+  #hd { position: absolute; left: 32px; top: 22px; width: 1046px; height: 66px; display: flex; align-items: center; gap: 20px; }
+  .title { font-size: 30px; font-weight: 800; white-space: nowrap; letter-spacing: -0.01em; }
+  .title span { color: var(--gold); }
+  .ov-label { font-size: 14px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.75; white-space: nowrap; line-height: 1.2; text-align: right; }
+  .ov { flex: 1; height: 28px; background: var(--track); border-radius: 14px; overflow: hidden; }
+  .ov > div { height: 100%; width: 0; background: var(--gold); border-radius: 14px; transition: width 1s var(--ease); }
+  #ovp { font-size: 34px; font-weight: 800; min-width: 92px; text-align: right; font-variant-numeric: tabular-nums; }
+  .live { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; opacity: 0.8; }
+  .live i { width: 9px; height: 9px; border-radius: 50%; background: #8a97ab; }
+  .live.on i { background: var(--gold); animation: pulse 2s infinite; }
+  @keyframes pulse { 50% { opacity: 0.35; } }
+
+  #qr { position: absolute; left: 1098px; top: 22px; width: 150px; text-align: center; }
+  #qr .code { background: #fff; border-radius: 12px; padding: 8px; }
+  #qr img { display: block; width: 100%; }
+  #qr p { margin: 8px 0 0; font-size: 14px; font-weight: 700; line-height: 1.25; }
+  #qr p span { color: var(--gold); }
+  .store-link { display: none; }
+
+  #board { position: absolute; inset: 0; }
+
+  /* ---- Team rows / podium cards ---- */
+  .r {
+    position: absolute;
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 16px;
+    background: var(--tile);
+    border-radius: 10px;
+    transition: top .9s var(--ease), left .9s var(--ease), width .9s var(--ease), height .9s var(--ease), background .4s, color .4s, box-shadow .4s;
+    font-size: 17px;
+  }
+  .r .k { width: 44px; flex: none; font-weight: 800; color: var(--gold); font-variant-numeric: tabular-nums; }
+  .r .n { width: 250px; flex: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 700; }
+  .r .b { flex: 1; height: 14px; background: var(--track); border-radius: 7px; overflow: hidden; }
+  .r .b > div { height: 100%; width: 0; background: var(--gold); border-radius: 7px; transition: width 1s var(--ease); }
+  .r .p { width: 64px; flex: none; text-align: right; font-weight: 800; font-variant-numeric: tabular-nums; }
+  .r .ar { position: absolute; right: -6px; top: -10px; font-size: 18px; color: var(--gold); opacity: 0; transition: opacity .3s; text-shadow: 0 0 8px rgba(0,0,0,.4); }
+  .r .full { display: none; position: absolute; left: -8px; top: -9px; background: var(--gold); color: var(--navy-start); font-size: 11px; font-weight: 800; padding: 2px 7px; border-radius: 999px; letter-spacing: 0.04em; }
+  .r.is-full .full { display: block; }
+
+  .r.pod {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    grid-template-areas: "k p" "n n" "b b";
+    align-content: center;
+    row-gap: 10px;
+    padding: 16px 22px;
+    background: var(--tile-strong);
+    border-radius: 16px;
+  }
+  .r.pod .k { grid-area: k; width: auto; font-size: 34px; line-height: 1; }
+  .r.pod .p { grid-area: p; width: auto; font-size: 40px; line-height: 1; }
+  .r.pod .n { grid-area: n; width: auto; font-size: 21px; }
+  .r.pod .b { grid-area: b; height: 20px; border-radius: 10px; }
+  .r.pod .ar { right: 12px; top: 8px; font-size: 22px; }
+
+  .r.lead { background: var(--gold); color: var(--navy-start); }
+  .r.lead .k { color: var(--navy-start); }
+  .r.lead .b { background: rgba(2, 41, 82, 0.2); }
+  .r.lead .b > div { background: var(--navy-start); }
+  .r.lead .ar { color: var(--navy-start); text-shadow: none; }
+  .r.lead .full { background: var(--navy-start); color: var(--gold); }
+
+  .r.up { box-shadow: 0 0 0 3px var(--gold), 0 0 26px rgba(255, 193, 7, 0.85); }
+  .r.up .ar { opacity: 1; }
+
+  /* ---- Messages ---- */
+  #msg { position: absolute; left: 32px; right: 32px; top: 340px; text-align: center; font-size: 22px; font-weight: 700; opacity: 0.85; }
+  #toast {
+    position: fixed; left: 50%; bottom: 6vh; transform: translate(-50%, 40px);
+    background: var(--gold); color: var(--navy-start);
+    font-weight: 800; font-size: clamp(18px, 2.6vw, 40px);
+    padding: 0.5em 1.1em; border-radius: 999px;
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.35);
+    opacity: 0; transition: opacity .4s, transform .4s var(--ease);
+    pointer-events: none; white-space: nowrap; z-index: 20;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+  #confetti { position: fixed; inset: 0; width: 100%; height: 100%; pointer-events: none; z-index: 10; }
+
+  /* ---- Phone mode: natural scrolling list ---- */
+  body.mobile { overflow: auto; }
+  body.mobile #stage { position: relative; width: auto; height: auto; transform: none !important; padding: 16px; }
+  body.mobile #hd { position: static; width: auto; height: auto; flex-wrap: wrap; gap: 10px 12px; margin-bottom: 18px; }
+  body.mobile .title { font-size: 24px; flex: 1; white-space: normal; }
+  body.mobile .ov-label { order: 3; width: 100%; text-align: left; font-size: 12px; }
+  body.mobile .ov { order: 4; flex: 1; height: 22px; }
+  body.mobile #ovp { order: 5; font-size: 24px; min-width: 0; }
+  body.mobile #qr { display: none; }
+  body.mobile .store-link {
+    display: block; text-align: center; margin: 0 0 18px;
+    background: var(--gold); color: var(--navy-start); text-decoration: none;
+    font-weight: 800; padding: 12px; border-radius: 12px;
+  }
+  body.mobile #board { position: relative; inset: auto; }
+  body.mobile .ov-label br { display: none; }
+  body.mobile .r { font-size: 15px; padding: 0 12px; }
+  body.mobile .r:not(.pod) {
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) 50px;
+    grid-template-areas: "k n p" "k b p";
+    align-content: center;
+    column-gap: 10px; row-gap: 6px;
+  }
+  body.mobile .r .k { grid-area: k; width: auto; }
+  body.mobile .r .n { grid-area: n; width: auto; }
+  body.mobile .r .b { grid-area: b; height: 10px; }
+  body.mobile .r .p { grid-area: p; width: auto; }
+  body.mobile .r.pod .k { font-size: 26px; }
+  body.mobile .r.pod .p { font-size: 30px; }
+  body.mobile .r.pod .n { font-size: 18px; }
+  body.mobile .r.pod .b { height: 16px; }
+  body.mobile #msg { position: static; margin-top: 40px; font-size: 18px; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <header id="hd">
+    <div class="title">Aggie Points <span>Launch</span></div>
+    <div class="live" id="live"><i></i><span>Live</span></div>
+    <div class="ov-label">All <br>athletes</div>
+    <div class="ov"><div id="ovbar"></div></div>
+    <div id="ovp">0%</div>
+  </header>
+  <aside id="qr">
+    <div class="code"><img src="../appstore-qr.svg" alt="QR code linking to Aggie Points on the App Store"></div>
+    <p>Scan to download<br><span>Aggie Points</span></p>
+  </aside>
+  <a class="store-link" href="https://apps.apple.com/app/aggie-points/id6801409261">Download Aggie Points</a>
+  <div id="board"></div>
+  <div id="msg">Loading teams…</div>
+</div>
+<div id="toast"></div>
+<canvas id="confetti"></canvas>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Publishable key: designed to ship in client code. The only thing this
+  // page can read is get_team_registration_counts(), which returns per-team
+  // aggregates only (see supabase/sql/launch_registration_tracker.sql in
+  // the app repo).
+  const SUPABASE_URL = "https://rditinxvxjhrebdatovf.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_zTUrpyScZ-oBqifBAgOeLQ_68INsCY4";
+  const CHANNEL = "registration-tracker";
+  const POLL_MS = 30000;
+
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const stage = document.getElementById("stage");
+  const board = document.getElementById("board");
+  const msg = document.getElementById("msg");
+  const els = new Map();      // team_id -> element
+  const shown = new Map();    // element -> currently displayed percent (for count-up)
+  let teams = [];
+  let prevIndex = new Map();  // team_id -> sorted position last render
+  let prevPct = new Map();    // team_id -> percent last render
+  let firstRender = true;
+
+  const pctOf = (t) => Math.round((t.registered_count / t.roster_size) * 100);
+
+  // ---------- Layout ----------
+  let mobile = false;
+  function layoutMode() {
+    const w = window.innerWidth, h = window.innerHeight;
+    mobile = w < 900 || w / h < 1.15;
+    document.body.classList.toggle("mobile", mobile);
+    if (!mobile) {
+      const s = Math.min(w / 1280, h / 720);
+      stage.style.transform = `scale(${s})`;
+      stage.style.left = (w - 1280 * s) / 2 + "px";
+      stage.style.top = (h - 720 * s) / 2 + "px";
+    }
+  }
+
+  // Stage coordinates (1280x720). Ranks 1–3 = podium left to right; the rest
+  // split into two columns underneath (left column gets the extra row).
+  function stageSlot(i, n) {
+    if (i < 3) return { x: 32 + i * 355.3, y: 104, w: 335.3, h: 150, pod: true };
+    const rest = n - 3, leftCount = Math.ceil(rest / 2), j = i - 3;
+    const col = j < leftCount ? 0 : 1, row = col ? j - leftCount : j;
+    const top = 272, bottom = 704, step = Math.min(52, (bottom - top) / leftCount);
+    return { x: 32 + col * 616, y: top + row * step, w: 600, h: step - 5, pod: false };
+  }
+  function mobileSlot(i) {
+    const w = board.clientWidth;
+    if (i < 3) return { x: 0, y: i * 124, w, h: 112, pod: true };
+    return { x: 0, y: 3 * 124 + 8 + (i - 3) * 62, w, h: 54, pod: false };
+  }
+
+  // ---------- Rendering ----------
+  function makeEl(t) {
+    const e = document.createElement("div");
+    e.className = "r";
+    e.innerHTML = '<span class="k"></span><span class="n"></span><span class="b"><div></div></span><span class="p">0%</span><span class="ar">▲</span><span class="full">100%</span>';
+    e.querySelector(".n").textContent = t.team_name;
+    board.appendChild(e);
+    shown.set(e, 0);
+    return e;
+  }
+
+  function countTo(e, target) {
+    const from = shown.get(e) ?? 0;
+    shown.set(e, target);
+    const out = e.querySelector(".p");
+    if (from === target) { out.textContent = target + "%"; return; }
+    const start = performance.now(), dur = 900;
+    (function tick(now) {
+      const k = Math.min(1, (now - start) / dur), eased = 1 - Math.pow(1 - k, 3);
+      out.textContent = Math.round(from + (target - from) * eased) + "%";
+      if (k < 1 && shown.get(e) === target) requestAnimationFrame(tick);
+    })(start);
+  }
+
+  function render() {
+    // Rank by the displayed (rounded) percent so equal-looking teams share a
+    // rank, same "1224" competition ranking as the app; ties ordered by raw
+    // registered count, then name for stability.
+    const sorted = [...teams].sort((a, b) =>
+      pctOf(b) - pctOf(a) || b.registered_count - a.registered_count || a.team_name.localeCompare(b.team_name));
+    const ranks = [];
+    sorted.forEach((t, i) => ranks.push(i > 0 && pctOf(t) === pctOf(sorted[i - 1]) ? ranks[i - 1] : i));
+    const tieCount = {};
+    ranks.forEach((r) => (tieCount[r] = (tieCount[r] || 0) + 1));
+
+    // Remove teams that disappeared.
+    const ids = new Set(teams.map((t) => t.team_id));
+    for (const [id, e] of els) if (!ids.has(id)) { e.remove(); els.delete(id); }
+
+    const newlyFull = [];
+    sorted.forEach((t, i) => {
+      let e = els.get(t.team_id);
+      if (!e) { e = makeEl(t); els.set(t.team_id, e); }
+      e.querySelector(".n").textContent = t.team_name;
+      const s = mobile ? mobileSlot(i) : stageSlot(i, sorted.length);
+      Object.assign(e.style, { left: s.x + "px", top: s.y + "px", width: s.w + "px", height: s.h + "px" });
+      e.classList.toggle("pod", s.pod);
+      e.classList.toggle("lead", ranks[i] === 0);
+      e.querySelector(".k").textContent = (tieCount[ranks[i]] > 1 ? "T" : "") + (ranks[i] + 1);
+      const p = pctOf(t);
+      e.querySelector(".b > div").style.width = Math.min(100, p) + "%";
+      countTo(e, p);
+      e.classList.toggle("is-full", p >= 100);
+
+      if (!firstRender) {
+        const before = prevIndex.get(t.team_id);
+        if (before !== undefined && i < before) flash(e);
+        const pp = prevPct.get(t.team_id);
+        if (pp !== undefined && pp < 100 && p >= 100) newlyFull.push(t.team_name);
+      }
+    });
+
+    if (mobile) {
+      board.style.height = (sorted.length > 3 ? 3 * 124 + 8 + (sorted.length - 3) * 62 : sorted.length * 124) + "px";
+    } else {
+      board.style.height = "";
+    }
+
+    const reg = teams.reduce((a, t) => a + Number(t.registered_count), 0);
+    const all = teams.reduce((a, t) => a + t.roster_size, 0);
+    const op = all ? Math.round((reg / all) * 100) : 0;
+    document.getElementById("ovbar").style.width = Math.min(100, op) + "%";
+    document.getElementById("ovp").textContent = op + "%";
+
+    prevIndex = new Map(sorted.map((t, i) => [t.team_id, i]));
+    prevPct = new Map(sorted.map((t) => [t.team_id, pctOf(t)]));
+    firstRender = false;
+    newlyFull.forEach((name, k) => setTimeout(() => celebrate(name), k * 2500));
+  }
+
+  function flash(e) {
+    e.classList.remove("up");
+    void e.offsetWidth;
+    e.classList.add("up");
+    clearTimeout(e._upTimer);
+    e._upTimer = setTimeout(() => e.classList.remove("up"), 1800);
+  }
+
+  // ---------- 100% celebration ----------
+  const toast = document.getElementById("toast");
+  function celebrate(name) {
+    toast.textContent = `🎉 ${name} is 100% registered!`;
+    toast.classList.add("show");
+    clearTimeout(toast._t);
+    toast._t = setTimeout(() => toast.classList.remove("show"), 4500);
+    confetti();
+  }
+
+  const cv = document.getElementById("confetti"), cx = cv.getContext("2d");
+  let parts = [], raf = null;
+  function confetti() {
+    cv.width = innerWidth * devicePixelRatio; cv.height = innerHeight * devicePixelRatio;
+    const colors = ["#FFC107", "#FFFFFF", "#FFD966", "#5B8CFF", "#C9930A"];
+    for (let i = 0; i < 220; i++) {
+      const side = i % 2 ? 1 : -1;
+      parts.push({
+        x: (side > 0 ? 0.05 : 0.95) * cv.width, y: cv.height * 0.9,
+        vx: side * (6 + Math.random() * 12) * devicePixelRatio, vy: -(14 + Math.random() * 14) * devicePixelRatio,
+        s: (6 + Math.random() * 8) * devicePixelRatio, r: Math.random() * 6, vr: (Math.random() - 0.5) * 0.4,
+        c: colors[i % colors.length], life: 0,
+      });
+    }
+    if (!raf) raf = requestAnimationFrame(step);
+  }
+  function step() {
+    cx.clearRect(0, 0, cv.width, cv.height);
+    parts = parts.filter((p) => p.life < 220 && p.y < cv.height + 50);
+    for (const p of parts) {
+      p.life++; p.vy += 0.45 * devicePixelRatio; p.vx *= 0.985; p.x += p.vx; p.y += p.vy; p.r += p.vr;
+      cx.save(); cx.translate(p.x, p.y); cx.rotate(p.r); cx.fillStyle = p.c;
+      cx.fillRect(-p.s / 2, -p.s / 4, p.s, p.s / 2); cx.restore();
+    }
+    raf = parts.length ? requestAnimationFrame(step) : (cx.clearRect(0, 0, cv.width, cv.height), null);
+  }
+
+  // ---------- Data ----------
+  let loading = false, again = false;
+  async function load() {
+    if (loading) { again = true; return; }
+    loading = true;
+    try {
+      const { data, error } = await client.rpc("get_team_registration_counts");
+      if (error) throw error;
+      teams = (data || [])
+        .filter((t) => t.roster_size > 0)
+        .map((t) => ({ ...t, registered_count: Number(t.registered_count) }));
+      msg.style.display = teams.length ? "none" : "";
+      if (!teams.length) msg.textContent = "No teams with a roster size yet.";
+      render();
+    } catch (err) {
+      console.error("Registration tracker load failed:", err);
+      if (!teams.length) { msg.style.display = ""; msg.textContent = "Waiting for data…"; }
+    } finally {
+      loading = false;
+      if (again) { again = false; load(); }
+    }
+  }
+
+  // ?demo — rehearsal mode: real team names/roster sizes (teams is publicly
+  // readable), fake registrations that tick up on their own. Never touches
+  // registration data, so it's safe to open on the projector for a dry run.
+  const DEMO = new URLSearchParams(location.search).has("demo");
+  async function startDemo() {
+    document.querySelector(".title span").textContent = "Launch · demo";
+    const { data, error } = await client.from("teams").select("id, name, roster_size");
+    if (error) { msg.textContent = "Couldn't load teams for demo."; return; }
+    teams = data.filter((t) => t.roster_size > 0).map((t, i) => ({
+      team_id: t.id, team_name: t.name, roster_size: t.roster_size,
+      registered_count: Math.round(t.roster_size * (0.1 + ((i * 37) % 60) / 100)),
+    }));
+    msg.style.display = "none";
+    render();
+    setInterval(() => {
+      const open = teams.filter((t) => t.registered_count < t.roster_size);
+      if (!open.length) return;
+      const t = open[Math.floor(Math.random() * open.length)];
+      t.registered_count = Math.min(t.roster_size, t.registered_count + 1 + Math.floor(Math.random() * 2));
+      render();
+    }, 1200);
+  }
+
+  let debounce = null;
+  const live = document.getElementById("live");
+  if (!DEMO) client
+    .channel(CHANNEL)
+    .on("broadcast", { event: "changed" }, () => {
+      clearTimeout(debounce);
+      debounce = setTimeout(load, 300);
+    })
+    .subscribe((status) => {
+      live.classList.toggle("on", status === "SUBSCRIBED");
+      live.querySelector("span").textContent = status === "SUBSCRIBED" ? "Live" : "Connecting";
+      if (status === "SUBSCRIBED") load(); // catch anything missed while disconnected
+    });
+
+  if (!DEMO) {
+    setInterval(load, POLL_MS);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) load(); });
+  }
+
+  // ---------- Projector niceties ----------
+  window.addEventListener("resize", () => { layoutMode(); if (teams.length) render(); });
+  document.addEventListener("keydown", (ev) => {
+    if (ev.key === "f" || ev.key === "F") {
+      if (document.fullscreenElement) document.exitFullscreen();
+      else document.documentElement.requestFullscreen?.();
+    }
+  });
+  let idleTimer = null;
+  document.addEventListener("mousemove", () => {
+    document.body.classList.remove("idle");
+    clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => document.body.classList.add("idle"), 3000);
+  });
+
+  layoutMode();
+  if (DEMO) startDemo(); else load();
+</script>
+</body>
+</html>

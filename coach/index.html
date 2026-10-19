@@ -784,7 +784,7 @@
     const me = ranked[i];
     rankBig.textContent = formatRank(me);
     $("rankOf").textContent = `of ${ranked.length} teams`;
-    rankSub.textContent = `${me.avg.toFixed(1)} points per roster spot`;
+    rankSub.textContent = `${me.avg.toFixed(1)} points per athlete average`;
 
     // "Above"/"below" skip past teams tied with us — they're level, not ahead.
     const above = [...ranked.slice(0, i)].reverse().find((t) => t.avg > me.avg) || null;

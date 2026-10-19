@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aggie Points SARG</title>
+<meta name="description" content="Aggie Points SARG portal — submit Student Athlete Resource Group events for the app.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#022851">
+<link rel="icon" href="../favicon.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<style>
+  /* "Game day" palette, same literals as the app's lib/theme.ts. */
+  :root {
+    --navy: #022851;
+    --gold: #FFBF00;
+    --gold-dark: #B07D00;
+    --page-bg: #F2F6FF;
+    --ink: #0B1B33;
+    --muted: #4A5B75;
+    --card: #FFFFFF;
+    --border: #D6E0F5;
+    --tile: rgba(255, 255, 255, 0.14);
+    --green: #1B7F4B;
+    --green-bg: #E3F4EA;
+    --red: #B42318;
+    --red-bg: #FDECEA;
+    --amber-bg: #FFF4D6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page-bg);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input, select, textarea { font: inherit; }
+  [hidden] { display: none !important; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+
+  /* ---- Hero ---- */
+  .hero { background: var(--navy); color: #fff; padding: 20px 0 26px; border-radius: 0 0 20px 20px; }
+  .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-right: auto; }
+  .brand span { color: var(--gold); }
+  .linkbtn {
+    background: none; border: 0; color: #fff; opacity: 0.85; cursor: pointer;
+    font-weight: 700; font-size: 15px; padding: 6px 4px; text-decoration: underline; text-underline-offset: 3px;
+  }
+  .linkbtn:hover { opacity: 1; }
+  .hello { font-size: clamp(24px, 4vw, 34px); font-weight: 800; margin: 20px 0 4px; letter-spacing: -0.01em; }
+  .hello-sub { opacity: 0.85; margin: 0; }
+  .tabs { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
+  .tabs button {
+    border: 0; cursor: pointer; border-radius: 999px; padding: 8px 16px; font-weight: 700; font-size: 15px;
+    background: var(--tile); color: #fff;
+  }
+  .tabs button[aria-selected="true"] { background: var(--gold); color: var(--navy); }
+  .tabs .count { display: inline-block; min-width: 22px; padding: 0 6px; margin-left: 6px; border-radius: 999px; background: var(--navy); color: #fff; font-size: 13px; }
+  .tabs button:not([aria-selected="true"]) .count { background: var(--gold); color: var(--navy); }
+
+  /* ---- Layout ---- */
+  main { padding: 24px 0 48px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .col { display: grid; gap: 20px; min-width: 0; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px; min-width: 0;
+  }
+  .card h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .card .hint { color: var(--muted); font-size: 15px; margin: 0 0 14px; }
+  .state { color: var(--muted); padding: 10px 0; }
+  .state.err { color: var(--red); }
+
+  /* ---- Forms ---- */
+  form.stack, .stack { display: grid; gap: 14px; }
+  label { font-size: 14px; font-weight: 700; display: grid; gap: 6px; }
+  label .opt { font-weight: 500; color: var(--muted); }
+  input[type=email], input[type=password], input[type=text], input[type=number], input[type=datetime-local], select, textarea {
+    width: 100%; padding: 11px 14px; min-height: 48px; border-radius: 12px; font-size: 16px;
+    border: 1px solid var(--border); background: #fff; color: var(--ink);
+  }
+  textarea { min-height: 88px; resize: vertical; }
+  input:focus, select:focus, textarea:focus { outline: 2px solid var(--gold); outline-offset: 1px; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .seg { display: inline-flex; background: var(--page-bg); border: 1px solid var(--border); border-radius: 12px; padding: 4px; gap: 4px; }
+  .seg label { display: block; cursor: pointer; }
+  .seg input { position: absolute; opacity: 0; pointer-events: none; }
+  .seg span { display: block; padding: 8px 16px; border-radius: 9px; font-weight: 700; font-size: 15px; color: var(--muted); }
+  .seg input:checked + span { background: var(--navy); color: #fff; }
+  .seg input:focus-visible + span { outline: 2px solid var(--gold); }
+  .addr-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+  .formmsg { font-size: 15px; font-weight: 600; min-height: 1.5em; margin: 0; }
+  .formmsg.err { color: var(--red); }
+  .formmsg.ok { color: var(--green); }
+
+  /* ---- Map ---- */
+  .map { height: 260px; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; z-index: 0; }
+  .map.small { height: 180px; }
+  .geo-note { font-size: 14px; color: var(--muted); margin: 6px 0 0; }
+  .geo-note.warn { background: var(--amber-bg); color: #6B4B00; padding: 8px 12px; border-radius: 10px; font-weight: 600; }
+  .geo-found { font-size: 14px; margin: 0 0 8px; }
+  .geo-found b { display: block; }
+
+  /* ---- Buttons ---- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border: 0; border-radius: 12px; padding: 12px 18px; min-height: 48px;
+    font-weight: 800; font-size: 16px; cursor: pointer;
+    background: var(--gold); color: var(--navy);
+  }
+  .btn:hover { filter: brightness(1.04); }
+  .btn:disabled { opacity: 0.55; cursor: default; }
+  .btn.navy { background: var(--navy); color: #fff; }
+  .btn.outline { background: transparent; color: var(--navy); box-shadow: inset 0 0 0 2px var(--navy); }
+  .btn.danger { background: transparent; color: var(--red); box-shadow: inset 0 0 0 2px var(--red); }
+  .btn.sm { min-height: 38px; padding: 6px 12px; font-size: 14px; border-radius: 10px; }
+
+  /* ---- Pills ---- */
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .pill.pending { background: var(--amber-bg); color: #6B4B00; }
+  .pill.approved { background: var(--green-bg); color: var(--green); }
+  .pill.rejected { background: var(--red-bg); color: var(--red); }
+  .pill.navy { background: rgba(2, 40, 81, 0.08); color: var(--navy); }
+  .pill.gold { background: var(--gold); color: var(--navy); }
+
+  /* ---- Submission rows ---- */
+  .list { display: grid; gap: 10px; }
+  .sub { background: var(--page-bg); border-radius: 12px; padding: 12px 14px; display: grid; gap: 4px; }
+  .sub .top { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; }
+  .sub .ttl { font-weight: 800; min-width: 0; }
+  .sub .meta { color: var(--muted); font-size: 14px; }
+  .sub .note { font-size: 14px; background: #fff; border-radius: 8px; padding: 6px 10px; }
+  .sub .acts { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
+
+  /* ---- Review cards ---- */
+  .review { border: 1px solid var(--border); border-radius: 16px; padding: 16px; display: grid; gap: 12px; background: #fff; }
+  .review .head { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .review h3 { font-size: 18px; margin: 0; width: 100%; }
+  .review dl { margin: 0; display: grid; grid-template-columns: 110px minmax(0, 1fr); gap: 4px 10px; font-size: 15px; }
+  .review dt { color: var(--muted); font-weight: 600; }
+  .review dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+  .review .split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 14px; }
+  .review .edit { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1.4fr) 100px; gap: 10px; }
+  .review .acts { display: flex; gap: 10px; flex-wrap: wrap; }
+  .review .acts .btn { flex: 1; min-width: 140px; }
+  .maplink { font-size: 14px; font-weight: 700; color: var(--navy); }
+
+  /* ---- Leaders ---- */
+  .leader { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--page-bg); }
+  .leader .n { font-weight: 700; }
+  .leader .meta { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+
+  /* ---- Login ---- */
+  .login-page { min-height: 100vh; background: var(--navy); color: #fff; display: grid; place-items: center; padding: 24px 16px; }
+  .login-box { width: 100%; max-width: 400px; }
+  .login-box .brand { display: block; text-align: center; font-size: 28px; margin-bottom: 4px; }
+  .login-box .tag { text-align: center; opacity: 0.85; margin: 0 0 24px; }
+  .login-box input { border-color: transparent; }
+  .login-box label { color: #fff; }
+  .login-box .formmsg { color: var(--gold); }
+  .fine { font-size: 14px; opacity: 0.8; text-align: center; margin-top: 18px; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 30px);
+    background: var(--navy); color: #fff; font-weight: 700; padding: 10px 18px; border-radius: 999px;
+    opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; z-index: 2000; max-width: calc(100% - 32px); text-align: center;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 860px) {
+    .grid, .review .split { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 520px) {
+    .card { padding: 16px; }
+    .two, .review .edit { grid-template-columns: minmax(0, 1fr); }
+    .review dl { grid-template-columns: minmax(0, 1fr); }
+    .review dt { margin-top: 4px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ---------- Login ---------- -->
+<section id="login" class="login-page" hidden>
+  <div class="login-box">
+    <span class="brand">Aggie Points <span>SARG</span></span>
+    <p class="tag">Submit your Student Athlete Resource Group's events to the app.</p>
+    <form id="loginForm" class="stack">
+      <label>UC Davis email <input type="email" id="email" autocomplete="username" required></label>
+      <label>Password <input type="password" id="password" autocomplete="current-password" required></label>
+      <p class="formmsg" id="loginMsg" role="alert"></p>
+      <button class="btn" type="submit" id="loginBtn">Sign in</button>
+    </form>
+    <p class="fine">Use the same email and password as the Aggie Points app. SARG leader access is turned on by the Aggie Points team.</p>
+  </div>
+</section>
+
+<!-- ---------- Portal ---------- -->
+<div id="portal" hidden>
+  <header class="hero">
+    <div class="wrap">
+      <div class="topbar">
+        <div class="brand">Aggie Points <span>SARG</span></div>
+        <button class="linkbtn" id="signOutBtn" type="button">Sign out</button>
+      </div>
+      <h1 class="hello" id="hello">Welcome</h1>
+      <p class="hello-sub" id="helloSub"></p>
+      <div class="tabs" role="tablist" id="tabs">
+        <button type="button" role="tab" data-tab="submit" id="tabSubmit">Submit an event</button>
+        <button type="button" role="tab" data-tab="review" id="tabReview">Review queue<span class="count" id="reviewCount" hidden></span></button>
+        <button type="button" role="tab" data-tab="leaders" id="tabLeaders">SARG leaders</button>
+      </div>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <!-- ===== Leader: submit + my submissions ===== -->
+    <div id="panelSubmit" class="grid" hidden>
+      <section class="card">
+        <h2>New event or meeting</h2>
+        <p class="hint">An Aggie Points admin reviews every submission before it shows up in the app. Athletes check in within 100 m of the pin.</p>
+        <form id="subForm" class="stack" novalidate>
+          <label id="groupWrap">SARG
+            <select id="fGroup"></select>
+          </label>
+          <div>
+            <div style="font-size:14px;font-weight:700;margin-bottom:6px">Type</div>
+            <div class="seg" role="radiogroup" aria-label="Type">
+              <label><input type="radio" name="kind" value="event" checked><span>Event</span></label>
+              <label><input type="radio" name="kind" value="meeting"><span>Meeting</span></label>
+            </div>
+          </div>
+          <label>Title <input type="text" id="fTitle" maxlength="120" placeholder="e.g. Fall kickoff social" required></label>
+          <label>Date and start time <input type="datetime-local" id="fStart" required></label>
+          <label><span>Place name <span class="opt">(optional)</span></span> <input type="text" id="fPlace" maxlength="120" placeholder="e.g. ARC Ballroom A"></label>
+          <label>Street address
+            <div class="addr-row">
+              <input type="text" id="fAddress" maxlength="300" placeholder="e.g. 241 Hutchison Dr, Davis, CA" autocomplete="street-address" required>
+              <button class="btn navy" type="button" id="findBtn">Find</button>
+            </div>
+          </label>
+          <div id="geoBox" hidden>
+            <p class="geo-found" id="geoFound"></p>
+            <div class="map" id="subMap"></div>
+            <p class="geo-note" id="geoNote">The gold circle is the 100 m check-in area. If the pin isn't on the right building, drag it there.</p>
+          </div>
+          <label><span>Details for the admin <span class="opt">(optional)</span></span>
+            <textarea id="fDesc" maxlength="1000" placeholder="What it is, who it's for, anything the admin should know."></textarea>
+          </label>
+          <p class="formmsg" id="subMsg" role="alert"></p>
+          <button class="btn" type="submit" id="subBtn">Submit for approval</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Your submissions</h2>
+        <p class="hint">Everything submitted for your SARG, newest first. You can withdraw your own while it's pending.</p>
+        <div id="mySubs" class="list"><div class="state">Loading…</div></div>
+      </section>
+    </div>
+
+    <!-- ===== Admin: review queue ===== -->
+    <div id="panelReview" class="col" hidden>
+      <section class="card">
+        <h2>Waiting for approval</h2>
+        <p class="hint">Approving adds it to the app as a General event with a 100 m check-in radius. You can fix the title, time or points first.</p>
+        <div id="queue" class="list"><div class="state">Loading…</div></div>
+      </section>
+      <section class="card">
+        <h2>Recently reviewed</h2>
+        <div id="reviewed" class="list"><div class="state">Loading…</div></div>
+      </section>
+    </div>
+
+    <!-- ===== Admin: leaders ===== -->
+    <div id="panelLeaders" class="grid" hidden>
+      <section class="card">
+        <h2>Add a SARG leader</h2>
+        <p class="hint">They need an Aggie Points account first. Use the same group name for co-leaders so they share submissions.</p>
+        <form id="leaderForm" class="stack">
+          <label>Their Aggie Points email <input type="email" id="lEmail" required placeholder="name@ucdavis.edu"></label>
+          <label>SARG name <input type="text" id="lGroup" list="groupNames" maxlength="80" required placeholder="e.g. Black Student-Athlete Alliance"></label>
+          <datalist id="groupNames"></datalist>
+          <p class="formmsg" id="leaderMsg" role="alert"></p>
+          <button class="btn" type="submit" id="leaderBtn">Add leader</button>
+        </form>
+      </section>
+      <section class="card">
+        <h2>Current leaders</h2>
+        <div id="leaders" class="list"><div class="state">Loading…</div></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<div id="toast" role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Publishable key: designed to ship in client code. Every write goes
+  // through a security-definer function in supabase/sql/sarg_event_submissions.sql
+  // (app repo) that checks the caller is a SARG leader (submit) or an
+  // admin (approve/reject, add/remove leaders); reads are limited by RLS.
+  const SUPABASE_URL = "https://rditinxvxjhrebdatovf.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_zTUrpyScZ-oBqifBAgOeLQ_68INsCY4";
+
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  const $ = (id) => document.getElementById(id);
+
+  // ?demo — fake data, no sign-in and no database calls (address lookup
+  // still uses the real geocoder), for previewing the layout.
+  const DEMO = new URLSearchParams(location.search).has("demo");
+
+  const CAMPUS = [38.5382, -121.7617];
+  const RADIUS_M = 100;           // must match approve_sarg_submission()
+  const DEFAULT_POINTS = 15;      // AdminEventsPanel's default for community events
+  const SUBMITTER = "users!sarg_event_submissions_submitted_by_fkey(first_name, last_name, email)";
+
+  let me = null;       // { id, first_name, last_name, role }
+  let groups = [];     // SARG names this user leads
+  let isAdmin = false;
+  let pin = null;      // { lat, lng } for the submit form
+
+  // ---------- Helpers ----------
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function stateMsg(container, text, isErr) {
+    container.replaceChildren(el("div", "state" + (isErr ? " err" : ""), text));
+  }
+  function toast(text) {
+    const t = $("toast");
+    t.textContent = text;
+    t.classList.add("show");
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.classList.remove("show"), 2600);
+  }
+  function errText(err) {
+    const m = (err && err.message) || String(err);
+    if (/Could not find the function|relation .* does not exist|Could not find the table/i.test(m)) return "The SARG portal isn't set up on the server yet.";
+    return m;
+  }
+  const fmtWhen = (iso) => new Date(iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+  const fullName = (u) => (u ? `${u.first_name} ${u.last_name}`.trim() : "A co-leader");
+  // <input type="datetime-local"> wants local time with no zone.
+  function toLocalInput(d) {
+    const p = (n) => String(n).padStart(2, "0");
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}`;
+  }
+  async function rpc(fn, args) {
+    const { data, error } = await client.rpc(fn, args || {});
+    if (error) throw error;
+    return data;
+  }
+  function distanceM(a, b) {
+    const R = 6371000, rad = (x) => (x * Math.PI) / 180;
+    const dLat = rad(b[0] - a[0]), dLng = rad(b[1] - a[1]);
+    const h = Math.sin(dLat / 2) ** 2 + Math.cos(rad(a[0])) * Math.cos(rad(b[0])) * Math.sin(dLng / 2) ** 2;
+    return 2 * R * Math.asin(Math.sqrt(h));
+  }
+
+  // Leaflet map with a pin and the 100 m check-in circle. `draggable`
+  // pins report moves through onMove.
+  function makeMap(container, lat, lng, { draggable = false, onMove } = {}) {
+    const map = L.map(container, { scrollWheelZoom: false }).setView([lat, lng], 17);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+    }).addTo(map);
+    const circle = L.circle([lat, lng], { radius: RADIUS_M, color: "#B07D00", fillColor: "#FFBF00", fillOpacity: 0.25, weight: 2 }).addTo(map);
+    const marker = L.marker([lat, lng], { draggable }).addTo(map);
+    if (draggable) {
+      marker.on("drag", (e) => circle.setLatLng(e.latlng));
+      marker.on("dragend", () => onMove && onMove(marker.getLatLng()));
+      map.on("click", (e) => { marker.setLatLng(e.latlng); circle.setLatLng(e.latlng); onMove && onMove(e.latlng); });
+    }
+    return { map, marker, circle };
+  }
+
+  // ---------- Auth ----------
+  function showLogin(message) {
+    $("portal").hidden = true;
+    $("login").hidden = false;
+    $("loginMsg").textContent = message || "";
+  }
+
+  // SARG leaders and admins get in; anyone else is signed straight back out.
+  async function enter(user) {
+    const [{ data: profile, error }, leaderRes] = await Promise.all([
+      client.from("users").select("id, role, first_name, last_name").eq("id", user.id).maybeSingle(),
+      client.from("sarg_leaders").select("group_name").eq("user_id", user.id).order("group_name"),
+    ]);
+    if (error || !profile) {
+      await client.auth.signOut();
+      showLogin(error ? errText(error) : "No Aggie Points profile found for this login.");
+      return;
+    }
+    if (leaderRes.error) {
+      await client.auth.signOut();
+      showLogin(errText(leaderRes.error));
+      return;
+    }
+    me = profile;
+    isAdmin = profile.role === "admin";
+    groups = (leaderRes.data || []).map((r) => r.group_name);
+    if (!isAdmin && !groups.length) {
+      await client.auth.signOut();
+      showLogin("This account isn't set up as a SARG leader yet. Ask the Aggie Points team to add you.");
+      return;
+    }
+    showPortal();
+  }
+
+  $("loginForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const btn = $("loginBtn");
+    btn.disabled = true;
+    $("loginMsg").textContent = "";
+    try {
+      const { data, error } = await client.auth.signInWithPassword({
+        email: $("email").value.trim(),
+        password: $("password").value,
+      });
+      if (error) { showLogin(error.message === "Invalid login credentials" ? "Wrong email or password." : error.message); return; }
+      $("password").value = "";
+      await enter(data.user);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $("signOutBtn").addEventListener("click", async () => {
+    if (DEMO) { location.search = ""; return; }
+    await client.auth.signOut();
+    me = null; groups = []; isAdmin = false;
+    showLogin("");
+  });
+
+  // ---------- Portal shell ----------
+  function showPortal() {
+    $("login").hidden = true;
+    $("portal").hidden = false;
+    $("hello").textContent = `Hi, ${me.first_name}`;
+    const bits = [];
+    if (groups.length) bits.push(`Leader of ${groups.join(", ")}`);
+    if (isAdmin) bits.push("Admin");
+    $("helloSub").textContent = bits.join(" · ");
+
+    $("tabSubmit").hidden = !groups.length;
+    $("tabReview").hidden = !isAdmin;
+    $("tabLeaders").hidden = !isAdmin;
+
+    if (groups.length) setupSubmitForm();
+    // Admins land on the queue; leaders on the form.
+    selectTab(isAdmin ? "review" : "submit");
+    if (isAdmin) loadQueue();
+  }
+
+  $("tabs").addEventListener("click", (ev) => {
+    const b = ev.target.closest("button[data-tab]");
+    if (b) selectTab(b.dataset.tab);
+  });
+
+  function selectTab(tab) {
+    document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
+    $("panelSubmit").hidden = tab !== "submit";
+    $("panelReview").hidden = tab !== "review";
+    $("panelLeaders").hidden = tab !== "leaders";
+    if (tab === "submit") { loadMySubs(); if (subMap) setTimeout(() => subMap.map.invalidateSize(), 0); }
+    if (tab === "review") loadQueue();
+    if (tab === "leaders") loadLeaders();
+  }
+
+  // ---------- Leader: submit ----------
+  let subMap = null;
+  let formReady = false;
+
+  function setupSubmitForm() {
+    const sel = $("fGroup");
+    sel.replaceChildren(...groups.map((g) => { const o = el("option", "", g); o.value = g; return o; }));
+    $("groupWrap").hidden = groups.length < 2;
+    const start = $("fStart");
+    start.min = toLocalInput(new Date());
+    if (formReady) return;
+    formReady = true;
+    $("findBtn").addEventListener("click", geocode);
+    $("fAddress").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); geocode(); } });
+    // A changed address invalidates the pin until it's looked up again.
+    $("fAddress").addEventListener("input", () => {
+      if (pin) { pin = null; $("geoBox").hidden = true; }
+    });
+    $("subForm").addEventListener("submit", submitEvent);
+  }
+
+  // OpenStreetMap's Nominatim geocoder, biased to (not limited to) Davis.
+  async function geocode() {
+    const q = $("fAddress").value.trim();
+    const msg = $("subMsg");
+    msg.className = "formmsg"; msg.textContent = "";
+    if (!q) { msg.className = "formmsg err"; msg.textContent = "Enter a street address first."; return; }
+    const btn = $("findBtn");
+    btn.disabled = true; btn.textContent = "Finding…";
+    try {
+      const url = "https://nominatim.openstreetmap.org/search?" + new URLSearchParams({
+        format: "jsonv2", q, limit: "1", countrycodes: "us", addressdetails: "0",
+        viewbox: "-121.86,38.62,-121.66,38.49", bounded: "0",
+      });
+      const res = await fetch(url, { headers: { "Accept-Language": "en" } });
+      if (!res.ok) throw new Error("The address lookup service didn't respond. Try again in a moment.");
+      const [hit] = await res.json();
+      if (!hit) {
+        pin = null; $("geoBox").hidden = true;
+        msg.className = "formmsg err";
+        msg.textContent = "Couldn't find that address. Check the spelling, include the city (Davis, CA), or try the building's street address.";
+        return;
+      }
+      const lat = Number(hit.lat), lng = Number(hit.lon);
+      pin = { lat, lng };
+      $("geoFound").replaceChildren(el("b", "", "Found:"), document.createTextNode(hit.display_name));
+      // A huge match (e.g. "1 Shields Ave" = all of campus) puts the pin
+      // at the middle of the area, which is rarely where the event is.
+      const bb = (hit.boundingbox || []).map(Number);
+      const span = bb.length === 4 ? distanceM([bb[0], bb[2]], [bb[1], bb[3]]) : 0;
+      const far = distanceM(CAMPUS, [lat, lng]);
+      const note = $("geoNote");
+      if (far > 150000) {
+        note.className = "geo-note warn";
+        note.textContent = `That's ${Math.round(far / 1000)} km from campus — probably the wrong place. Add "Davis, CA" to the address.`;
+      } else if (span > 400) {
+        note.className = "geo-note warn";
+        note.textContent = "That address covers a large area, so the pin is just its center. Drag the pin onto the exact building (or click the map where the event is).";
+      } else {
+        note.className = "geo-note";
+        note.textContent = "The gold circle is the 100 m check-in area. If the pin isn't on the right building, drag it there.";
+      }
+      $("geoBox").hidden = false;
+      if (!subMap) {
+        subMap = makeMap($("subMap"), lat, lng, { draggable: true, onMove: (ll) => { pin = { lat: ll.lat, lng: ll.lng }; } });
+      } else {
+        subMap.marker.setLatLng([lat, lng]);
+        subMap.circle.setLatLng([lat, lng]);
+        subMap.map.setView([lat, lng], 17);
+      }
+      setTimeout(() => subMap.map.invalidateSize(), 0);
+    } catch (err) {
+      msg.className = "formmsg err"; msg.textContent = errText(err);
+    } finally {
+      btn.disabled = false; btn.textContent = "Find";
+    }
+  }
+
+  async function submitEvent(ev) {
+    ev.preventDefault();
+    const msg = $("subMsg");
+    const fail = (t) => { msg.className = "formmsg err"; msg.textContent = t; };
+    const title = $("fTitle").value.trim();
+    const startVal = $("fStart").value;
+    const address = $("fAddress").value.trim();
+    if (!title) return fail("Add a title.");
+    if (!startVal) return fail("Pick a date and start time.");
+    const start = new Date(startVal);
+    if (start < new Date()) return fail("Pick a start time in the future.");
+    if (!address) return fail("Enter the street address.");
+    if (!pin) return fail('Press "Find" to put the address on the map first.');
+
+    const args = {
+      p_group_name: $("fGroup").value || groups[0],
+      p_kind: document.querySelector('input[name="kind"]:checked').value,
+      p_title: title,
+      p_description: $("fDesc").value.trim(),
+      p_start_time: start.toISOString(),
+      p_location_name: $("fPlace").value.trim(),
+      p_address: address,
+      p_latitude: pin.lat,
+      p_longitude: pin.lng,
+    };
+    $("subBtn").disabled = true;
+    msg.className = "formmsg"; msg.textContent = "";
+    try {
+      if (DEMO) demo.submit(args); else await rpc("submit_sarg_event", args);
+      $("subForm").reset();
+      pin = null; $("geoBox").hidden = true;
+      msg.className = "formmsg ok";
+      msg.textContent = "Submitted! An admin will review it soon.";
+      loadMySubs();
+    } catch (err) {
+      fail(errText(err));
+    } finally {
+      $("subBtn").disabled = false;
+    }
+  }
+
+  async function loadMySubs() {
+    const box = $("mySubs");
+    try {
+      let rows;
+      if (DEMO) rows = demo.subs.filter((s) => groups.includes(s.group_name));
+      else {
+        const { data, error } = await client.from("sarg_event_submissions")
+          .select(`id, submitted_by, group_name, kind, title, start_time, location_name, address, status, admin_note, created_at, ${SUBMITTER}`)
+          .in("group_name", groups)
+          .order("created_at", { ascending: false })
+          .limit(50);
+        if (error) throw error;
+        rows = data;
+      }
+      if (!rows.length) { stateMsg(box, "Nothing submitted yet."); return; }
+      box.replaceChildren(...rows.map((s) => {
+        const d = el("div", "sub");
+        const top = el("div", "top");
+        top.append(el("span", "ttl", s.title), el("span", "pill " + s.status, s.status[0].toUpperCase() + s.status.slice(1)));
+        d.append(top);
+        const where = s.location_name || s.address;
+        d.append(el("div", "meta", `${fmtWhen(s.start_time)} · ${where}`));
+        const who = s.submitted_by === me.id ? "you" : fullName(s.users);
+        d.append(el("div", "meta", `${s.kind === "meeting" ? "Meeting" : "Event"}${groups.length > 1 ? " · " + s.group_name : ""} · submitted by ${who}`));
+        if (s.status === "rejected" && s.admin_note) d.append(el("div", "note", "Admin note: " + s.admin_note));
+        if (s.status === "approved") d.append(el("div", "meta", "Live in the app."));
+        if (s.status === "pending" && s.submitted_by === me.id) {
+          const acts = el("div", "acts");
+          const w = el("button", "btn danger sm", "Withdraw");
+          w.type = "button";
+          w.addEventListener("click", () => withdraw(s, w));
+          acts.append(w);
+          d.append(acts);
+        }
+        return d;
+      }));
+    } catch (err) {
+      stateMsg(box, "Couldn't load submissions: " + errText(err), true);
+    }
+  }
+
+  async function withdraw(s, btn) {
+    if (!window.confirm(`Withdraw "${s.title}"? It won't be reviewed.`)) return;
+    btn.disabled = true;
+    try {
+      if (DEMO) demo.subs = demo.subs.filter((x) => x.id !== s.id);
+      else {
+        const { error } = await client.from("sarg_event_submissions").delete().eq("id", s.id);
+        if (error) throw error;
+      }
+      toast("Withdrawn");
+      loadMySubs();
+    } catch (err) {
+      btn.disabled = false;
+      alert("Couldn't withdraw: " + errText(err));
+    }
+  }
+
+  // ---------- Admin: review ----------
+  async function loadQueue() {
+    const box = $("queue"), done = $("reviewed");
+    try {
+      let rows;
+      if (DEMO) rows = demo.subs;
+      else {
+        const { data, error } = await client.from("sarg_event_submissions")
+          .select(`*, ${SUBMITTER}`)
+          .order("start_time", { ascending: true });
+        if (error) throw error;
+        rows = data;
+      }
+      const pending = rows.filter((s) => s.status === "pending");
+      const reviewed = rows.filter((s) => s.status !== "pending")
+        .sort((a, b) => (b.reviewed_at || "").localeCompare(a.reviewed_at || ""))
+        .slice(0, 15);
+      const count = $("reviewCount");
+      count.textContent = pending.length;
+      count.hidden = !pending.length;
+
+      if (!pending.length) stateMsg(box, "All caught up. Nothing waiting for approval.");
+      else box.replaceChildren(...pending.map(reviewCard));
+
+      if (!reviewed.length) stateMsg(done, "Nothing reviewed yet.");
+      else done.replaceChildren(...reviewed.map((s) => {
+        const d = el("div", "sub");
+        const top = el("div", "top");
+        top.append(el("span", "ttl", s.title), el("span", "pill " + s.status, s.status[0].toUpperCase() + s.status.slice(1)));
+        d.append(top, el("div", "meta", `${s.group_name} · ${fmtWhen(s.start_time)} · from ${fullName(s.users)}`));
+        if (s.admin_note) d.append(el("div", "note", s.admin_note));
+        return d;
+      }));
+    } catch (err) {
+      stateMsg(box, "Couldn't load the queue: " + errText(err), true);
+      stateMsg(done, "");
+    }
+  }
+
+  function reviewCard(s) {
+    const card = el("div", "review");
+    const head = el("div", "head");
+    head.append(el("span", "pill gold", s.group_name), el("span", "pill navy", s.kind === "meeting" ? "Meeting" : "Event"));
+    const past = new Date(s.start_time) < new Date();
+    if (past) head.append(el("span", "pill rejected", "Start time has passed"));
+    head.append(el("h3", "", s.title));
+    card.append(head);
+
+    const split = el("div", "split");
+    const dl = el("dl");
+    const row = (k, v) => { if (v) dl.append(el("dt", "", k), el("dd", "", v)); };
+    row("When", fmtWhen(s.start_time));
+    row("Place", s.location_name);
+    row("Address", s.address);
+    row("Submitted by", s.users ? `${fullName(s.users)} (${s.users.email || "no email"})` : "—");
+    row("Submitted", fmtWhen(s.created_at));
+    row("Details", s.description);
+    const left = el("div");
+    left.append(dl);
+    const right = el("div");
+    const mapEl = el("div", "map small");
+    const link = el("a", "maplink", "Open in Google Maps ↗");
+    link.href = `https://www.google.com/maps/search/?api=1&query=${s.latitude},${s.longitude}`;
+    link.target = "_blank"; link.rel = "noopener";
+    right.append(mapEl, link);
+    split.append(left, right);
+    card.append(split);
+    // Leaflet needs the element in the DOM with a size before it renders.
+    requestAnimationFrame(() => makeMap(mapEl, s.latitude, s.longitude));
+
+    const edit = el("div", "edit");
+    const tIn = el("input"); tIn.type = "text"; tIn.value = s.title; tIn.maxLength = 120;
+    const dIn = el("input"); dIn.type = "datetime-local"; dIn.value = toLocalInput(new Date(s.start_time));
+    const pIn = el("input"); pIn.type = "number"; pIn.min = "0"; pIn.step = "1"; pIn.value = String(DEFAULT_POINTS);
+    const lab = (text, input) => { const l = el("label", "", text); l.append(input); return l; };
+    edit.append(lab("Title in the app", tIn), lab("Start time", dIn), lab("Points", pIn));
+    card.append(edit);
+
+    const msg = el("p", "formmsg");
+    const acts = el("div", "acts");
+    const approve = el("button", "btn", "Approve & add to app");
+    const reject = el("button", "btn danger", "Reject");
+    approve.type = reject.type = "button";
+    acts.append(approve, reject);
+    card.append(msg, acts);
+
+    const busy = (b) => { approve.disabled = reject.disabled = b; };
+    approve.addEventListener("click", async () => {
+      const points = Number(pIn.value);
+      if (!Number.isInteger(points) || points < 0) { msg.className = "formmsg err"; msg.textContent = "Points must be a whole number, 0 or more."; return; }
+      if (!dIn.value) { msg.className = "formmsg err"; msg.textContent = "Pick a start time."; return; }
+      const start = new Date(dIn.value);
+      const changedTime = start.getTime() !== new Date(s.start_time).getTime();
+      busy(true);
+      try {
+        const args = {
+          p_submission_id: s.id,
+          p_points_value: points,
+          p_title: tIn.value.trim() !== s.title ? tIn.value.trim() : null,
+          p_start_time: changedTime ? start.toISOString() : null,
+        };
+        if (DEMO) demo.review(s.id, "approved", null, args); else await rpc("approve_sarg_submission", args);
+        toast(`"${tIn.value.trim() || s.title}" is live in the app`);
+        loadQueue();
+      } catch (err) {
+        busy(false);
+        msg.className = "formmsg err"; msg.textContent = errText(err);
+      }
+    });
+    reject.addEventListener("click", async () => {
+      const note = window.prompt(`Reject "${s.title}"?\n\nOptional note for the SARG leader (they'll see it in the portal):`, "");
+      if (note === null) return;
+      busy(true);
+      try {
+        if (DEMO) demo.review(s.id, "rejected", note.trim() || null); else await rpc("reject_sarg_submission", { p_submission_id: s.id, p_note: note });
+        toast("Rejected");
+        loadQueue();
+      } catch (err) {
+        busy(false);
+        msg.className = "formmsg err"; msg.textContent = errText(err);
+      }
+    });
+    return card;
+  }
+
+  // ---------- Admin: leaders ----------
+  async function loadLeaders() {
+    const box = $("leaders");
+    try {
+      let rows;
+      if (DEMO) rows = demo.leaders;
+      else {
+        const { data, error } = await client.from("sarg_leaders")
+          .select("user_id, group_name, users!sarg_leaders_user_id_fkey(first_name, last_name, email)")
+          .order("group_name");
+        if (error) throw error;
+        rows = data;
+      }
+      const names = [...new Set(rows.map((r) => r.group_name))];
+      $("groupNames").replaceChildren(...names.map((n) => { const o = el("option"); o.value = n; return o; }));
+      if (!rows.length) { stateMsg(box, "No SARG leaders yet."); return; }
+      box.replaceChildren(...rows.map((r) => {
+        const d = el("div", "leader");
+        const info = el("div");
+        info.append(el("div", "n", fullName(r.users)), el("div", "meta", `${r.group_name} · ${r.users ? r.users.email || "" : ""}`));
+        const rm = el("button", "btn danger sm", "Remove");
+        rm.type = "button";
+        rm.addEventListener("click", async () => {
+          if (!window.confirm(`Remove ${fullName(r.users)} as a leader of ${r.group_name}? Their past submissions stay.`)) return;
+          rm.disabled = true;
+          try {
+            if (DEMO) demo.leaders = demo.leaders.filter((x) => !(x.user_id === r.user_id && x.group_name === r.group_name));
+            else await rpc("revoke_sarg_leader", { p_user_id: r.user_id, p_group_name: r.group_name });
+            toast("Removed");
+            loadLeaders();
+          } catch (err) {
+            rm.disabled = false;
+            alert("Couldn't remove: " + errText(err));
+          }
+        });
+        d.append(info, rm);
+        return d;
+      }));
+    } catch (err) {
+      stateMsg(box, "Couldn't load leaders: " + errText(err), true);
+    }
+  }
+
+  $("leaderForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const msg = $("leaderMsg");
+    const email = $("lEmail").value.trim(), group = $("lGroup").value.trim();
+    if (!email || !group) { msg.className = "formmsg err"; msg.textContent = "Fill in both fields."; return; }
+    $("leaderBtn").disabled = true;
+    msg.className = "formmsg"; msg.textContent = "";
+    try {
+      if (DEMO) demo.leaders.push({ user_id: "u" + Date.now(), group_name: group, users: { first_name: email.split("@")[0], last_name: "", email } });
+      else await rpc("grant_sarg_leader", { p_email: email, p_group_name: group });
+      $("lEmail").value = "";
+      msg.className = "formmsg ok";
+      msg.textContent = `Added. They can sign in here now with their Aggie Points login.`;
+      loadLeaders();
+    } catch (err) {
+      msg.className = "formmsg err"; msg.textContent = errText(err);
+    } finally {
+      $("leaderBtn").disabled = false;
+    }
+  });
+
+  // ---------- Demo data ----------
+  const demo = (() => {
+    const at = (dDay, h, m) => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate() + dDay, h, m).toISOString(); };
+    const lead = { first_name: "Demo", last_name: "Leader", email: "demo@ucdavis.edu" };
+    const co = { first_name: "Jordan", last_name: "Kim", email: "jkim@ucdavis.edu" };
+    const x1 = { first_name: "Sam", last_name: "Lopez", email: "slopez@ucdavis.edu" };
+    const base = { kind: "event", description: null, admin_note: null, reviewed_at: null, created_at: at(-1, 12, 0) };
+    const state = {
+      leaders: [
+        { user_id: "me", group_name: "Black Student-Athlete Alliance", users: lead },
+        { user_id: "co", group_name: "Black Student-Athlete Alliance", users: co },
+        { user_id: "x1", group_name: "Aggie Athletes for Change", users: x1 },
+      ],
+      subs: [
+        { ...base, id: "s1", submitted_by: "me", users: lead, group_name: "Black Student-Athlete Alliance", kind: "meeting",
+          title: "Monthly general meeting", start_time: at(4, 18, 30), location_name: "ARC Ballroom A",
+          address: "241 Hutchison Dr, Davis, CA 95616", latitude: 38.54296, longitude: -121.75930,
+          description: "Open to all student-athletes. Pizza provided.", status: "pending" },
+        { ...base, id: "s2", submitted_by: "co", users: co, group_name: "Black Student-Athlete Alliance",
+          title: "Community cleanup at Central Park", start_time: at(9, 10, 0), location_name: "Central Park",
+          address: "401 C St, Davis, CA 95616", latitude: 38.54470, longitude: -121.74470, status: "pending" },
+        { ...base, id: "s3", submitted_by: "x1", users: x1, group_name: "Aggie Athletes for Change",
+          title: "Voter registration drive", start_time: at(2, 12, 0), location_name: "Memorial Union patio",
+          address: "1 Shields Ave, Davis, CA 95616", latitude: 38.54240, longitude: -121.74950, status: "pending" },
+        { ...base, id: "s4", submitted_by: "me", users: lead, group_name: "Black Student-Athlete Alliance",
+          title: "Kickoff social", start_time: at(-3, 17, 0), location_name: "Silo Union",
+          address: "Silo, Davis, CA", latitude: 38.5385, longitude: -121.7535, status: "approved", reviewed_at: at(-5, 9, 0) },
+        { ...base, id: "s5", submitted_by: "me", users: lead, group_name: "Black Student-Athlete Alliance",
+          title: "Film night", start_time: at(6, 19, 0), location_name: null,
+          address: "Davis, CA", latitude: 38.5449, longitude: -121.7405, status: "rejected", reviewed_at: at(-1, 15, 0),
+          admin_note: "Please resubmit with the room's address so check-in works." },
+      ],
+    };
+    return Object.assign(state, {
+      submit(a) {
+        state.subs.unshift({ ...base, id: "s" + Date.now(), submitted_by: "me", users: lead, group_name: a.p_group_name,
+          kind: a.p_kind, title: a.p_title, description: a.p_description || null, start_time: a.p_start_time,
+          location_name: a.p_location_name || null, address: a.p_address, latitude: a.p_latitude, longitude: a.p_longitude,
+          status: "pending", created_at: new Date().toISOString() });
+      },
+      review(id, status, note, args) {
+        const s = state.subs.find((x) => x.id === id);
+        s.status = status; s.admin_note = note; s.reviewed_at = new Date().toISOString();
+        if (args && args.p_title) s.title = args.p_title;
+        if (args && args.p_start_time) s.start_time = args.p_start_time;
+      },
+    });
+  })();
+
+  // ---------- Start ----------
+  if (DEMO) {
+    me = { id: "me", first_name: "Demo", last_name: "Leader", role: "admin" };
+    isAdmin = true;
+    groups = ["Black Student-Athlete Alliance"];
+    showPortal();
+  } else {
+    client.auth.getSession().then(({ data }) => {
+      if (data.session) enter(data.session.user);
+      else showLogin("");
+    });
+  }
+</script>
+</body>
+</html>

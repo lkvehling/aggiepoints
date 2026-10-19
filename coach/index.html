@@ -339,7 +339,7 @@
 
         <section class="card" id="sec-roster">
           <h2>Your roster</h2>
-          <p class="hint">Ranked by points this season. Tap an athlete to see the events they earned points at.</p>
+          <p class="hint">Ranked by points this season, with each athlete's rank across all of UC Davis Athletics. Tap an athlete to see the events they earned points at.</p>
           <div id="roster" class="rows"><div class="state">Loading roster…</div></div>
         </section>
 
@@ -608,12 +608,23 @@
   async function loadRoster() {
     const box = $("roster");
     try {
-      const rows = DEMO ? demo.roster : await rpc("get_coach_roster");
+      const [rows, everyone] = DEMO
+        ? [demo.roster, demo.everyone]
+        : await Promise.all([rpc("get_coach_roster"), loadEveryonePoints()]);
       if (!rows.length) { stateMsg(box, "No athletes on your team have signed up yet. Share your team code to get them started."); return; }
       const sorted = [...rows]
         .map((r) => ({ ...r, total_points: Number(r.total_points) }))
         .sort((a, b) => b.total_points - a.total_points || a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
-      box.replaceChildren(...computeRanks(sorted, (r) => r.total_points).map(athleteRow));
+      // Universal rank, the same number the athlete sees on the app's
+      // Individual leaderboard — not re-ranked within the team.
+      const universal = new Map(
+        computeRanks(everyone.map((u) => ({ ...u, total_points: Number(u.total_points) })), (u) => u.total_points)
+          .map((u) => [u.user_id, u])
+      );
+      box.replaceChildren(...sorted.map((r) => {
+        const u = universal.get(r.user_id);
+        return athleteRow({ ...r, rank: u ? u.rank : null, tied: u ? u.tied : false });
+      }));
       facts.roster = sorted;
       renderTips();
     } catch (err) {
@@ -631,7 +642,7 @@
     tags.append(a.is_verified ? el("span", "pill ok", "✓ Verified") : el("span", "pill no", "Not verified"));
     if (a.is_additional_team) tags.append(el("span", "pill navy", "Second team"));
     n.append(tags);
-    btn.append(el("span", "k", formatRank(a)), n, el("span", "p", `${fmtPts(a.total_points)} pts`), el("span", "chev", "▶"));
+    btn.append(el("span", "k", a.rank === null ? "—" : formatRank(a)), n, el("span", "p", `${fmtPts(a.total_points)} pts`), el("span", "chev", "▶"));
     const events = el("div", "events");
     events.hidden = true;
     let loaded = false;
@@ -985,6 +996,16 @@
   const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
   const fmtWhen = (iso) => new Date(iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
+  // Every athlete's season total, sorted, from the same user_points_totals
+  // view the app's Individual leaderboard reads — so roster ranks match it.
+  async function loadEveryonePoints() {
+    const { data, error } = await client.from("user_points_totals")
+      .select("user_id, total_points")
+      .order("total_points", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
   async function rpc(fn, args) {
     const { data, error } = await client.rpc(fn, args || {});
     if (error) throw error;
@@ -1000,6 +1021,9 @@
       user_id: "u" + i, first_name: f, last_name: last[i], total_points: pts[i],
       is_verified: i % 4 !== 3, is_additional_team: i === 5,
     }));
+    // The roster mixed in with athletes from other teams, for universal ranks.
+    const others = [300, 260, 210, 150, 130, 120, 90, 75, 50, 30, 10, 0, 0].map((p, i) => ({ user_id: "x" + i, total_points: p }));
+    const everyone = [...roster, ...others].sort((a, b) => b.total_points - a.total_points);
     const teamList = ["Women's Soccer", "Men's Basketball", "Volleyball", "Softball", "Track & Field", "Women's Basketball", "Baseball", "Swim & Dive", "Water Polo", "Rugby"];
     const teams = teamList.map((name, i) => ({
       team_id: "t" + i, team_name: name,
@@ -1018,7 +1042,7 @@
     ].sort((a, b) => a.start_time.localeCompare(b.start_time)).map((e, i) => ({ id: "e" + i, ...e }));
     return {
       registration: [{ team_id: "t0", team_name: "Women's Soccer", roster_size: 28, signed_up: roster.length, verified: roster.filter((r) => r.is_verified).length }],
-      roster, teams, events, code: "AGGIE-7K2P9X",
+      roster, everyone, teams, events, code: "AGGIE-7K2P9X",
       athleteEvents: (id) => {
         const n = Math.round((roster.find((r) => r.user_id === id)?.total_points || 0) / 20);
         return Array.from({ length: n }, (_, k) => ({

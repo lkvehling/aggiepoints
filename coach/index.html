@@ -64,13 +64,26 @@
   .hero-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; }
   .tile { background: var(--tile); border-radius: 16px; padding: 16px 18px; min-width: 0; }
   .tile .lbl { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.75; }
-  .rank-tile { box-shadow: inset 0 0 0 2px var(--gold); }
+  .rank-tile { box-shadow: inset 0 0 0 2px var(--gold); display: flex; flex-direction: column; justify-content: center; }
+  .rank-tile .lbl { margin-bottom: auto; }
+  .rank-tile .rank-sub { margin-bottom: auto; }
   .rank-line { display: flex; align-items: baseline; gap: 10px; margin-top: 2px; }
   .rank-num { font-size: clamp(64px, 11vw, 96px); font-weight: 800; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
   .rank-of { font-size: 20px; font-weight: 700; opacity: 0.85; }
   .rank-sub { font-size: 16px; font-weight: 600; opacity: 0.85; margin-top: 6px; }
-  .rank-chase { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.18); font-size: 15px; display: grid; gap: 2px; }
-  .rank-chase b { color: var(--gold); }
+  .quicklinks {
+    position: sticky; top: 0; z-index: 5; background: rgba(244, 247, 255, 0.92);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  }
+  .quicklinks .wrap { display: flex; gap: 8px; padding-top: 10px; padding-bottom: 10px; overflow-x: auto; scrollbar-width: none; }
+  .quicklinks .wrap::-webkit-scrollbar { display: none; }
+  .quicklinks a {
+    flex: none; text-decoration: none; color: var(--navy); font-weight: 700; font-size: 15px;
+    padding: 7px 14px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1.5px rgba(10, 59, 122, 0.25);
+  }
+  .quicklinks a:hover { background: var(--gold); color: var(--navy-start); box-shadow: none; }
+  section[id^="sec-"] { scroll-margin-top: 72px; }
+  html { scroll-behavior: smooth; }
   .reg-body { display: flex; align-items: center; gap: 18px; margin-top: 8px; }
   .donut { width: 140px; height: 140px; flex: none; }
   .donut .seg { transition: opacity .15s; }
@@ -270,7 +283,6 @@
             <div class="rank-of" id="rankOf"></div>
           </div>
           <div class="rank-sub" id="rankSub">Average points per roster spot</div>
-          <div class="rank-chase" id="rankChase" hidden></div>
         </div>
         <div class="tile reg-tile">
           <div class="lbl">Registration</div>
@@ -283,21 +295,26 @@
     </div>
   </header>
 
+  <nav class="quicklinks" aria-label="Jump to section">
+    <div class="wrap">
+      <a href="#sec-scoreboard">Scoreboard</a>
+      <a href="#sec-code">Team code</a>
+      <a href="#sec-roster">Roster</a>
+      <a href="#sec-moveup">Move up</a>
+      <a href="#sec-events">Events</a>
+    </div>
+  </nav>
+
   <main class="wrap">
     <div class="grid">
       <div class="col">
-        <section class="card scoreboard">
+        <section class="card scoreboard" id="sec-scoreboard">
           <h2>Team scoreboard</h2>
           <p class="hint">Ranked by average points per roster spot, so every team size competes fairly.</p>
           <div id="teams" class="rows"><div class="state">Loading teams…</div></div>
           <div id="gap" class="gap" hidden></div>
         </section>
-        <section class="card">
-          <h2>Your roster</h2>
-          <p class="hint">Ranked by points this season. Tap an athlete to see the events they earned points at.</p>
-          <div id="roster" class="rows"><div class="state">Loading roster…</div></div>
-        </section>
-        <section class="card">
+        <section class="card" id="sec-events">
           <h2>Upcoming events</h2>
           <p class="hint">Every team's events. Athletes earn points by checking in at other teams' events.</p>
           <div id="schedule"><div class="state">Loading events…</div></div>
@@ -305,7 +322,7 @@
       </div>
 
       <div class="col">
-        <section class="card code-card">
+        <section class="card code-card" id="sec-code">
           <h2>Your team code</h2>
           <p class="hint">Share this with your athletes so they can verify they're on your team.</p>
           <div class="code" id="teamCode">——————</div>
@@ -320,7 +337,13 @@
           </ol>
         </section>
 
-        <section class="card moveup">
+        <section class="card" id="sec-roster">
+          <h2>Your roster</h2>
+          <p class="hint">Ranked by points this season. Tap an athlete to see the events they earned points at.</p>
+          <div id="roster" class="rows"><div class="state">Loading roster…</div></div>
+        </section>
+
+        <section class="card moveup" id="sec-moveup">
           <h2>Ways to move up</h2>
           <p class="hint">Your rank is your team's points divided by your roster size, so every athlete counts.</p>
           <ol class="tips" id="tips"><li class="state">Loading…</li></ol>
@@ -746,10 +769,9 @@
   function renderGap(ranked, unranked) {
     const gap = $("gap");
     const i = ranked.findIndex((t) => t.team_id === myTeamId);
-    const rankBig = $("rankBig"), rankSub = $("rankSub"), chase = $("rankChase");
+    const rankBig = $("rankBig"), rankSub = $("rankSub");
     if (i === -1) {
       gap.hidden = true;
-      chase.hidden = true;
       rankBig.textContent = "—";
       $("rankOf").textContent = "";
       rankSub.textContent = unranked.some((t) => t.team_id === myTeamId)
@@ -789,8 +811,6 @@
     };
     gap.replaceChildren(...lines.map(line));
     gap.hidden = false;
-    chase.replaceChildren(...lines.map(line));
-    chase.hidden = false;
     renderTips();
   }
 

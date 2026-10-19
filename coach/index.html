@@ -848,8 +848,8 @@
       return { steps, rest };
     }
     const planText = ({ steps }) => steps
-      .map((s, k) => `${k === 0 ? "Bring " : ""}${plural(s.bring, "athlete")} to ${label(s.e)}`)
-      .join(", then ");
+      .map((s, k) => `${k === 0 ? "If " : ""}${plural(s.bring, "athlete")} check${s.bring === 1 ? "s" : ""} in at ${label(s.e)}`)
+      .join(" and ");
 
     const tips = [];
 
@@ -859,33 +859,33 @@
       tips.push([`Pass ${st.above.team_name}`,
         `You need about ${fmtPts(need)} more team points.` +
         (plan.steps.length
-          ? ` ${planText(plan)}${plan.rest > 0 ? ", and keep showing up after that." : " and you'll pass them."}`
+          ? ` ${planText(plan)}${plan.rest > 0 ? ", you'll be most of the way there." : ", you'll pass them."} Encourage your team to make it.`
           : " Every athlete check-in at another team's event closes the gap.")]);
     } else if (st && st.below) {
       const lead = Math.max(1, Math.round((st.me.avg - st.below.avg) * st.me.roster_size));
       tips.push(["Protect your lead",
         `You're about ${fmtPts(lead)} team points ahead of ${st.below.team_name}.` +
-        (next.length ? ` Get a group to ${label(next[0])} to stretch it.` : " Keep the check-ins coming.")]);
+        (next.length ? ` Encourage your athletes to check in at ${label(next[0])} to stretch it.` : " Keep the check-ins coming.")]);
     }
 
-    if (next.length) tips.push(["Next events to go to",
+    if (next.length) tips.push(["Upcoming events to share with your team",
       next.slice(0, 3).map(label).join("; ") + "."]);
 
     if (roster && reg && reg.size > 0) {
       const zero = roster.filter((r) => r.total_points === 0).length;
-      if (zero) tips.push([`Get your ${plural(zero, "athlete")} with 0 points on the board`,
+      if (zero) tips.push([`Encourage your ${plural(zero, "athlete")} with 0 points to get on the board`,
         next.length
-          ? `Bring them to ${label(next[0])}. That alone adds ${(zero * next[0].points_value / reg.size).toFixed(1)} to your points per athlete average.`
+          ? `If they all check in at ${label(next[0])}, that alone adds ${(zero * next[0].points_value / reg.size).toFixed(1)} to your points per athlete average.`
           : "Every athlete's first check-in raises your team average."]);
     }
 
     if (reg && reg.size > 0 && reg.signed < reg.size) {
-      tips.push([`Sign up the other ${plural(reg.size - reg.signed, "athlete")}`,
+      tips.push([`Encourage the other ${plural(reg.size - reg.signed, "athlete")} to sign up`,
         "Your average is divided by your whole roster, so athletes who aren't in the app still count against you."]);
     }
 
     if (reg && reg.signed > reg.verified) {
-      tips.push([`Have ${plural(reg.signed - reg.verified, "athlete")} enter your team code`,
+      tips.push([`Remind ${plural(reg.signed - reg.verified, "athlete")} to enter your team code`,
         "After the verification deadline, only verified athletes' points count for your team."]);
     }
 

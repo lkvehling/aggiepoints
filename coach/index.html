@@ -210,7 +210,7 @@
   .login-box .tag { text-align: center; opacity: 0.8; margin: 0 0 24px; }
   form.stack { display: grid; gap: 12px; }
   label { font-size: 14px; font-weight: 700; display: grid; gap: 6px; }
-  input[type=email], input[type=password] {
+  input[type=email], input[type=password], input[type=text], select {
     width: 100%; padding: 12px 14px; min-height: 48px; border-radius: 12px; font-size: 16px;
     border: 1px solid var(--border); background: #fff; color: var(--ink);
   }
@@ -220,6 +220,18 @@
   .card .formmsg.err { color: var(--red); }
   .card .formmsg.ok { color: var(--green); }
   .fine { font-size: 14px; opacity: 0.75; text-align: center; margin-top: 18px; }
+
+  /* ---- Admin ---- */
+  .admin-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr); gap: 20px; align-items: start; }
+  .two { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+  .coach-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px 14px; border-radius: 12px; background: var(--page-bg); }
+  .coach-row .n { font-weight: 700; }
+  .coach-row .meta { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+  .coach-row .team { color: var(--gold-dark); font-weight: 700; font-size: 14px; }
+  .coach-row .acts { display: flex; gap: 8px; }
+  .btn.sm { min-height: 40px; padding: 8px 14px; font-size: 15px; }
+  .btn.danger { background: transparent; color: var(--red); box-shadow: inset 0 0 0 2px var(--red); }
+  .filter { margin-bottom: 12px; }
 
   /* ---- Dialog ---- */
   dialog { border: 0; border-radius: 16px; padding: 0; width: min(420px, calc(100% - 32px)); }
@@ -235,7 +247,7 @@
   #toast.show { opacity: 1; transform: translate(-50%, 0); }
 
   @media (max-width: 860px) {
-    .grid, .hero-grid { grid-template-columns: minmax(0, 1fr); }
+    .grid, .hero-grid, .admin-grid { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-width: 480px) {
     .card { padding: 16px; }
@@ -244,6 +256,8 @@
     .athlete .events { padding-left: 12px; }
     .ev { grid-template-columns: minmax(0, 1fr) auto; }
     .ev .t { grid-column: 1 / -1; }
+    .two { grid-template-columns: minmax(0, 1fr); }
+    .coach-row { grid-template-columns: minmax(0, 1fr); }
   }
 </style>
 </head>
@@ -260,7 +274,7 @@
       <p class="formmsg" id="loginMsg" role="alert"></p>
       <button class="btn" type="submit" id="loginBtn">Sign in</button>
     </form>
-    <p class="fine">Coach accounts are set up by the Aggie Points team. Forgot your password? Ask them to reset it.</p>
+    <p class="fine">Coach accounts are set up by the Aggie Points team. Forgot your password? Email <a href="mailto:lkvehling@ucdavis.edu?subject=Aggie%20Points%20coach%20password%20reset" style="color:inherit">lkvehling@ucdavis.edu</a> to have it reset. Aggie Points admins can sign in here too, to manage coach accounts.</p>
   </div>
 </section>
 
@@ -359,6 +373,68 @@
   </main>
 </div>
 
+<!-- ---------- Admin: manage coaches ---------- -->
+<!-- Shown instead of the portal when an admin signs in, so coach accounts
+     can be managed from the web without needing an app update. -->
+<div id="admin" hidden>
+  <header class="hero">
+    <div class="wrap">
+      <div class="topbar">
+        <div class="brand">Aggie Points <span>Admin</span></div>
+        <button class="linkbtn" id="adminSignOutBtn" type="button">Sign out</button>
+      </div>
+      <h1 class="team-title">Coach accounts</h1>
+      <p class="team-sub" id="adminName"></p>
+    </div>
+  </header>
+
+  <main class="wrap">
+    <div class="admin-grid">
+      <section class="card">
+        <h2>Add a coach</h2>
+        <p class="hint">They sign in here with this email and temporary password, and can change the password once they're in.</p>
+        <form id="addForm" class="stack">
+          <div class="two">
+            <label>First name <input type="text" id="addFirst" autocomplete="off" required></label>
+            <label>Last name <input type="text" id="addLast" autocomplete="off" required></label>
+          </div>
+          <label>Email <input type="email" id="addEmail" autocomplete="off" required></label>
+          <label>Temporary password <input type="text" id="addPw" autocomplete="off" minlength="8" placeholder="8+ characters" required></label>
+          <label>Team <select id="addTeam" required><option value="">Select their team</option></select></label>
+          <p class="formmsg" id="addMsg" role="alert"></p>
+          <button class="btn" type="submit" id="addBtn">Create coach</button>
+        </form>
+      </section>
+
+      <section class="card">
+        <h2>Coaches</h2>
+        <p class="hint">Every coach account. Changing a coach's team changes which team's portal they see.</p>
+        <input type="text" id="coachFilter" class="filter" placeholder="Search by name, email or team" aria-label="Search coaches">
+        <div id="coachList" class="rows"><div class="state">Loading coaches…</div></div>
+      </section>
+    </div>
+  </main>
+</div>
+
+<!-- ---------- Admin: edit coach ---------- -->
+<dialog id="editDialog">
+  <form id="editForm" class="card stack" method="dialog">
+    <h2>Edit coach</h2>
+    <p class="hint" style="margin:0" id="editEmail"></p>
+    <div class="two">
+      <label>First name <input type="text" id="editFirst" required></label>
+      <label>Last name <input type="text" id="editLast" required></label>
+    </div>
+    <label>Team <select id="editTeam" required></select></label>
+    <label>New temporary password <input type="text" id="editPw" autocomplete="off" minlength="8" placeholder="Leave blank to keep their password"></label>
+    <p class="formmsg" id="editMsg" role="alert"></p>
+    <div class="row-btns">
+      <button class="btn outline" type="button" id="editCancel">Cancel</button>
+      <button class="btn" type="submit" id="editSave">Save</button>
+    </div>
+  </form>
+</dialog>
+
 <!-- ---------- Change password ---------- -->
 <dialog id="pwDialog">
   <form id="pwForm" class="card stack" method="dialog">
@@ -382,7 +458,10 @@
   // scoped server-side to the signed-in coach's own team by the
   // security-definer functions in supabase/sql/coaches_portal.sql (app
   // repo). The page only reads, apart from regenerate_team_code() and the
-  // coach changing their own password.
+  // coach changing their own password. An admin who signs in gets the
+  // "manage coaches" view instead, whose writes are gated server-side: the
+  // create-coach / delete-user Edge Functions check role = 'admin', and RLS
+  // only lets admins read or update other users' rows.
   const SUPABASE_URL = "https://rditinxvxjhrebdatovf.supabase.co";
   const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_zTUrpyScZ-oBqifBAgOeLQ_68INsCY4";
 
@@ -392,6 +471,7 @@
   // ?demo — fake data, no sign-in and no database calls, for previewing
   // the layout (same idea as /launch?demo).
   const DEMO = new URLSearchParams(location.search).has("demo");
+  const DEMO_ADMIN = new URLSearchParams(location.search).get("demo") === "admin";
 
   let coach = null;        // { first_name, last_name, team_id }
   const EVENTS_PAGE = 5;   // athlete event dropdown page size
@@ -442,17 +522,23 @@
   // ---------- Auth ----------
   function showLogin(message) {
     $("portal").hidden = true;
+    $("admin").hidden = true;
     $("login").hidden = false;
     $("loginMsg").textContent = message || "";
   }
 
-  // Only role = 'coach' gets in. Anyone else is signed straight back out.
+  // Coaches get their team's portal, admins get the coach-management view.
+  // Anyone else is signed straight back out.
   async function enter(user) {
     const { data, error } = await client
       .from("users")
       .select("role, team_id, first_name, last_name")
       .eq("id", user.id)
       .maybeSingle();
+    if (!error && data && data.role === "admin") {
+      showAdmin(data);
+      return;
+    }
     if (error || !data || data.role !== "coach") {
       await client.auth.signOut();
       showLogin(error ? errText(error) : "This login is for coaches.");
@@ -1012,6 +1098,187 @@
     return data;
   }
 
+  // ---------- Admin: manage coaches ----------
+  let adminTeams = [];   // [{ id, name }]
+  let adminCoaches = []; // [{ id, first_name, last_name, email, team_id }]
+  let editingId = null;
+  const teamName = (id) => (adminTeams.find((t) => t.id === id) || {}).name || "No team";
+
+  function showAdmin(me) {
+    $("login").hidden = true;
+    $("portal").hidden = true;
+    $("admin").hidden = false;
+    $("adminName").textContent = `Signed in as ${me.first_name} ${me.last_name}`.trim();
+    document.title = "Coach accounts · Aggie Points Admin";
+    loadAdmin();
+  }
+
+  $("adminSignOutBtn").addEventListener("click", async () => {
+    if (DEMO) { location.search = ""; return; }
+    await client.auth.signOut();
+    showLogin("");
+  });
+
+  async function loadAdmin() {
+    try {
+      if (DEMO) {
+        adminTeams = demo.teams.map((t) => ({ id: t.team_id, name: t.team_name })).sort((a, b) => a.name.localeCompare(b.name));
+        adminCoaches = demo.coaches;
+      } else {
+        const [teams, coaches] = await Promise.all([
+          client.from("teams").select("id, name").order("name"),
+          client.from("users").select("id, first_name, last_name, email, team_id").eq("role", "coach"),
+        ]);
+        if (teams.error) throw teams.error;
+        if (coaches.error) throw coaches.error;
+        adminTeams = teams.data || [];
+        adminCoaches = coaches.data || [];
+      }
+      const fill = (sel, placeholder) => {
+        const keep = sel.value;
+        sel.replaceChildren(...(placeholder ? [new Option(placeholder, "")] : []), ...adminTeams.map((t) => new Option(t.name, t.id)));
+        sel.value = keep;
+      };
+      fill($("addTeam"), "Select their team");
+      fill($("editTeam"));
+      renderCoaches();
+    } catch (err) {
+      stateMsg($("coachList"), "Couldn't load coaches: " + errText(err), true);
+      console.error(err);
+    }
+  }
+
+  function renderCoaches() {
+    const box = $("coachList");
+    const q = $("coachFilter").value.trim().toLowerCase();
+    const list = adminCoaches
+      .map((c) => ({ ...c, team: teamName(c.team_id) }))
+      .filter((c) => !q || `${c.first_name} ${c.last_name} ${c.email || ""} ${c.team}`.toLowerCase().includes(q))
+      .sort((a, b) => a.team.localeCompare(b.team) || a.last_name.localeCompare(b.last_name));
+    if (!adminCoaches.length) { stateMsg(box, "No coaches yet. Add one with the form."); return; }
+    if (!list.length) { stateMsg(box, "No coaches match that search."); return; }
+    box.replaceChildren(...list.map((c) => {
+      const row = el("div", "coach-row");
+      const info = el("div");
+      info.append(el("div", "n", `${c.first_name} ${c.last_name}`), el("div", "team", c.team), el("div", "meta", c.email || "No email on file"));
+      const acts = el("div", "acts");
+      const edit = el("button", "btn outline sm", "Edit");
+      edit.type = "button";
+      edit.addEventListener("click", () => openEdit(c));
+      const del = el("button", "btn danger sm", "Remove");
+      del.type = "button";
+      del.addEventListener("click", () => removeCoach(c, del));
+      acts.append(edit, del);
+      row.append(info, acts);
+      return row;
+    }));
+  }
+  $("coachFilter").addEventListener("input", renderCoaches);
+
+  // Edge Function errors carry the real message in the JSON body.
+  async function invoke(fn, body) {
+    const { data, error } = await client.functions.invoke(fn, { body });
+    if (!error) return data;
+    const detail = error.context && typeof error.context.json === "function"
+      ? await error.context.json().catch(() => null)
+      : null;
+    throw new Error((detail && detail.error) || error.message);
+  }
+
+  $("addForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const msg = $("addMsg");
+    const input = {
+      firstName: $("addFirst").value.trim(),
+      lastName: $("addLast").value.trim(),
+      email: $("addEmail").value.trim().toLowerCase(),
+      password: $("addPw").value,
+      teamId: $("addTeam").value,
+    };
+    if (!input.firstName || !input.lastName || !input.email || !input.teamId) {
+      msg.className = "formmsg err"; msg.textContent = "Fill in the coach's name, email and team."; return;
+    }
+    if (input.password.length < 8) {
+      msg.className = "formmsg err"; msg.textContent = "Temporary password must be at least 8 characters."; return;
+    }
+    $("addBtn").disabled = true;
+    msg.className = "formmsg"; msg.textContent = "";
+    try {
+      if (DEMO) adminCoaches.push({ id: "c" + Date.now(), first_name: input.firstName, last_name: input.lastName, email: input.email, team_id: input.teamId });
+      else await invoke("create-coach", input);
+      $("addForm").reset();
+      msg.className = "formmsg ok";
+      msg.textContent = `Coach account created for ${input.email}. Send them aggiepoints.com/coach and their temporary password.`;
+      if (DEMO) renderCoaches(); else loadAdmin();
+    } catch (err) {
+      msg.className = "formmsg err"; msg.textContent = errText(err);
+    } finally {
+      $("addBtn").disabled = false;
+    }
+  });
+
+  const editDialog = $("editDialog");
+  function openEdit(c) {
+    editingId = c.id;
+    $("editEmail").textContent = c.email || "";
+    $("editFirst").value = c.first_name;
+    $("editLast").value = c.last_name;
+    $("editTeam").value = c.team_id || "";
+    $("editPw").value = "";
+    $("editMsg").textContent = ""; $("editMsg").className = "formmsg";
+    editDialog.showModal();
+  }
+  $("editCancel").addEventListener("click", () => editDialog.close());
+  $("editForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const msg = $("editMsg");
+    const changes = { first_name: $("editFirst").value.trim(), last_name: $("editLast").value.trim(), team_id: $("editTeam").value };
+    if (!changes.first_name || !changes.last_name || !changes.team_id) {
+      msg.className = "formmsg err"; msg.textContent = "Name and team are required."; return;
+    }
+    // For a coach who forgot their password and emailed in for a new one.
+    const newPw = $("editPw").value;
+    if (newPw && newPw.length < 8) {
+      msg.className = "formmsg err"; msg.textContent = "New password must be at least 8 characters."; return;
+    }
+    $("editSave").disabled = true;
+    try {
+      if (!DEMO) {
+        // .select().single() turns an update RLS silently filtered out
+        // (0 rows) into an error instead of a fake success.
+        const { error } = await client.from("users").update(changes).eq("id", editingId).select("id").single();
+        if (error) throw error;
+        if (newPw) await invoke("reset-coach-password", { userId: editingId, password: newPw });
+      }
+      Object.assign(adminCoaches.find((c) => c.id === editingId), changes);
+      editDialog.close();
+      renderCoaches();
+      toast(newPw ? "Coach updated · send them the new password" : "Coach updated");
+    } catch (err) {
+      msg.className = "formmsg err"; msg.textContent = errText(err);
+    } finally {
+      $("editSave").disabled = false;
+    }
+  });
+
+  // Two confirmations in a row, same as every delete in the app's admin
+  // dashboard. Deletes the whole account (auth user + profile).
+  async function removeCoach(c, btn) {
+    const who = `${c.first_name} ${c.last_name}`;
+    if (!confirm(`Remove ${who} as a coach? This deletes their account, and they won't be able to sign in.`)) return;
+    if (!confirm(`Are you sure? Deleting ${who}'s account can't be undone.`)) return;
+    btn.disabled = true;
+    try {
+      if (!DEMO) await invoke("delete-user", { userId: c.id });
+      adminCoaches = adminCoaches.filter((x) => x.id !== c.id);
+      renderCoaches();
+      toast("Coach removed");
+    } catch (err) {
+      btn.disabled = false;
+      alert("Couldn't remove this coach: " + errText(err));
+    }
+  }
+
   // ---------- Demo data ----------
   const demo = (() => {
     const first = ["Maya", "Jordan", "Ava", "Liam", "Sofia", "Noah", "Emma", "Ethan", "Chloe", "Lucas", "Mia", "Owen"];
@@ -1043,6 +1310,11 @@
     return {
       registration: [{ team_id: "t0", team_name: "Women's Soccer", roster_size: 28, signed_up: roster.length, verified: roster.filter((r) => r.is_verified).length }],
       roster, everyone, teams, events, code: "AGGIE-7K2P9X",
+      coaches: [
+        { id: "c1", first_name: "Dana", last_name: "Reyes", email: "dreyes@ucdavis.edu", team_id: "t0" },
+        { id: "c2", first_name: "Sam", last_name: "Okafor", email: "sokafor@ucdavis.edu", team_id: "t1" },
+        { id: "c3", first_name: "Priya", last_name: "Shah", email: "pshah@ucdavis.edu", team_id: "t4" },
+      ],
       athleteEvents: (id) => {
         const n = Math.round((roster.find((r) => r.user_id === id)?.total_points || 0) / 20);
         return Array.from({ length: n }, (_, k) => ({
@@ -1055,7 +1327,9 @@
   })();
 
   // ---------- Start ----------
-  if (DEMO) {
+  if (DEMO_ADMIN) {
+    showAdmin({ first_name: "Demo", last_name: "Admin" });
+  } else if (DEMO) {
     coach = { first_name: "Demo", last_name: "Coach", team_id: "t0" };
     myTeamId = "t0";
     showPortal();

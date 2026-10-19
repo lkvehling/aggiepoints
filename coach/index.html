@@ -61,17 +61,25 @@
   .linkbtn:hover { opacity: 1; }
   .team-title { font-size: clamp(26px, 4vw, 36px); font-weight: 800; margin: 22px 0 4px; letter-spacing: -0.01em; }
   .team-sub { opacity: 0.8; margin: 0 0 18px; font-size: 16px; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
-  .tile { background: var(--tile); border-radius: 14px; padding: 14px 16px; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; }
+  .tile { background: var(--tile); border-radius: 16px; padding: 16px 18px; min-width: 0; }
   .tile .lbl { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.75; }
-  .tile .big { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.2; margin-top: 4px; }
-  .tile .big small { font-size: 16px; font-weight: 700; opacity: 0.85; }
-  .bar { height: 12px; background: var(--track); border-radius: 6px; overflow: hidden; margin-top: 10px; position: relative; }
-  .bar > div { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 6px; }
-  .bar .signed { background: rgba(255, 193, 7, 0.45); }
-  .bar .verified { background: var(--gold); }
-  .legend { display: flex; gap: 14px; font-size: 13px; opacity: 0.85; margin-top: 8px; flex-wrap: wrap; }
-  .legend i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+  .rank-tile { box-shadow: inset 0 0 0 2px var(--gold); }
+  .rank-line { display: flex; align-items: baseline; gap: 10px; margin-top: 2px; }
+  .rank-num { font-size: clamp(64px, 11vw, 96px); font-weight: 800; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .rank-of { font-size: 20px; font-weight: 700; opacity: 0.85; }
+  .rank-sub { font-size: 16px; font-weight: 600; opacity: 0.85; margin-top: 6px; }
+  .rank-chase { margin-top: 10px; padding-top: 10px; border-top: 1px solid rgba(255, 255, 255, 0.18); font-size: 15px; display: grid; gap: 2px; }
+  .rank-chase b { color: var(--gold); }
+  .reg-body { display: flex; align-items: center; gap: 18px; margin-top: 8px; }
+  .donut { width: 140px; height: 140px; flex: none; }
+  .donut .seg { transition: opacity .15s; }
+  .donut .seg:hover { opacity: 0.8; }
+  .reg-legend { display: grid; gap: 8px; font-size: 15px; min-width: 0; }
+  .reg-legend div { display: grid; grid-template-columns: 12px auto; column-gap: 8px; align-items: baseline; }
+  .reg-legend i { width: 12px; height: 12px; border-radius: 3px; align-self: center; }
+  .reg-legend b { font-size: 20px; font-variant-numeric: tabular-nums; }
+  .reg-legend span { grid-column: 2; opacity: 0.8; font-size: 14px; }
 
   /* ---- Layout ---- */
   main { padding: 24px 0 48px; }
@@ -127,14 +135,16 @@
   .athlete .events { padding: 0 12px 12px 66px; font-size: 15px; }
   .athlete .events ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
   .athlete .events li { display: flex; gap: 10px; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 6px; }
-  .athlete .events li .meta { color: var(--muted); font-size: 13px; }
+  .athlete .events .meta { color: var(--muted); font-size: 13px; }
+  .athlete .events > .meta { margin-bottom: 6px; }
   .athlete .events .pts { font-weight: 800; white-space: nowrap; }
+  .athlete .events .more { margin-top: 10px; min-height: 40px; padding: 8px 14px; font-size: 15px; }
 
   .team-row.mine { background: var(--gold); color: var(--navy-start); }
   .team-row.mine .k { color: var(--navy-start); }
   .team-row.mine .p small { color: rgba(2, 41, 82, 0.75); }
   .gap {
-    margin: 0 0 14px; padding: 12px 14px; border-radius: 12px; background: rgba(10, 59, 122, 0.06);
+    margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; background: rgba(10, 59, 122, 0.06);
     font-size: 15px; display: grid; gap: 4px;
   }
   .gap b { font-variant-numeric: tabular-nums; }
@@ -163,6 +173,18 @@
   .ev .ttl { font-weight: 700; }
   .ev .meta { color: var(--muted); font-size: 14px; }
   .ev .team { color: var(--gold-dark); font-weight: 700; font-size: 14px; }
+
+  /* ---- Ways to move up ---- */
+  .tips { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: tip; }
+  .tips li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; counter-increment: tip; }
+  .tips li.state { display: block; }
+  .tips li::before {
+    content: counter(tip); width: 30px; height: 30px; border-radius: 50%; background: var(--gold); color: var(--navy-start);
+    font-weight: 800; display: grid; place-items: center; font-size: 15px;
+  }
+  .tips li.state::before { display: none; }
+  .tips b { display: block; }
+  .tips span { color: var(--muted); font-size: 15px; }
 
   /* ---- Teaser ---- */
   .teaser { border: 2px dashed rgba(10, 59, 122, 0.25); background: transparent; box-shadow: none; text-align: center; }
@@ -200,10 +222,12 @@
   #toast.show { opacity: 1; transform: translate(-50%, 0); }
 
   @media (max-width: 860px) {
-    .grid { grid-template-columns: minmax(0, 1fr); }
+    .grid, .hero-grid { grid-template-columns: minmax(0, 1fr); }
   }
   @media (max-width: 480px) {
     .card { padding: 16px; }
+    .donut { width: 116px; height: 116px; }
+    .reg-body { gap: 14px; }
     .athlete .events { padding-left: 12px; }
     .ev { grid-template-columns: minmax(0, 1fr) auto; }
     .ev .t { grid-column: 1 / -1; }
@@ -238,17 +262,22 @@
       </div>
       <h1 class="team-title" id="teamName">Your team</h1>
       <p class="team-sub" id="coachName"></p>
-      <div class="tiles">
-        <div class="tile">
-          <div class="lbl">Registration</div>
-          <div class="big" id="regBig">—</div>
-          <div class="bar"><div class="signed" id="regSigned"></div><div class="verified" id="regVerified"></div></div>
-          <div class="legend"><span><i style="background:rgba(255,193,7,.45)"></i>Signed up</span><span><i style="background:var(--gold)"></i>Verified</span></div>
-        </div>
-        <div class="tile">
+      <div class="hero-grid">
+        <div class="tile rank-tile">
           <div class="lbl">Team rank</div>
-          <div class="big" id="rankBig">—</div>
-          <div class="legend" id="rankSub">Average points per roster spot</div>
+          <div class="rank-line">
+            <div class="rank-num" id="rankBig">—</div>
+            <div class="rank-of" id="rankOf"></div>
+          </div>
+          <div class="rank-sub" id="rankSub">Average points per roster spot</div>
+          <div class="rank-chase" id="rankChase" hidden></div>
+        </div>
+        <div class="tile reg-tile">
+          <div class="lbl">Registration</div>
+          <div class="reg-body">
+            <svg class="donut" id="regDonut" viewBox="0 0 120 120" role="img" aria-label="Registration progress"></svg>
+            <div class="reg-legend" id="regLegend"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -257,6 +286,12 @@
   <main class="wrap">
     <div class="grid">
       <div class="col">
+        <section class="card scoreboard">
+          <h2>Team scoreboard</h2>
+          <p class="hint">Ranked by average points per roster spot, so every team size competes fairly.</p>
+          <div id="teams" class="rows"><div class="state">Loading teams…</div></div>
+          <div id="gap" class="gap" hidden></div>
+        </section>
         <section class="card">
           <h2>Your roster</h2>
           <p class="hint">Ranked by points this season. Tap an athlete to see the events they earned points at.</p>
@@ -285,11 +320,10 @@
           </ol>
         </section>
 
-        <section class="card">
-          <h2>Team leaderboard</h2>
-          <p class="hint">Ranked by average points per roster spot, so every team size competes fairly.</p>
-          <div id="gap" class="gap" hidden></div>
-          <div id="teams" class="rows"><div class="state">Loading teams…</div></div>
+        <section class="card moveup">
+          <h2>Ways to move up</h2>
+          <p class="hint">Your rank is your team's points divided by your roster size, so every athlete counts.</p>
+          <ol class="tips" id="tips"><li class="state">Loading…</li></ol>
         </section>
 
         <section class="card teaser">
@@ -337,6 +371,9 @@
   const DEMO = new URLSearchParams(location.search).has("demo");
 
   let coach = null;        // { first_name, last_name, team_id }
+  const EVENTS_PAGE = 5;   // athlete event dropdown page size
+  // What each loader has learned so far, for the "Ways to move up" tips.
+  const facts = { registration: null, roster: null, standing: null, events: null };
   let myTeamId = null;
 
   // ---------- Helpers ----------
@@ -470,19 +507,78 @@
       $("teamName").textContent = r.team_name;
       document.title = `${r.team_name} · Aggie Points Coach`;
       const signed = Number(r.signed_up), verified = Number(r.verified), size = r.roster_size;
-      const big = $("regBig");
-      big.replaceChildren();
-      if (size) {
-        big.append(`${signed} of ${size} `, el("small", "", `signed up · ${verified} verified`));
-        $("regSigned").style.width = Math.min(100, (signed / size) * 100) + "%";
-        $("regVerified").style.width = Math.min(100, (verified / size) * 100) + "%";
-      } else {
-        big.append(`${signed} `, el("small", "", `signed up · ${verified} verified`));
-      }
+      facts.registration = { signed, verified, size };
+      renderDonut(signed, verified, size);
+      renderTips();
     } catch (err) {
-      $("regBig").textContent = "—";
+      $("regLegend").replaceChildren(el("div", "", "Couldn't load registration."));
       console.error(err);
     }
+  }
+
+  // Donut: verified / signed up but not verified / not signed up yet, out
+  // of the admin-entered roster size (or out of sign-ups if it's unset).
+  function renderDonut(signed, verified, size) {
+    const GOLD = "#FFC107", GOLD_SOFT = "rgba(255, 193, 7, 0.45)", TRACK = "rgba(255, 255, 255, 0.18)";
+    const total = size > 0 ? Math.max(size, signed) : signed;
+    const segs = [
+      { label: "Verified", value: verified, color: GOLD },
+      { label: "Signed up, not verified", value: Math.max(0, signed - verified), color: GOLD_SOFT },
+    ];
+    if (size > 0) segs.push({ label: "Not signed up yet", value: Math.max(0, size - signed), color: TRACK });
+
+    const NS = "http://www.w3.org/2000/svg";
+    const mk = (tag, attrs) => {
+      const e = document.createElementNS(NS, tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    };
+    const svg = $("regDonut");
+    svg.replaceChildren();
+    const R = 48, C = 2 * Math.PI * R;
+    const GAP = segs.filter((g) => g.value > 0).length > 1 ? 2 : 0;
+    if (!total) {
+      svg.append(mk("circle", { cx: 60, cy: 60, r: R, fill: "none", stroke: TRACK, "stroke-width": 16 }));
+    } else {
+      let offset = 0;
+      segs.forEach((g) => {
+        if (!g.value) return;
+        const len = (g.value / total) * C;
+        const c = mk("circle", {
+          class: "seg", cx: 60, cy: 60, r: R, fill: "none", stroke: g.color, "stroke-width": 16,
+          "stroke-dasharray": `${Math.max(0, len - GAP)} ${C}`, "stroke-dashoffset": -offset,
+          transform: "rotate(-90 60 60)",
+        });
+        const title = mk("title", {});
+        title.textContent = `${g.label}: ${g.value} (${Math.round((g.value / total) * 100)}%)`;
+        c.append(title);
+        svg.append(c);
+        offset += len;
+      });
+    }
+    const pct = size > 0 ? Math.round((signed / size) * 100) : null;
+    const t1 = mk("text", { x: 60, y: 62, "text-anchor": "middle", fill: "#fff", "font-size": 26, "font-weight": 800 });
+    t1.textContent = pct === null ? signed : pct + "%";
+    const t2 = mk("text", { x: 60, y: 79, "text-anchor": "middle", fill: "rgba(255,255,255,0.75)", "font-size": 11, "font-weight": 700 });
+    t2.textContent = "signed up";
+    svg.append(t1, t2);
+    svg.setAttribute("aria-label", size > 0
+      ? `${signed} of ${size} signed up, ${verified} verified`
+      : `${signed} signed up, ${verified} verified`);
+
+    const rows = [
+      { swatch: GOLD, big: `${verified}`, small: "verified with your code" },
+      { swatch: GOLD_SOFT, big: `${signed - verified}`, small: "signed up, not verified" },
+    ];
+    if (size > 0) rows.push({ swatch: TRACK, big: `${Math.max(0, size - signed)}`, small: "not signed up yet" });
+    $("regLegend").replaceChildren(...rows.map((row) => {
+      const d = el("div");
+      const sw = el("i");
+      sw.style.background = row.swatch;
+      d.append(sw, el("b", "", row.big), el("span", "", row.small));
+      return d;
+    }));
+    if (!(size > 0)) $("regLegend").append(el("div", "", "Roster size not set yet"));
   }
 
   // ----- Roster -----
@@ -495,6 +591,8 @@
         .map((r) => ({ ...r, total_points: Number(r.total_points) }))
         .sort((a, b) => b.total_points - a.total_points || a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
       box.replaceChildren(...computeRanks(sorted, (r) => r.total_points).map(athleteRow));
+      facts.roster = sorted;
+      renderTips();
     } catch (err) {
       stateMsg(box, "Couldn't load your roster: " + errText(err), true);
     }
@@ -525,15 +623,27 @@
       try {
         const list = DEMO ? demo.athleteEvents(a.user_id) : await rpc("get_coach_athlete_events", { p_user_id: a.user_id });
         if (!list.length) { stateMsg(events, "No points-earning check-ins yet this season."); return; }
+        // Newest first (the function already sorts that way), 5 at a time.
         const ul = el("ul");
-        list.forEach((e) => {
-          const li = el("li");
-          const left = el("div");
-          left.append(el("div", "", e.title), el("div", "meta", `${e.team_name} · ${fmtDate(e.start_time)}`));
-          li.append(left, el("span", "pts", `+${e.points_value}`));
-          ul.append(li);
-        });
-        events.replaceChildren(ul);
+        const more = el("button", "btn outline more");
+        more.type = "button";
+        let shown = 0;
+        const showMore = () => {
+          list.slice(shown, shown + EVENTS_PAGE).forEach((e) => {
+            const li = el("li");
+            const left = el("div");
+            left.append(el("div", "", e.title), el("div", "meta", `${e.team_name} · ${fmtDate(e.start_time)}`));
+            li.append(left, el("span", "pts", `+${e.points_value}`));
+            ul.append(li);
+          });
+          shown = Math.min(list.length, shown + EVENTS_PAGE);
+          const rest = list.length - shown;
+          more.hidden = rest === 0;
+          more.textContent = `Show ${Math.min(EVENTS_PAGE, rest)} more`;
+        };
+        more.addEventListener("click", showMore);
+        showMore();
+        events.replaceChildren(el("div", "meta", `${list.length} event${list.length === 1 ? "" : "s"} this season`), ul, more);
       } catch (err) {
         loaded = false;
         stateMsg(events, "Couldn't load events: " + errText(err), true);
@@ -636,28 +746,35 @@
   function renderGap(ranked, unranked) {
     const gap = $("gap");
     const i = ranked.findIndex((t) => t.team_id === myTeamId);
-    const rankBig = $("rankBig"), rankSub = $("rankSub");
+    const rankBig = $("rankBig"), rankSub = $("rankSub"), chase = $("rankChase");
     if (i === -1) {
       gap.hidden = true;
+      chase.hidden = true;
       rankBig.textContent = "—";
+      $("rankOf").textContent = "";
       rankSub.textContent = unranked.some((t) => t.team_id === myTeamId)
         ? "Not ranked until an admin sets your roster size"
         : "Average points per roster spot";
+      facts.standing = null;
+      renderTips();
       return;
     }
     const me = ranked[i];
-    rankBig.replaceChildren(formatRank(me), el("small", "", ` of ${ranked.length}`));
+    rankBig.textContent = formatRank(me);
+    $("rankOf").textContent = `of ${ranked.length} teams`;
     rankSub.textContent = `${me.avg.toFixed(1)} points per roster spot`;
 
-    const lines = [];
     // "Above"/"below" skip past teams tied with us — they're level, not ahead.
-    const above = [...ranked.slice(0, i)].reverse().find((t) => t.avg > me.avg);
-    const below = ranked.slice(i + 1).find((t) => t.avg < me.avg);
+    const above = [...ranked.slice(0, i)].reverse().find((t) => t.avg > me.avg) || null;
+    const below = ranked.slice(i + 1).find((t) => t.avg < me.avg) || null;
     const tiedWith = ranked.filter((t) => t.team_id !== me.team_id && t.avg === me.avg);
+    facts.standing = { me, above, below };
+
+    const lines = [];
     if (tiedWith.length) lines.push(["Tied with ", tiedWith.map((t) => t.team_name).join(", ")]);
     if (above) {
       const d = above.avg - me.avg;
-      lines.push([`${d.toFixed(1)} pts/athlete behind `, above.team_name, ` (about ${fmtPts(Math.ceil(d * me.roster_size))} team points to catch up)`]);
+      lines.push([`${d.toFixed(1)} pts/athlete behind `, above.team_name, ` · about ${fmtPts(pointsToPass(me, above))} team points to pass them`]);
     } else {
       lines.push([tiedWith.length ? "Tied for first place! 🏆" : "Your team is in first place! 🏆"]);
     }
@@ -665,12 +782,77 @@
       const d = me.avg - below.avg;
       lines.push([`${d.toFixed(1)} pts/athlete ahead of `, below.team_name]);
     }
-    gap.replaceChildren(...lines.map((parts) => {
+    const line = (parts) => {
       const div = el("div");
       parts.forEach((part, k) => div.append(k === 1 ? el("b", "", part) : part));
       return div;
-    }));
+    };
+    gap.replaceChildren(...lines.map(line));
     gap.hidden = false;
+    chase.replaceChildren(...lines.map(line));
+    chase.hidden = false;
+    renderTips();
+  }
+
+  // Team points needed for our displayed (1-decimal) average to beat theirs.
+  function pointsToPass(me, them) {
+    return Math.max(1, Math.ceil((them.avg + 0.05) * me.roster_size - me.total_points));
+  }
+
+  // ----- Ways to move up -----
+  // Built from whatever has loaded so far; each loader calls this again.
+  function renderTips() {
+    const st = facts.standing, reg = facts.registration, roster = facts.roster;
+    const upcoming = (facts.events || []).filter((e) => e.team_id !== myTeamId);
+    const sortedPts = upcoming.map((e) => e.points_value).sort((a, b) => a - b);
+    const typical = sortedPts.length ? sortedPts[Math.floor(sortedPts.length / 2)] : null;
+    const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+    const tips = [];
+
+    if (st && st.above) {
+      const need = pointsToPass(st.me, st.above);
+      tips.push([`Pass ${st.above.team_name}`,
+        `You need about ${fmtPts(need)} more team points` +
+        (typical ? ` — roughly ${plural(Math.ceil(need / typical), "check-in")} at ${typical}-point events.` : ".")]);
+    } else if (st && st.below) {
+      const lead = Math.max(1, Math.round((st.me.avg - st.below.avg) * st.me.roster_size));
+      tips.push(["Protect your lead", `You're about ${fmtPts(lead)} team points ahead of ${st.below.team_name}. Keep the check-ins coming.`]);
+    }
+
+    const soon = Date.now() + 14 * 86400000;
+    const best = upcoming.filter((e) => new Date(e.start_time).getTime() <= soon)
+      .sort((a, b) => b.points_value - a.points_value || a.start_time.localeCompare(b.start_time))
+      .slice(0, 3);
+    if (best.length) tips.push(["Go to other teams' events together",
+      "Biggest chances in the next two weeks: " +
+      best.map((e) => `${e.title} (${e.points_value} pts, ${fmtDate(e.start_time)})`).join("; ") + "."]);
+
+    if (roster && reg && reg.size > 0) {
+      const zero = roster.filter((r) => r.total_points === 0).length;
+      if (zero) tips.push([`Get your ${plural(zero, "athlete")} with 0 points on the board`,
+        typical ? `One check-in each would add about ${(zero * typical / reg.size).toFixed(1)} points per roster spot.`
+                : "Every athlete's first check-in raises your team average."]);
+    }
+
+    if (reg && reg.size > 0 && reg.signed < reg.size) {
+      tips.push([`Sign up the other ${plural(reg.size - reg.signed, "athlete")}`,
+        "Your average is divided by your whole roster, so athletes who aren't in the app still count against you."]);
+    }
+
+    if (reg && reg.signed > reg.verified) {
+      tips.push([`Have ${plural(reg.signed - reg.verified, "athlete")} enter your team code`,
+        "After the verification deadline, only verified athletes' points count for your team."]);
+    }
+
+    const box = $("tips");
+    if (!tips.length) tips.push(["Check in at other teams' events", "Every check-in adds that event's points to your team total."]);
+    box.replaceChildren(...tips.map(([title, body]) => {
+      const li = el("li");
+      const d = el("div");
+      d.append(el("b", "", title), el("span", "", body));
+      li.append(d);
+      return li;
+    }));
   }
 
   // ----- Schedule -----
@@ -698,6 +880,8 @@
         events = ev.data;
         teamNames = new Map(tm.data.map((t) => [t.id, t.name]));
       }
+      facts.events = events;
+      renderTips();
       if (!events.length) { stateMsg(box, "No upcoming events scheduled yet."); return; }
 
       const days = [];

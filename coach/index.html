@@ -1,0 +1,1070 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Aggie Points Coach</title>
+<meta name="description" content="Aggie Points coaches portal — your roster, registration and team standings.">
+<meta name="robots" content="noindex">
+<meta name="theme-color" content="#022952">
+<link rel="icon" href="../favicon.png">
+<link rel="apple-touch-icon" href="../apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy-start: #022952;
+    --navy-end: #0A3B7A;
+    --navy: #0A3B7A;
+    --gold: #FFC107;
+    --gold-dark: #C9930A;
+    --page-bg: #F4F7FF;
+    --ink: #0B1B33;
+    --muted: #4A5B75;
+    --card: #FFFFFF;
+    --border: rgba(10, 59, 122, 0.12);
+    --tile: rgba(255, 255, 255, 0.14);
+    --track: rgba(255, 255, 255, 0.18);
+    --green: #1B7F4B;
+    --green-bg: #E3F4EA;
+    --red: #B42318;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; }
+  body {
+    font-family: Inter, system-ui, -apple-system, "Segoe UI", sans-serif;
+    background: var(--page-bg);
+    color: var(--ink);
+    font-size: 16px;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+  }
+  button, input { font: inherit; }
+  [hidden] { display: none !important; }
+
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 16px; }
+
+  /* ---- Hero ---- */
+  .hero {
+    background: linear-gradient(90deg, var(--navy-start), var(--navy-end));
+    color: #fff;
+    padding: 20px 0 28px;
+  }
+  .topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .brand { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; margin-right: auto; }
+  .brand span { color: var(--gold); }
+  .linkbtn {
+    background: none; border: 0; color: #fff; opacity: 0.85; cursor: pointer;
+    font-weight: 700; font-size: 15px; padding: 6px 4px; text-decoration: underline; text-underline-offset: 3px;
+  }
+  .linkbtn:hover { opacity: 1; }
+  .team-title { font-size: clamp(26px, 4vw, 36px); font-weight: 800; margin: 22px 0 4px; letter-spacing: -0.01em; }
+  .team-sub { opacity: 0.8; margin: 0 0 18px; font-size: 16px; }
+  .hero-grid { display: grid; grid-template-columns: minmax(0, 1.2fr) minmax(0, 1fr); gap: 14px; }
+  .tile { background: var(--tile); border-radius: 16px; padding: 16px 18px; min-width: 0; }
+  .tile .lbl { font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; opacity: 0.75; }
+  .rank-tile { box-shadow: inset 0 0 0 2px var(--gold); display: flex; flex-direction: column; justify-content: center; }
+  .rank-tile .lbl { margin-bottom: auto; }
+  .rank-tile .rank-sub { margin-bottom: auto; }
+  .rank-line { display: flex; align-items: baseline; gap: 10px; margin-top: 2px; }
+  .rank-num { font-size: clamp(64px, 11vw, 96px); font-weight: 800; color: var(--gold); line-height: 1; font-variant-numeric: tabular-nums; letter-spacing: -0.02em; }
+  .rank-of { font-size: 20px; font-weight: 700; opacity: 0.85; }
+  .rank-sub { font-size: 16px; font-weight: 600; opacity: 0.85; margin-top: 6px; }
+  .quicklinks {
+    position: sticky; top: 0; z-index: 5; background: rgba(244, 247, 255, 0.92);
+    backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); border-bottom: 1px solid var(--border);
+  }
+  .quicklinks .wrap { display: flex; gap: 8px; padding-top: 10px; padding-bottom: 10px; overflow-x: auto; scrollbar-width: none; }
+  .quicklinks .wrap::-webkit-scrollbar { display: none; }
+  .quicklinks a {
+    flex: none; text-decoration: none; color: var(--navy); font-weight: 700; font-size: 15px;
+    padding: 7px 14px; border-radius: 999px; background: #fff; box-shadow: inset 0 0 0 1.5px rgba(10, 59, 122, 0.25);
+  }
+  .quicklinks a:hover { background: var(--gold); color: var(--navy-start); box-shadow: none; }
+  section[id^="sec-"] { scroll-margin-top: 72px; }
+  html { scroll-behavior: smooth; }
+  .reg-body { display: flex; align-items: center; gap: 18px; margin-top: 8px; }
+  .donut { width: 140px; height: 140px; flex: none; }
+  .donut .seg { transition: opacity .15s; }
+  .donut .seg:hover { opacity: 0.8; }
+  .reg-legend { display: grid; gap: 8px; font-size: 15px; min-width: 0; }
+  .reg-legend div { display: grid; grid-template-columns: 12px auto; column-gap: 8px; align-items: baseline; }
+  .reg-legend i { width: 12px; height: 12px; border-radius: 3px; align-self: center; }
+  .reg-legend b { font-size: 20px; font-variant-numeric: tabular-nums; }
+  .reg-legend span { grid-column: 2; opacity: 0.8; font-size: 14px; }
+
+  /* ---- Layout ---- */
+  main { padding: 24px 0 48px; }
+  .grid { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(0, 1fr); gap: 20px; align-items: start; }
+  .col { display: grid; gap: 20px; min-width: 0; }
+  .card {
+    background: var(--card); border: 1px solid var(--border); border-radius: 16px;
+    padding: 20px; box-shadow: 0 1px 2px rgba(10, 59, 122, 0.04);
+    min-width: 0;
+  }
+  .card h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; }
+  .card .hint { color: var(--muted); font-size: 15px; margin: 0 0 14px; }
+  .state { color: var(--muted); padding: 10px 0; }
+  .state.err { color: var(--red); }
+
+  /* ---- Buttons ---- */
+  .btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 8px;
+    border: 0; border-radius: 12px; padding: 12px 18px; min-height: 48px;
+    font-weight: 800; font-size: 16px; cursor: pointer;
+    background: var(--gold); color: var(--navy-start);
+  }
+  .btn:hover { filter: brightness(1.04); }
+  .btn:disabled { opacity: 0.6; cursor: default; }
+  .btn.outline { background: transparent; color: var(--navy); box-shadow: inset 0 0 0 2px var(--navy); }
+
+  /* ---- Pills ---- */
+  .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .pill.ok { background: var(--green-bg); color: var(--green); }
+  .pill.no { background: #EEF1F6; color: var(--muted); }
+  .pill.gold { background: var(--gold); color: var(--navy-start); }
+  .pill.navy { background: rgba(10, 59, 122, 0.1); color: var(--navy); }
+
+  /* ---- Rows (roster + teams) ---- */
+  .rows { display: grid; gap: 6px; }
+  .row {
+    display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px;
+    padding: 10px 12px; border-radius: 12px; background: var(--page-bg);
+  }
+  .row .k, .athlete .k { font-weight: 800; color: var(--gold-dark); font-variant-numeric: tabular-nums; }
+  .row .n, .athlete .n { font-weight: 700; min-width: 0; }
+  .athlete .n .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
+  .row .p, .athlete .p { font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
+  .row .p small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
+  .athlete { padding: 0; background: var(--page-bg); border-radius: 12px; overflow: hidden; }
+  .athlete > button {
+    width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer; color: inherit;
+    display: grid; grid-template-columns: 44px minmax(0, 1fr) auto 20px; align-items: center; gap: 10px; padding: 10px 12px;
+  }
+  .athlete > button:hover { background: rgba(10, 59, 122, 0.05); }
+  .athlete .chev { color: var(--muted); transition: transform .2s; font-size: 14px; }
+  .athlete.open .chev { transform: rotate(90deg); }
+  .athlete .events { padding: 0 12px 12px 66px; font-size: 15px; }
+  .athlete .events ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 6px; }
+  .athlete .events li { display: flex; gap: 10px; justify-content: space-between; border-top: 1px solid var(--border); padding-top: 6px; }
+  .athlete .events .meta { color: var(--muted); font-size: 13px; }
+  .athlete .events > .meta { margin-bottom: 6px; }
+  .athlete .events .pts { font-weight: 800; white-space: nowrap; }
+  .athlete .events .more { margin-top: 10px; min-height: 40px; padding: 8px 14px; font-size: 15px; }
+
+  .team-row.mine { background: var(--gold); color: var(--navy-start); }
+  .team-row.mine .k { color: var(--navy-start); }
+  .team-row.mine .p small { color: rgba(2, 41, 82, 0.75); }
+  .gap {
+    margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; background: rgba(10, 59, 122, 0.06);
+    font-size: 15px; display: grid; gap: 4px;
+  }
+  .gap b { font-variant-numeric: tabular-nums; }
+
+  /* ---- Team code ---- */
+  .code-card { background: linear-gradient(90deg, var(--navy-start), var(--navy-end)); color: #fff; border: 0; }
+  .code-card .hint { color: rgba(255, 255, 255, 0.8); }
+  .code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    font-size: clamp(28px, 5vw, 40px); font-weight: 800; letter-spacing: 0.06em;
+    background: var(--tile); border-radius: 12px; padding: 14px 16px; margin: 4px 0 14px;
+    text-align: center; user-select: all; word-break: break-all;
+  }
+  .code-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+  .code-actions .btn { flex: 1; min-width: 150px; }
+  .code-card .btn.outline { color: #fff; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7); }
+  .code-card ol { margin: 14px 0 0; padding-left: 20px; color: rgba(255, 255, 255, 0.85); font-size: 15px; }
+
+  /* ---- Schedule ---- */
+  .day { margin-top: 14px; }
+  .day:first-child { margin-top: 0; }
+  .day h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 6px; }
+  .ev { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--page-bg); margin-bottom: 6px; align-items: start; }
+  .ev.mine { box-shadow: inset 4px 0 0 var(--gold); }
+  .ev .t { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; }
+  .ev .ttl { font-weight: 700; }
+  .ev .meta { color: var(--muted); font-size: 14px; }
+  .ev .team { color: var(--gold-dark); font-weight: 700; font-size: 14px; }
+
+  /* ---- Ways to move up ---- */
+  .tips { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: tip; }
+  .tips li { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; counter-increment: tip; }
+  .tips li.state { display: block; }
+  .tips li::before {
+    content: counter(tip); width: 30px; height: 30px; border-radius: 50%; background: var(--gold); color: var(--navy-start);
+    font-weight: 800; display: grid; place-items: center; font-size: 15px;
+  }
+  .tips li.state::before { display: none; }
+  .tips b { display: block; }
+  .tips span { color: var(--muted); font-size: 15px; }
+
+  /* ---- Teaser ---- */
+  .teaser { border: 2px dashed rgba(10, 59, 122, 0.25); background: transparent; box-shadow: none; text-align: center; }
+  .teaser .trophy { font-size: 34px; }
+
+  /* ---- Login ---- */
+  .login-page { min-height: 100vh; background: linear-gradient(90deg, var(--navy-start), var(--navy-end)); color: #fff; display: grid; place-items: center; padding: 24px 16px; }
+  .login-box { width: 100%; max-width: 400px; }
+  .login-box .brand { display: block; text-align: center; font-size: 28px; margin-bottom: 4px; }
+  .login-box .tag { text-align: center; opacity: 0.8; margin: 0 0 24px; }
+  form.stack { display: grid; gap: 12px; }
+  label { font-size: 14px; font-weight: 700; display: grid; gap: 6px; }
+  input[type=email], input[type=password] {
+    width: 100%; padding: 12px 14px; min-height: 48px; border-radius: 12px; font-size: 16px;
+    border: 1px solid var(--border); background: #fff; color: var(--ink);
+  }
+  .login-box input { border-color: transparent; }
+  .formmsg { font-size: 15px; font-weight: 600; min-height: 1.5em; margin: 0; }
+  .login-box .formmsg { color: var(--gold); }
+  .card .formmsg.err { color: var(--red); }
+  .card .formmsg.ok { color: var(--green); }
+  .fine { font-size: 14px; opacity: 0.75; text-align: center; margin-top: 18px; }
+
+  /* ---- Dialog ---- */
+  dialog { border: 0; border-radius: 16px; padding: 0; width: min(420px, calc(100% - 32px)); }
+  dialog::backdrop { background: rgba(2, 41, 82, 0.55); }
+  dialog .card { border: 0; }
+  dialog .row-btns { display: flex; gap: 10px; justify-content: flex-end; margin-top: 4px; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 30px);
+    background: var(--navy-start); color: #fff; font-weight: 700; padding: 10px 18px; border-radius: 999px;
+    opacity: 0; transition: opacity .3s, transform .3s; pointer-events: none; z-index: 20; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  @media (max-width: 860px) {
+    .grid, .hero-grid { grid-template-columns: minmax(0, 1fr); }
+  }
+  @media (max-width: 480px) {
+    .card { padding: 16px; }
+    .donut { width: 116px; height: 116px; }
+    .reg-body { gap: 14px; }
+    .athlete .events { padding-left: 12px; }
+    .ev { grid-template-columns: minmax(0, 1fr) auto; }
+    .ev .t { grid-column: 1 / -1; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ---------- Login ---------- -->
+<section id="login" class="login-page" hidden>
+  <div class="login-box">
+    <span class="brand">Aggie Points <span>Coach</span></span>
+    <p class="tag">Sign in to see your team.</p>
+    <form id="loginForm" class="stack">
+      <label>Email <input type="email" id="email" autocomplete="username" required></label>
+      <label>Password <input type="password" id="password" autocomplete="current-password" required></label>
+      <p class="formmsg" id="loginMsg" role="alert"></p>
+      <button class="btn" type="submit" id="loginBtn">Sign in</button>
+    </form>
+    <p class="fine">Coach accounts are set up by the Aggie Points team. Forgot your password? Ask them to reset it.</p>
+  </div>
+</section>
+
+<!-- ---------- Portal ---------- -->
+<div id="portal" hidden>
+  <header class="hero">
+    <div class="wrap">
+      <div class="topbar">
+        <div class="brand">Aggie Points <span>Coach</span></div>
+        <button class="linkbtn" id="pwBtn" type="button">Change password</button>
+        <button class="linkbtn" id="signOutBtn" type="button">Sign out</button>
+      </div>
+      <h1 class="team-title" id="teamName">Your team</h1>
+      <p class="team-sub" id="coachName"></p>
+      <div class="hero-grid">
+        <div class="tile rank-tile">
+          <div class="lbl">Team rank</div>
+          <div class="rank-line">
+            <div class="rank-num" id="rankBig">—</div>
+            <div class="rank-of" id="rankOf"></div>
+          </div>
+          <div class="rank-sub" id="rankSub">Average points per roster spot</div>
+        </div>
+        <div class="tile reg-tile">
+          <div class="lbl">Registration</div>
+          <div class="reg-body">
+            <svg class="donut" id="regDonut" viewBox="0 0 120 120" role="img" aria-label="Registration progress"></svg>
+            <div class="reg-legend" id="regLegend"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <nav class="quicklinks" aria-label="Jump to section">
+    <div class="wrap">
+      <a href="#sec-scoreboard">Scoreboard</a>
+      <a href="#sec-code">Team code</a>
+      <a href="#sec-roster">Roster</a>
+      <a href="#sec-moveup">Move up</a>
+      <a href="#sec-events">Events</a>
+    </div>
+  </nav>
+
+  <main class="wrap">
+    <div class="grid">
+      <div class="col">
+        <section class="card scoreboard" id="sec-scoreboard">
+          <h2>Team scoreboard</h2>
+          <p class="hint">Ranked by average points per roster spot, so every team size competes fairly.</p>
+          <div id="teams" class="rows"><div class="state">Loading teams…</div></div>
+          <div id="gap" class="gap" hidden></div>
+        </section>
+        <section class="card" id="sec-events">
+          <h2>Upcoming events</h2>
+          <p class="hint">Every team's events. Athletes earn points by checking in at other teams' events.</p>
+          <div id="schedule"><div class="state">Loading events…</div></div>
+        </section>
+      </div>
+
+      <div class="col">
+        <section class="card code-card" id="sec-code">
+          <h2>Your team code</h2>
+          <p class="hint">Share this with your athletes so they can verify they're on your team.</p>
+          <div class="code" id="teamCode">——————</div>
+          <div class="code-actions">
+            <button class="btn" type="button" id="copyBtn">Copy code</button>
+            <button class="btn outline" type="button" id="regenBtn">Generate new code</button>
+          </div>
+          <ol>
+            <li>Athletes open the Aggie Points app.</li>
+            <li>They find "Verify your team" on the home screen (or "Enter a team code" in Profile).</li>
+            <li>They type this code, and they show as verified here.</li>
+          </ol>
+        </section>
+
+        <section class="card" id="sec-roster">
+          <h2>Your roster</h2>
+          <p class="hint">Ranked by points this season, with each athlete's rank across all of UC Davis Athletics. Tap an athlete to see the events they earned points at.</p>
+          <div id="roster" class="rows"><div class="state">Loading roster…</div></div>
+        </section>
+
+        <section class="card moveup" id="sec-moveup">
+          <h2>Ways to move up</h2>
+          <p class="hint">Your rank is your team's points divided by your roster size, so every athlete counts.</p>
+          <ol class="tips" id="tips"><li class="state">Loading…</li></ol>
+        </section>
+
+        <section class="card teaser">
+          <div class="trophy">🏆</div>
+          <h2>Coming soon: compete against other coaches</h2>
+          <p class="hint" style="margin:0">Coach-vs-coach challenges are on the way. Stay tuned.</p>
+        </section>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ---------- Change password ---------- -->
+<dialog id="pwDialog">
+  <form id="pwForm" class="card stack" method="dialog">
+    <h2>Change password</h2>
+    <p class="hint" style="margin:0">If you signed in with a temporary password, set your own here.</p>
+    <label>New password <input type="password" id="pw1" autocomplete="new-password" minlength="8" required></label>
+    <label>Confirm new password <input type="password" id="pw2" autocomplete="new-password" minlength="8" required></label>
+    <p class="formmsg" id="pwMsg" role="alert"></p>
+    <div class="row-btns">
+      <button class="btn outline" type="button" id="pwCancel">Cancel</button>
+      <button class="btn" type="submit" id="pwSave">Save</button>
+    </div>
+  </form>
+</dialog>
+
+<div id="toast"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+  // Publishable key: designed to ship in client code. Every read here is
+  // scoped server-side to the signed-in coach's own team by the
+  // security-definer functions in supabase/sql/coaches_portal.sql (app
+  // repo). The page only reads, apart from regenerate_team_code() and the
+  // coach changing their own password.
+  const SUPABASE_URL = "https://rditinxvxjhrebdatovf.supabase.co";
+  const SUPABASE_PUBLISHABLE_KEY = "sb_publishable_zTUrpyScZ-oBqifBAgOeLQ_68INsCY4";
+
+  const client = supabase.createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  const $ = (id) => document.getElementById(id);
+
+  // ?demo — fake data, no sign-in and no database calls, for previewing
+  // the layout (same idea as /launch?demo).
+  const DEMO = new URLSearchParams(location.search).has("demo");
+
+  let coach = null;        // { first_name, last_name, team_id }
+  const EVENTS_PAGE = 5;   // athlete event dropdown page size
+  // What each loader has learned so far, for the "Ways to move up" tips.
+  const facts = { registration: null, roster: null, standing: null, events: null };
+  let myTeamId = null;
+
+  // ---------- Helpers ----------
+  function el(tag, cls, text) {
+    const e = document.createElement(tag);
+    if (cls) e.className = cls;
+    if (text !== undefined) e.textContent = text;
+    return e;
+  }
+  function stateMsg(container, text, isErr) {
+    container.replaceChildren(el("div", "state" + (isErr ? " err" : ""), text));
+  }
+  function toast(text) {
+    const t = $("toast");
+    t.textContent = text;
+    t.classList.add("show");
+    clearTimeout(t._t);
+    t._t = setTimeout(() => t.classList.remove("show"), 2200);
+  }
+  const fmtPts = (n) => Number(n).toLocaleString();
+
+  // Standard competition ("1224") ranking, same as the app's
+  // lib/ranking.ts: equal keys share a rank and the next rank skips ahead.
+  // `items` must already be sorted by `key` descending.
+  function computeRanks(items, key) {
+    const counts = new Map();
+    items.forEach((it) => counts.set(key(it), (counts.get(key(it)) || 0) + 1));
+    let rank = 0, prev = null;
+    return items.map((it, i) => {
+      const k = key(it);
+      if (k !== prev) { rank = i + 1; prev = k; }
+      return { ...it, rank, tied: counts.get(k) > 1 };
+    });
+  }
+  const formatRank = (r) => (r.tied ? "T" : "") + r.rank;
+
+  function errText(err) {
+    const m = (err && err.message) || String(err);
+    if (/Could not find the function/i.test(m)) return "The coaches portal isn't set up on the server yet.";
+    return m;
+  }
+
+  // ---------- Auth ----------
+  function showLogin(message) {
+    $("portal").hidden = true;
+    $("login").hidden = false;
+    $("loginMsg").textContent = message || "";
+  }
+
+  // Only role = 'coach' gets in. Anyone else is signed straight back out.
+  async function enter(user) {
+    const { data, error } = await client
+      .from("users")
+      .select("role, team_id, first_name, last_name")
+      .eq("id", user.id)
+      .maybeSingle();
+    if (error || !data || data.role !== "coach") {
+      await client.auth.signOut();
+      showLogin(error ? errText(error) : "This login is for coaches.");
+      return;
+    }
+    coach = data;
+    myTeamId = data.team_id;
+    showPortal();
+  }
+
+  $("loginForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const btn = $("loginBtn");
+    btn.disabled = true;
+    $("loginMsg").textContent = "";
+    try {
+      const { data, error } = await client.auth.signInWithPassword({
+        email: $("email").value.trim(),
+        password: $("password").value,
+      });
+      if (error) { showLogin(error.message === "Invalid login credentials" ? "Wrong email or password." : error.message); return; }
+      $("password").value = "";
+      await enter(data.user);
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  $("signOutBtn").addEventListener("click", async () => {
+    if (!DEMO) await client.auth.signOut();
+    coach = null; myTeamId = null;
+    if (DEMO) location.search = "";
+    else showLogin("");
+  });
+
+  // ---------- Change password ----------
+  const pwDialog = $("pwDialog");
+  $("pwBtn").addEventListener("click", () => {
+    $("pw1").value = ""; $("pw2").value = ""; $("pwMsg").textContent = ""; $("pwMsg").className = "formmsg";
+    pwDialog.showModal();
+  });
+  $("pwCancel").addEventListener("click", () => pwDialog.close());
+  $("pwForm").addEventListener("submit", async (ev) => {
+    ev.preventDefault();
+    const msg = $("pwMsg");
+    const pw = $("pw1").value;
+    if (pw !== $("pw2").value) { msg.className = "formmsg err"; msg.textContent = "Passwords don't match."; return; }
+    if (DEMO) { pwDialog.close(); toast("Demo — password not changed"); return; }
+    $("pwSave").disabled = true;
+    const { error } = await client.auth.updateUser({ password: pw });
+    $("pwSave").disabled = false;
+    if (error) { msg.className = "formmsg err"; msg.textContent = error.message; return; }
+    pwDialog.close();
+    toast("Password updated");
+  });
+
+  // ---------- Portal ----------
+  function showPortal() {
+    $("login").hidden = true;
+    $("portal").hidden = false;
+    $("coachName").textContent = coach ? `Coach ${coach.first_name} ${coach.last_name}`.trim() : "";
+    loadRegistration();
+    loadRoster();
+    loadTeamCode();
+    loadTeams();
+    loadSchedule();
+  }
+
+  // ----- Registration -----
+  async function loadRegistration() {
+    try {
+      const rows = DEMO ? demo.registration : await rpc("get_coach_registration");
+      const r = rows && rows[0];
+      if (!r) throw new Error("No team found for this coach account.");
+      $("teamName").textContent = r.team_name;
+      document.title = `${r.team_name} · Aggie Points Coach`;
+      const signed = Number(r.signed_up), verified = Number(r.verified), size = r.roster_size;
+      facts.registration = { signed, verified, size };
+      renderDonut(signed, verified, size);
+      renderTips();
+    } catch (err) {
+      $("regLegend").replaceChildren(el("div", "", "Couldn't load registration."));
+      console.error(err);
+    }
+  }
+
+  // Donut: verified / signed up but not verified / not signed up yet, out
+  // of the admin-entered roster size (or out of sign-ups if it's unset).
+  function renderDonut(signed, verified, size) {
+    const GOLD = "#FFC107", GOLD_SOFT = "rgba(255, 193, 7, 0.45)", TRACK = "rgba(255, 255, 255, 0.18)";
+    const total = size > 0 ? Math.max(size, signed) : signed;
+    const segs = [
+      { label: "Verified", value: verified, color: GOLD },
+      { label: "Signed up, not verified", value: Math.max(0, signed - verified), color: GOLD_SOFT },
+    ];
+    if (size > 0) segs.push({ label: "Not signed up yet", value: Math.max(0, size - signed), color: TRACK });
+
+    const NS = "http://www.w3.org/2000/svg";
+    const mk = (tag, attrs) => {
+      const e = document.createElementNS(NS, tag);
+      for (const k in attrs) e.setAttribute(k, attrs[k]);
+      return e;
+    };
+    const svg = $("regDonut");
+    svg.replaceChildren();
+    const R = 48, C = 2 * Math.PI * R;
+    const GAP = segs.filter((g) => g.value > 0).length > 1 ? 2 : 0;
+    if (!total) {
+      svg.append(mk("circle", { cx: 60, cy: 60, r: R, fill: "none", stroke: TRACK, "stroke-width": 16 }));
+    } else {
+      let offset = 0;
+      segs.forEach((g) => {
+        if (!g.value) return;
+        const len = (g.value / total) * C;
+        const c = mk("circle", {
+          class: "seg", cx: 60, cy: 60, r: R, fill: "none", stroke: g.color, "stroke-width": 16,
+          "stroke-dasharray": `${Math.max(0, len - GAP)} ${C}`, "stroke-dashoffset": -offset,
+          transform: "rotate(-90 60 60)",
+        });
+        const title = mk("title", {});
+        title.textContent = `${g.label}: ${g.value} (${Math.round((g.value / total) * 100)}%)`;
+        c.append(title);
+        svg.append(c);
+        offset += len;
+      });
+    }
+    const pct = size > 0 ? Math.round((signed / size) * 100) : null;
+    const t1 = mk("text", { x: 60, y: 62, "text-anchor": "middle", fill: "#fff", "font-size": 26, "font-weight": 800 });
+    t1.textContent = pct === null ? signed : pct + "%";
+    const t2 = mk("text", { x: 60, y: 79, "text-anchor": "middle", fill: "rgba(255,255,255,0.75)", "font-size": 11, "font-weight": 700 });
+    t2.textContent = "signed up";
+    svg.append(t1, t2);
+    svg.setAttribute("aria-label", size > 0
+      ? `${signed} of ${size} signed up, ${verified} verified`
+      : `${signed} signed up, ${verified} verified`);
+
+    const rows = [
+      { swatch: GOLD, big: `${verified}`, small: "verified with your code" },
+      { swatch: GOLD_SOFT, big: `${signed - verified}`, small: "signed up, not verified" },
+    ];
+    if (size > 0) rows.push({ swatch: TRACK, big: `${Math.max(0, size - signed)}`, small: "not signed up yet" });
+    $("regLegend").replaceChildren(...rows.map((row) => {
+      const d = el("div");
+      const sw = el("i");
+      sw.style.background = row.swatch;
+      d.append(sw, el("b", "", row.big), el("span", "", row.small));
+      return d;
+    }));
+    if (!(size > 0)) $("regLegend").append(el("div", "", "Roster size not set yet"));
+  }
+
+  // ----- Roster -----
+  async function loadRoster() {
+    const box = $("roster");
+    try {
+      const [rows, everyone] = DEMO
+        ? [demo.roster, demo.everyone]
+        : await Promise.all([rpc("get_coach_roster"), loadEveryonePoints()]);
+      if (!rows.length) { stateMsg(box, "No athletes on your team have signed up yet. Share your team code to get them started."); return; }
+      const sorted = [...rows]
+        .map((r) => ({ ...r, total_points: Number(r.total_points) }))
+        .sort((a, b) => b.total_points - a.total_points || a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
+      // Universal rank, the same number the athlete sees on the app's
+      // Individual leaderboard — not re-ranked within the team.
+      const universal = new Map(
+        computeRanks(everyone.map((u) => ({ ...u, total_points: Number(u.total_points) })), (u) => u.total_points)
+          .map((u) => [u.user_id, u])
+      );
+      box.replaceChildren(...sorted.map((r) => {
+        const u = universal.get(r.user_id);
+        return athleteRow({ ...r, rank: u ? u.rank : null, tied: u ? u.tied : false });
+      }));
+      facts.roster = sorted;
+      renderTips();
+    } catch (err) {
+      stateMsg(box, "Couldn't load your roster: " + errText(err), true);
+    }
+  }
+
+  function athleteRow(a) {
+    const wrap = el("div", "athlete");
+    const btn = el("button");
+    btn.type = "button";
+    btn.setAttribute("aria-expanded", "false");
+    const n = el("span", "n", `${a.first_name} ${a.last_name}`);
+    const tags = el("span", "tags");
+    tags.append(a.is_verified ? el("span", "pill ok", "✓ Verified") : el("span", "pill no", "Not verified"));
+    if (a.is_additional_team) tags.append(el("span", "pill navy", "Second team"));
+    n.append(tags);
+    btn.append(el("span", "k", a.rank === null ? "—" : formatRank(a)), n, el("span", "p", `${fmtPts(a.total_points)} pts`), el("span", "chev", "▶"));
+    const events = el("div", "events");
+    events.hidden = true;
+    let loaded = false;
+    btn.addEventListener("click", async () => {
+      const open = !wrap.classList.contains("open");
+      wrap.classList.toggle("open", open);
+      btn.setAttribute("aria-expanded", String(open));
+      events.hidden = !open;
+      if (!open || loaded) return;
+      loaded = true;
+      stateMsg(events, "Loading…");
+      try {
+        const list = DEMO ? demo.athleteEvents(a.user_id) : await rpc("get_coach_athlete_events", { p_user_id: a.user_id });
+        if (!list.length) { stateMsg(events, "No points-earning check-ins yet this season."); return; }
+        // Newest first (the function already sorts that way), 5 at a time.
+        const ul = el("ul");
+        const more = el("button", "btn outline more");
+        more.type = "button";
+        let shown = 0;
+        const showMore = () => {
+          list.slice(shown, shown + EVENTS_PAGE).forEach((e) => {
+            const li = el("li");
+            const left = el("div");
+            left.append(el("div", "", e.title), el("div", "meta", `${e.team_name} · ${fmtDate(e.start_time)}`));
+            li.append(left, el("span", "pts", `+${e.points_value}`));
+            ul.append(li);
+          });
+          shown = Math.min(list.length, shown + EVENTS_PAGE);
+          const rest = list.length - shown;
+          more.hidden = rest === 0;
+          more.textContent = `Show ${Math.min(EVENTS_PAGE, rest)} more`;
+        };
+        more.addEventListener("click", showMore);
+        showMore();
+        events.replaceChildren(el("div", "meta", `${list.length} event${list.length === 1 ? "" : "s"} this season`), ul, more);
+      } catch (err) {
+        loaded = false;
+        stateMsg(events, "Couldn't load events: " + errText(err), true);
+      }
+    });
+    wrap.append(btn, events);
+    return wrap;
+  }
+
+  // ----- Team code -----
+  async function loadTeamCode() {
+    try {
+      const code = DEMO ? demo.code : await rpc("get_coach_team_code");
+      $("teamCode").textContent = code || "No code yet";
+    } catch (err) {
+      $("teamCode").textContent = "—";
+      console.error(err);
+    }
+  }
+
+  $("copyBtn").addEventListener("click", async () => {
+    const code = $("teamCode").textContent;
+    try {
+      await navigator.clipboard.writeText(code);
+      toast("Code copied");
+    } catch {
+      const range = document.createRange();
+      range.selectNodeContents($("teamCode"));
+      getSelection().removeAllRanges();
+      getSelection().addRange(range);
+      toast("Press Ctrl+C / ⌘C to copy");
+    }
+  });
+
+  $("regenBtn").addEventListener("click", async () => {
+    const ok = window.confirm(
+      "Generate a new team code?\n\nYour current code will stop working immediately. " +
+      "Athletes who already verified stay verified — only new athletes will need the new code."
+    );
+    if (!ok) return;
+    const btn = $("regenBtn");
+    btn.disabled = true;
+    try {
+      const code = DEMO ? "AGGIE-" + Math.random().toString(36).slice(2, 8).toUpperCase() : await rpc("regenerate_team_code");
+      $("teamCode").textContent = code;
+      toast("New code ready");
+    } catch (err) {
+      alert("Couldn't generate a new code: " + errText(err));
+    } finally {
+      btn.disabled = false;
+    }
+  });
+
+  // ----- Team leaderboard -----
+  // Same rule as the app's Teams tab: rank by average points per roster
+  // spot (ties judged on the average as displayed, 1 decimal); teams with
+  // no roster size have no average, so they sort last with rank "—".
+  async function loadTeams() {
+    const box = $("teams");
+    try {
+      let rows;
+      if (DEMO) rows = demo.teams;
+      else {
+        const { data, error } = await client.from("team_points_totals").select("team_id, team_name, total_points, roster_size");
+        if (error) throw error;
+        rows = data;
+      }
+      const all = rows.map((t) => ({
+        ...t,
+        total_points: Number(t.total_points),
+        avg: t.roster_size > 0 ? Math.round((Number(t.total_points) / t.roster_size) * 10) / 10 : null,
+      }));
+      const ranked = computeRanks(
+        all.filter((t) => t.avg !== null)
+          .sort((a, b) => b.avg - a.avg || b.total_points - a.total_points || a.team_name.localeCompare(b.team_name)),
+        (t) => t.avg
+      );
+      const unranked = all.filter((t) => t.avg === null)
+        .sort((a, b) => b.total_points - a.total_points || a.team_name.localeCompare(b.team_name))
+        .map((t) => ({ ...t, rank: null }));
+      const list = [...ranked, ...unranked];
+      if (!list.length) { stateMsg(box, "No teams yet."); return; }
+
+      box.replaceChildren(...list.map((t) => {
+        const r = el("div", "row team-row" + (t.team_id === myTeamId ? " mine" : ""));
+        const n = el("span", "n", t.team_name);
+        if (t.team_id === myTeamId) { n.append(" "); n.append(el("span", "pill navy", "You")); }
+        const p = el("span", "p", t.avg === null ? "—" : t.avg.toFixed(1));
+        p.append(el("small", "", `${fmtPts(t.total_points)} pts total`));
+        r.append(el("span", "k", t.rank === null ? "—" : formatRank(t)), n, p);
+        return r;
+      }));
+
+      renderGap(ranked, unranked);
+    } catch (err) {
+      stateMsg(box, "Couldn't load the team leaderboard: " + errText(err), true);
+    }
+  }
+
+  function renderGap(ranked, unranked) {
+    const gap = $("gap");
+    const i = ranked.findIndex((t) => t.team_id === myTeamId);
+    const rankBig = $("rankBig"), rankSub = $("rankSub");
+    if (i === -1) {
+      gap.hidden = true;
+      rankBig.textContent = "—";
+      $("rankOf").textContent = "";
+      rankSub.textContent = unranked.some((t) => t.team_id === myTeamId)
+        ? "Not ranked until an admin sets your roster size"
+        : "Average points per roster spot";
+      facts.standing = null;
+      renderTips();
+      return;
+    }
+    const me = ranked[i];
+    rankBig.textContent = formatRank(me);
+    $("rankOf").textContent = `of ${ranked.length} teams`;
+    rankSub.textContent = `${me.avg.toFixed(1)} points per athlete average`;
+
+    // "Above"/"below" skip past teams tied with us — they're level, not ahead.
+    const above = [...ranked.slice(0, i)].reverse().find((t) => t.avg > me.avg) || null;
+    const below = ranked.slice(i + 1).find((t) => t.avg < me.avg) || null;
+    const tiedWith = ranked.filter((t) => t.team_id !== me.team_id && t.avg === me.avg);
+    facts.standing = { me, above, below };
+
+    const lines = [];
+    if (tiedWith.length) lines.push(["Tied with ", tiedWith.map((t) => t.team_name).join(", ")]);
+    if (above) {
+      const d = above.avg - me.avg;
+      lines.push([`${d.toFixed(1)} pts/athlete behind `, above.team_name, ` · about ${fmtPts(pointsToPass(me, above))} team points to pass them`]);
+    } else {
+      lines.push([tiedWith.length ? "Tied for first place! 🏆" : "Your team is in first place! 🏆"]);
+    }
+    if (below) {
+      const d = me.avg - below.avg;
+      lines.push([`${d.toFixed(1)} pts/athlete ahead of `, below.team_name]);
+    }
+    const line = (parts) => {
+      const div = el("div");
+      parts.forEach((part, k) => div.append(k === 1 ? el("b", "", part) : part));
+      return div;
+    };
+    gap.replaceChildren(...lines.map(line));
+    gap.hidden = false;
+    renderTips();
+  }
+
+  // Team points needed for our displayed (1-decimal) average to beat theirs.
+  function pointsToPass(me, them) {
+    return Math.max(1, Math.ceil((them.avg + 0.05) * me.roster_size - me.total_points));
+  }
+
+  // ----- Ways to move up -----
+  // Built from whatever has loaded so far; each loader calls this again.
+  function renderTips() {
+    const st = facts.standing, reg = facts.registration, roster = facts.roster;
+    const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+    const label = (e) => `${e.title} (${fmtWhen(e.start_time)} · ${e.points_value} pts)`;
+    // Other teams' events still to come in the next two weeks, soonest first.
+    const now = Date.now(), soon = now + 14 * 86400000;
+    const next = (facts.events || []).filter((e) => {
+      const t = new Date(e.start_time).getTime();
+      return e.team_id !== myTeamId && e.points_value > 0 && t > now && t <= soon;
+    });
+    // Athletes the coach can actually bring: everyone signed up.
+    const squad = (reg && reg.signed) || (roster && roster.length) || null;
+
+    // Fill the next few games with as many athletes as it takes (capped at
+    // the signed-up squad) until `need` points are covered.
+    function gamePlan(need) {
+      const steps = [];
+      let rest = need;
+      for (const e of next.slice(0, 3)) {
+        if (rest <= 0) break;
+        const bring = Math.min(squad || Infinity, Math.ceil(rest / e.points_value));
+        steps.push({ e, bring });
+        rest -= bring * e.points_value;
+      }
+      return { steps, rest };
+    }
+    const planText = ({ steps }) => steps
+      .map((s, k) => `${k === 0 ? "If " : ""}${plural(s.bring, "athlete")} check${s.bring === 1 ? "s" : ""} in at ${label(s.e)}`)
+      .join(" and ");
+
+    const tips = [];
+
+    if (st && st.above) {
+      const need = pointsToPass(st.me, st.above);
+      const plan = gamePlan(need);
+      tips.push([`Pass ${st.above.team_name}`,
+        `You need about ${fmtPts(need)} more team points.` +
+        (plan.steps.length
+          ? ` ${planText(plan)}${plan.rest > 0 ? ", you'll be most of the way there." : ", you'll pass them."} Encourage your team to make it.`
+          : " Every athlete check-in at another team's event closes the gap.")]);
+    } else if (st && st.below) {
+      const lead = Math.max(1, Math.round((st.me.avg - st.below.avg) * st.me.roster_size));
+      tips.push(["Protect your lead",
+        `You're about ${fmtPts(lead)} team points ahead of ${st.below.team_name}.` +
+        (next.length ? ` Encourage your athletes to check in at ${label(next[0])} to stretch it.` : " Keep the check-ins coming.")]);
+    }
+
+    if (next.length) tips.push(["Upcoming events to share with your team",
+      next.slice(0, 3).map(label).join("; ") + "."]);
+
+    if (roster && reg && reg.size > 0) {
+      const zero = roster.filter((r) => r.total_points === 0).length;
+      if (zero) tips.push([`Encourage your ${plural(zero, "athlete")} with 0 points to get on the board`,
+        next.length
+          ? `If they all check in at ${label(next[0])}, that alone adds ${(zero * next[0].points_value / reg.size).toFixed(1)} to your points per athlete average.`
+          : "Every athlete's first check-in raises your team average."]);
+    }
+
+    if (reg && reg.size > 0 && reg.signed < reg.size) {
+      tips.push([`Encourage the other ${plural(reg.size - reg.signed, "athlete")} to sign up`,
+        "Your average is divided by your whole roster, so athletes who aren't in the app still count against you."]);
+    }
+
+    if (reg && reg.signed > reg.verified) {
+      tips.push([`Remind ${plural(reg.signed - reg.verified, "athlete")} to enter your team code`,
+        "After the verification deadline, only verified athletes' points count for your team."]);
+    }
+
+    const box = $("tips");
+    if (!tips.length) tips.push(["Check in at other teams' events", "Every check-in adds that event's points to your team total."]);
+    box.replaceChildren(...tips.map(([title, body]) => {
+      const li = el("li");
+      const d = el("div");
+      d.append(el("b", "", title), el("span", "", body));
+      li.append(d);
+      return li;
+    }));
+  }
+
+  // ----- Schedule -----
+  async function loadSchedule() {
+    const box = $("schedule");
+    try {
+      let events, teamNames;
+      if (DEMO) { events = demo.events; teamNames = new Map(demo.teams.map((t) => [t.team_id, t.team_name])); }
+      else {
+        // Same "upcoming" boundary as the app: from the start of today, so
+        // an event stays listed for its whole day. App Store review demo
+        // events (demo_mode set) are left out.
+        const now = new Date();
+        const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const [ev, tm] = await Promise.all([
+          client.from("events")
+            .select("id, title, type, start_time, location, team_id, points_value")
+            .is("demo_mode", null)
+            .gte("start_time", startOfDay.toISOString())
+            .order("start_time", { ascending: true }),
+          client.from("teams").select("id, name"),
+        ]);
+        if (ev.error) throw ev.error;
+        if (tm.error) throw tm.error;
+        events = ev.data;
+        teamNames = new Map(tm.data.map((t) => [t.id, t.name]));
+      }
+      facts.events = events;
+      renderTips();
+      if (!events.length) { stateMsg(box, "No upcoming events scheduled yet."); return; }
+
+      const days = [];
+      events.forEach((e) => {
+        const key = new Date(e.start_time).toDateString();
+        if (!days.length || days[days.length - 1].key !== key) days.push({ key, date: new Date(e.start_time), events: [] });
+        days[days.length - 1].events.push(e);
+      });
+
+      const INITIAL_DAYS = 7;
+      const render = (showAll) => {
+        const out = (showAll ? days : days.slice(0, INITIAL_DAYS)).map((d) => {
+          const sec = el("div", "day");
+          sec.append(el("h3", "", dayLabel(d.date)));
+          d.events.forEach((e) => {
+            const teamName = e.team_id ? teamNames.get(e.team_id) || "Team event" : "General";
+            const mine = e.team_id && e.team_id === myTeamId;
+            const row = el("div", "ev" + (mine ? " mine" : ""));
+            const mid = el("div");
+            mid.append(el("div", "ttl", e.title));
+            const teamLine = el("div", "team", teamName);
+            if (mine) { teamLine.append(" "); teamLine.append(el("span", "pill gold", "Your team")); }
+            mid.append(teamLine);
+            const extra = [e.type && e.type !== teamName ? e.type : null, e.location].filter(Boolean).join(" · ");
+            if (extra) mid.append(el("div", "meta", extra));
+            row.append(el("div", "t", fmtTime(e.start_time)), mid, el("span", "pill gold", `${e.points_value} pts`));
+            sec.append(row);
+          });
+          return sec;
+        });
+        if (days.length > INITIAL_DAYS) {
+          const more = el("button", "btn outline", showAll ? "Show fewer days" : `Show all ${days.length} days`);
+          more.type = "button";
+          more.style.marginTop = "8px";
+          more.addEventListener("click", () => render(!showAll));
+          out.push(more);
+        }
+        box.replaceChildren(...out);
+      };
+      render(false);
+    } catch (err) {
+      stateMsg(box, "Couldn't load events: " + errText(err), true);
+    }
+  }
+
+  function dayLabel(d) {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const day = new Date(d); day.setHours(0, 0, 0, 0);
+    const diff = Math.round((day - today) / 86400000);
+    const full = d.toLocaleDateString(undefined, { weekday: "long", month: "short", day: "numeric" });
+    if (diff === 0) return "Today · " + full;
+    if (diff === 1) return "Tomorrow · " + full;
+    return full;
+  }
+  const fmtTime = (iso) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+  const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const fmtWhen = (iso) => new Date(iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+
+  // Every athlete's season total, sorted, from the same user_points_totals
+  // view the app's Individual leaderboard reads — so roster ranks match it.
+  async function loadEveryonePoints() {
+    const { data, error } = await client.from("user_points_totals")
+      .select("user_id, total_points")
+      .order("total_points", { ascending: false });
+    if (error) throw error;
+    return data || [];
+  }
+
+  async function rpc(fn, args) {
+    const { data, error } = await client.rpc(fn, args || {});
+    if (error) throw error;
+    return data;
+  }
+
+  // ---------- Demo data ----------
+  const demo = (() => {
+    const first = ["Maya", "Jordan", "Ava", "Liam", "Sofia", "Noah", "Emma", "Ethan", "Chloe", "Lucas", "Mia", "Owen"];
+    const last = ["Nguyen", "Garcia", "Patel", "Kim", "Lopez", "Chen", "Brown", "Singh", "Davis", "Martinez", "Lee", "Wong"];
+    const pts = [140, 120, 120, 95, 80, 80, 80, 60, 40, 20, 0, 0];
+    const roster = first.map((f, i) => ({
+      user_id: "u" + i, first_name: f, last_name: last[i], total_points: pts[i],
+      is_verified: i % 4 !== 3, is_additional_team: i === 5,
+    }));
+    // The roster mixed in with athletes from other teams, for universal ranks.
+    const others = [300, 260, 210, 150, 130, 120, 90, 75, 50, 30, 10, 0, 0].map((p, i) => ({ user_id: "x" + i, total_points: p }));
+    const everyone = [...roster, ...others].sort((a, b) => b.total_points - a.total_points);
+    const teamList = ["Women's Soccer", "Men's Basketball", "Volleyball", "Softball", "Track & Field", "Women's Basketball", "Baseball", "Swim & Dive", "Water Polo", "Rugby"];
+    const teams = teamList.map((name, i) => ({
+      team_id: "t" + i, team_name: name,
+      roster_size: i === 9 ? null : [28, 15, 18, 22, 60, 15, 34, 40, 25][i],
+      total_points: [1960, 1200, 1100, 1430, 3000, 720, 1700, 1500, 1250, 900][i],
+    }));
+    const now = new Date();
+    const at = (dDay, h, m) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + dDay, h, m).toISOString();
+    const events = [
+      { title: "Women's Soccer vs. Cal Poly", type: "Women's Soccer", start_time: at(0, 19, 0), location: "Aggie Soccer Field", team_id: "t0", points_value: 10 },
+      { title: "Volleyball vs. UC Irvine", type: "Volleyball", start_time: at(1, 18, 30), location: "University Credit Union Center", team_id: "t2", points_value: 15 },
+      { title: "Blood drive", type: "Community service", start_time: at(1, 10, 0), location: "ARC Pavilion", team_id: null, points_value: 10 },
+      { title: "Men's Basketball vs. Sac State", type: "Men's Basketball", start_time: at(3, 19, 0), location: "University Credit Union Center", team_id: "t1", points_value: 15 },
+      { title: "Softball vs. Sacramento State", type: "Softball", start_time: at(4, 14, 0), location: "La Rue Field", team_id: "t3", points_value: 10 },
+      { title: "Women's Soccer vs. UC Riverside", type: "Women's Soccer", start_time: at(5, 13, 0), location: "Aggie Soccer Field", team_id: "t0", points_value: 10 },
+    ].sort((a, b) => a.start_time.localeCompare(b.start_time)).map((e, i) => ({ id: "e" + i, ...e }));
+    return {
+      registration: [{ team_id: "t0", team_name: "Women's Soccer", roster_size: 28, signed_up: roster.length, verified: roster.filter((r) => r.is_verified).length }],
+      roster, everyone, teams, events, code: "AGGIE-7K2P9X",
+      athleteEvents: (id) => {
+        const n = Math.round((roster.find((r) => r.user_id === id)?.total_points || 0) / 20);
+        return Array.from({ length: n }, (_, k) => ({
+          title: ["Volleyball vs. UC Irvine", "Men's Basketball vs. UCSB", "Softball vs. Hawaii", "Blood drive"][k % 4],
+          team_name: ["Volleyball", "Men's Basketball", "Softball", "General"][k % 4],
+          start_time: at(-3 - k * 4, 18, 0), points_value: 20,
+        }));
+      },
+    };
+  })();
+
+  // ---------- Start ----------
+  if (DEMO) {
+    coach = { first_name: "Demo", last_name: "Coach", team_id: "t0" };
+    myTeamId = "t0";
+    showPortal();
+  } else {
+    client.auth.getSession().then(({ data }) => {
+      if (data.session) enter(data.session.user);
+      else showLogin("");
+    });
+  }
+</script>
+</body>
+</html>

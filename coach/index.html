@@ -823,35 +823,60 @@
   // Built from whatever has loaded so far; each loader calls this again.
   function renderTips() {
     const st = facts.standing, reg = facts.registration, roster = facts.roster;
-    const upcoming = (facts.events || []).filter((e) => e.team_id !== myTeamId);
-    const sortedPts = upcoming.map((e) => e.points_value).sort((a, b) => a - b);
-    const typical = sortedPts.length ? sortedPts[Math.floor(sortedPts.length / 2)] : null;
     const plural = (n, word) => `${n} ${word}${n === 1 ? "" : "s"}`;
+    const label = (e) => `${e.title} (${fmtWhen(e.start_time)} · ${e.points_value} pts)`;
+    // Other teams' events still to come in the next two weeks, soonest first.
+    const now = Date.now(), soon = now + 14 * 86400000;
+    const next = (facts.events || []).filter((e) => {
+      const t = new Date(e.start_time).getTime();
+      return e.team_id !== myTeamId && e.points_value > 0 && t > now && t <= soon;
+    });
+    // Athletes the coach can actually bring: everyone signed up.
+    const squad = (reg && reg.signed) || (roster && roster.length) || null;
+
+    // Fill the next few games with as many athletes as it takes (capped at
+    // the signed-up squad) until `need` points are covered.
+    function gamePlan(need) {
+      const steps = [];
+      let rest = need;
+      for (const e of next.slice(0, 3)) {
+        if (rest <= 0) break;
+        const bring = Math.min(squad || Infinity, Math.ceil(rest / e.points_value));
+        steps.push({ e, bring });
+        rest -= bring * e.points_value;
+      }
+      return { steps, rest };
+    }
+    const planText = ({ steps }) => steps
+      .map((s, k) => `${k === 0 ? "Bring " : ""}${plural(s.bring, "athlete")} to ${label(s.e)}`)
+      .join(", then ");
+
     const tips = [];
 
     if (st && st.above) {
       const need = pointsToPass(st.me, st.above);
+      const plan = gamePlan(need);
       tips.push([`Pass ${st.above.team_name}`,
-        `You need about ${fmtPts(need)} more team points` +
-        (typical ? ` — roughly ${plural(Math.ceil(need / typical), "check-in")} at ${typical}-point events.` : ".")]);
+        `You need about ${fmtPts(need)} more team points.` +
+        (plan.steps.length
+          ? ` ${planText(plan)}${plan.rest > 0 ? ", and keep showing up after that." : " and you'll pass them."}`
+          : " Every athlete check-in at another team's event closes the gap.")]);
     } else if (st && st.below) {
       const lead = Math.max(1, Math.round((st.me.avg - st.below.avg) * st.me.roster_size));
-      tips.push(["Protect your lead", `You're about ${fmtPts(lead)} team points ahead of ${st.below.team_name}. Keep the check-ins coming.`]);
+      tips.push(["Protect your lead",
+        `You're about ${fmtPts(lead)} team points ahead of ${st.below.team_name}.` +
+        (next.length ? ` Get a group to ${label(next[0])} to stretch it.` : " Keep the check-ins coming.")]);
     }
 
-    const soon = Date.now() + 14 * 86400000;
-    const best = upcoming.filter((e) => new Date(e.start_time).getTime() <= soon)
-      .sort((a, b) => b.points_value - a.points_value || a.start_time.localeCompare(b.start_time))
-      .slice(0, 3);
-    if (best.length) tips.push(["Go to other teams' events together",
-      "Biggest chances in the next two weeks: " +
-      best.map((e) => `${e.title} (${e.points_value} pts, ${fmtDate(e.start_time)})`).join("; ") + "."]);
+    if (next.length) tips.push(["Next events to go to",
+      next.slice(0, 3).map(label).join("; ") + "."]);
 
     if (roster && reg && reg.size > 0) {
       const zero = roster.filter((r) => r.total_points === 0).length;
       if (zero) tips.push([`Get your ${plural(zero, "athlete")} with 0 points on the board`,
-        typical ? `One check-in each would add about ${(zero * typical / reg.size).toFixed(1)} points per roster spot.`
-                : "Every athlete's first check-in raises your team average."]);
+        next.length
+          ? `Bring them to ${label(next[0])}. That alone adds ${(zero * next[0].points_value / reg.size).toFixed(1)} to your points per athlete average.`
+          : "Every athlete's first check-in raises your team average."]);
     }
 
     if (reg && reg.size > 0 && reg.signed < reg.size) {
@@ -958,6 +983,7 @@
   }
   const fmtTime = (iso) => new Date(iso).toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
   const fmtDate = (iso) => new Date(iso).toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  const fmtWhen = (iso) => new Date(iso).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
 
   async function rpc(fn, args) {
     const { data, error } = await client.rpc(fn, args || {});
@@ -983,11 +1009,12 @@
     const now = new Date();
     const at = (dDay, h, m) => new Date(now.getFullYear(), now.getMonth(), now.getDate() + dDay, h, m).toISOString();
     const events = [
-      { title: "Women's Soccer vs. Cal Poly", type: "Women's Soccer", start_time: at(0, 19, 0), location: "Aggie Soccer Field", team_id: "t0", points_value: 20 },
-      { title: "Volleyball vs. UC Irvine", type: "Volleyball", start_time: at(1, 18, 30), location: "University Credit Union Center", team_id: "t2", points_value: 20 },
-      { title: "Blood drive", type: "Community service", start_time: at(1, 10, 0), location: "ARC Pavilion", team_id: null, points_value: 30 },
-      { title: "Men's Basketball vs. Sac State", type: "Men's Basketball", start_time: at(3, 19, 0), location: "University Credit Union Center", team_id: "t1", points_value: 25 },
-      { title: "Women's Soccer vs. UC Riverside", type: "Women's Soccer", start_time: at(5, 13, 0), location: "Aggie Soccer Field", team_id: "t0", points_value: 20 },
+      { title: "Women's Soccer vs. Cal Poly", type: "Women's Soccer", start_time: at(0, 19, 0), location: "Aggie Soccer Field", team_id: "t0", points_value: 10 },
+      { title: "Volleyball vs. UC Irvine", type: "Volleyball", start_time: at(1, 18, 30), location: "University Credit Union Center", team_id: "t2", points_value: 15 },
+      { title: "Blood drive", type: "Community service", start_time: at(1, 10, 0), location: "ARC Pavilion", team_id: null, points_value: 10 },
+      { title: "Men's Basketball vs. Sac State", type: "Men's Basketball", start_time: at(3, 19, 0), location: "University Credit Union Center", team_id: "t1", points_value: 15 },
+      { title: "Softball vs. Sacramento State", type: "Softball", start_time: at(4, 14, 0), location: "La Rue Field", team_id: "t3", points_value: 10 },
+      { title: "Women's Soccer vs. UC Riverside", type: "Women's Soccer", start_time: at(5, 13, 0), location: "Aggie Soccer Field", team_id: "t0", points_value: 10 },
     ].sort((a, b) => a.start_time.localeCompare(b.start_time)).map((e, i) => ({ id: "e" + i, ...e }));
     return {
       registration: [{ team_id: "t0", team_name: "Women's Soccer", roster_size: 28, signed_up: roster.length, verified: roster.filter((r) => r.is_verified).length }],

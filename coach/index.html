@@ -18,7 +18,7 @@
     --navy-end: #0A3B7A;
     --navy: #0A3B7A;
     --gold: #FFC107;
-    --gold-dark: #C9930A;
+    --gold-dark: #8A6100;
     --page-bg: #F4F7FF;
     --ink: #0B1B33;
     --muted: #4A5B75;
@@ -105,6 +105,12 @@
   }
   .card h2 { font-size: 20px; margin: 0 0 4px; letter-spacing: -0.01em; }
   .card .hint { color: var(--muted); font-size: 15px; margin: 0 0 14px; }
+  /* Portal cards open with a navy title band, so they still read as part of
+     the hero's color once it has scrolled away. */
+  .grid .card:not(.teaser) { overflow: hidden; border-color: rgba(10, 59, 122, 0.2); }
+  .grid .card:not(.teaser) h2 {
+    margin: -20px -20px 14px; padding: 14px 20px; background: var(--navy-start); color: #fff;
+  }
   .state { color: var(--muted); padding: 10px 0; }
   .state.err { color: var(--red); }
 
@@ -121,23 +127,22 @@
 
   /* ---- Pills ---- */
   .pill { display: inline-block; font-size: 12px; font-weight: 700; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
-  .pill.ok { background: var(--green-bg); color: var(--green); }
-  .pill.no { background: #EEF1F6; color: var(--muted); }
   .pill.gold { background: var(--gold); color: var(--navy-start); }
   .pill.navy { background: rgba(10, 59, 122, 0.1); color: var(--navy); }
 
   /* ---- Rows (roster + teams) ---- */
-  .rows { display: grid; gap: 6px; }
+  /* Flat white rows split by thin lines (same as the event rows). */
+  .rows { display: grid; }
+  .rows > * { border-top: 1px solid #E1E8F5; }
   .row {
     display: grid; grid-template-columns: 44px minmax(0, 1fr) auto; align-items: center; gap: 10px;
-    padding: 10px 12px; border-radius: 12px; background: var(--page-bg);
+    padding: 10px 12px;
   }
   .row .k, .athlete .k { font-weight: 800; color: var(--gold-dark); font-variant-numeric: tabular-nums; }
   .row .n, .athlete .n { font-weight: 700; min-width: 0; }
-  .athlete .n .tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 3px; }
   .row .p, .athlete .p { font-weight: 800; font-variant-numeric: tabular-nums; text-align: right; white-space: nowrap; }
   .row .p small { display: block; font-size: 12px; font-weight: 600; color: var(--muted); }
-  .athlete { padding: 0; background: var(--page-bg); border-radius: 12px; overflow: hidden; }
+  .athlete { padding: 0; }
   .athlete > button {
     width: 100%; border: 0; background: transparent; text-align: left; cursor: pointer; color: inherit;
     display: grid; grid-template-columns: 44px minmax(0, 1fr) auto 20px; align-items: center; gap: 10px; padding: 10px 12px;
@@ -153,8 +158,13 @@
   .athlete .events .pts { font-weight: 800; white-space: nowrap; }
   .athlete .events .more { margin-top: 10px; min-height: 40px; padding: 8px 14px; font-size: 15px; }
 
-  .team-row.mine { background: var(--gold); color: var(--navy-start); }
+  .team-row.mine { background: var(--gold); color: var(--navy-start); border-top-color: var(--gold); }
   .team-row.mine .k { color: var(--navy-start); }
+  .more-teams {
+    border: 0; border-top: 1px solid #E1E8F5; background: transparent; cursor: pointer;
+    padding: 10px 12px; font-weight: 700; font-size: 15px; color: var(--navy);
+  }
+  .more-teams:hover { background: rgba(10, 59, 122, 0.05); }
   .team-row.mine .p small { color: rgba(2, 41, 82, 0.75); }
   .gap {
     margin: 14px 0 0; padding: 12px 14px; border-radius: 12px; background: rgba(10, 59, 122, 0.06);
@@ -162,30 +172,50 @@
   }
   .gap b { font-variant-numeric: tabular-nums; }
 
-  /* ---- Team code ---- */
-  .code-card { background: linear-gradient(90deg, var(--navy-start), var(--navy-end)); color: #fff; border: 0; }
-  .code-card .hint { color: rgba(255, 255, 255, 0.8); }
-  .code {
-    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
-    font-size: clamp(28px, 5vw, 40px); font-weight: 800; letter-spacing: 0.06em;
-    background: var(--tile); border-radius: 12px; padding: 14px 16px; margin: 4px 0 14px;
-    text-align: center; user-select: all; word-break: break-all;
-  }
-  .code-actions { display: flex; gap: 10px; flex-wrap: wrap; }
-  .code-actions .btn { flex: 1; min-width: 150px; }
-  .code-card .btn.outline { color: #fff; box-shadow: inset 0 0 0 2px rgba(255, 255, 255, 0.7); }
-  .code-card ol { margin: 14px 0 0; padding-left: 20px; color: rgba(255, 255, 255, 0.85); font-size: 15px; }
-
   /* ---- Schedule ---- */
   .day { margin-top: 14px; }
   .day:first-child { margin-top: 0; }
-  .day h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 6px; }
-  .ev { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 10px; padding: 10px 12px; border-radius: 12px; background: var(--page-bg); margin-bottom: 6px; align-items: start; }
+  .day h3 { font-size: 13px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--muted); margin: 0 0 4px; }
+  .ev { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto; gap: 10px; padding: 10px 12px; border-top: 1px solid #E1E8F5; align-items: start; }
   .ev.mine { box-shadow: inset 4px 0 0 var(--gold); }
   .ev .t { font-weight: 700; font-variant-numeric: tabular-nums; font-size: 15px; }
   .ev .ttl { font-weight: 700; }
   .ev .meta { color: var(--muted); font-size: 14px; }
   .ev .team { color: var(--gold-dark); font-weight: 700; font-size: 14px; }
+
+  /* ---- List / Month switch and month grid (mirrors the app's Events tab) ---- */
+  .view-toggle { display: inline-flex; background: #E6EDFA; border-radius: 999px; padding: 3px; margin: 0 0 12px; }
+  .view-toggle button {
+    border: 0; background: transparent; padding: 6px 18px; border-radius: 999px;
+    font-weight: 700; font-size: 15px; color: var(--navy); cursor: pointer;
+  }
+  .view-toggle button.on { background: var(--navy-start); color: #fff; }
+  .cal-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .cal-head b { font-size: 17px; }
+  .cal-nav {
+    border: 0; background: transparent; width: 38px; height: 38px; border-radius: 50%;
+    font-size: 22px; line-height: 1; color: var(--navy); cursor: pointer;
+  }
+  .cal-nav:hover { background: rgba(10, 59, 122, 0.06); }
+  .cal-nav:disabled { opacity: 0.25; cursor: default; background: transparent; }
+  .cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 2px; margin-bottom: 14px; }
+  .cal .dow { text-align: center; font-size: 12px; font-weight: 700; color: var(--muted); padding: 4px 0; }
+  .cal .d {
+    border: 0; background: transparent; height: 48px; border-radius: 10px; cursor: pointer;
+    display: grid; place-items: center; align-content: center; gap: 3px;
+    font: inherit; font-weight: 700; font-size: 15px; color: var(--ink);
+  }
+  .cal .d:hover { background: rgba(10, 59, 122, 0.06); }
+  .cal .d.past { color: #A7B3C6; }
+  .cal .d.today { box-shadow: inset 0 0 0 2px var(--gold); }
+  .cal .d.sel { background: var(--navy-start); color: #fff; }
+  .cal .dot { width: 6px; height: 6px; border-radius: 50%; background: transparent; }
+  .cal .dot.on { background: var(--navy); }
+  .cal .dot.mine { background: var(--gold); }
+  .cal .d.sel .dot.on { background: #fff; }
+  .cal .d.sel .dot.mine { background: var(--gold); }
+  .cal-empty { color: var(--muted); padding: 10px 0 4px; border-top: 1px solid #E1E8F5; }
+  .cal-jump { border: 0; background: transparent; padding: 6px 0; font: inherit; font-weight: 700; color: var(--navy); cursor: pointer; }
 
   /* ---- Ways to move up ---- */
   .tips { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; counter-reset: tip; }
@@ -312,10 +342,9 @@
   <nav class="quicklinks" aria-label="Jump to section">
     <div class="wrap">
       <a href="#sec-scoreboard">Scoreboard</a>
-      <a href="#sec-code">Team code</a>
       <a href="#sec-roster">Roster</a>
-      <a href="#sec-moveup">Move up</a>
       <a href="#sec-events">Events</a>
+      <a href="#sec-moveup">Move up</a>
     </div>
   </nav>
 
@@ -328,35 +357,23 @@
           <div id="teams" class="rows"><div class="state">Loading teams…</div></div>
           <div id="gap" class="gap" hidden></div>
         </section>
-        <section class="card" id="sec-events">
-          <h2>Upcoming events</h2>
-          <p class="hint">Every team's events. Athletes earn points by checking in at other teams' events.</p>
-          <div id="schedule"><div class="state">Loading events…</div></div>
-        </section>
-      </div>
-
-      <div class="col">
-        <section class="card code-card" id="sec-code">
-          <h2>Your team code</h2>
-          <p class="hint">Share this with your athletes so they can verify they're on your team.</p>
-          <div class="code" id="teamCode">——————</div>
-          <div class="code-actions">
-            <button class="btn" type="button" id="copyBtn">Copy code</button>
-            <button class="btn outline" type="button" id="regenBtn">Generate new code</button>
-          </div>
-          <ol>
-            <li>Athletes open the Aggie Points app.</li>
-            <li>They find "Verify your team" on the home screen (or "Enter a team code" in Profile).</li>
-            <li>They type this code, and they show as verified here.</li>
-          </ol>
-        </section>
-
         <section class="card" id="sec-roster">
           <h2>Your roster</h2>
           <p class="hint">Ranked by points this season, with each athlete's rank across all of UC Davis Athletics. Tap an athlete to see the events they earned points at.</p>
           <div id="roster" class="rows"><div class="state">Loading roster…</div></div>
         </section>
+        <section class="card" id="sec-events">
+          <h2>Upcoming events</h2>
+          <p class="hint">Every team's events. Athletes earn points by checking in at other teams' events.</p>
+          <div class="view-toggle" role="group" aria-label="Events view">
+            <button type="button" data-view="list" class="on">List</button>
+            <button type="button" data-view="month">Month</button>
+          </div>
+          <div id="schedule"><div class="state">Loading events…</div></div>
+        </section>
+      </div>
 
+      <div class="col">
         <section class="card moveup" id="sec-moveup">
           <h2>Ways to move up</h2>
           <p class="hint">Your rank is your team's points divided by your roster size, so every athlete counts.</p>
@@ -457,7 +474,7 @@
   // Publishable key: designed to ship in client code. Every read here is
   // scoped server-side to the signed-in coach's own team by the
   // security-definer functions in supabase/sql/coaches_portal.sql (app
-  // repo). The page only reads, apart from regenerate_team_code() and the
+  // repo). The page only reads, apart from the
   // coach changing their own password. An admin who signs in gets the
   // "manage coaches" view instead, whose writes are gated server-side: the
   // create-coach / delete-user Edge Functions check role = 'admin', and RLS
@@ -602,7 +619,6 @@
     $("coachName").textContent = coach ? `Coach ${coach.first_name} ${coach.last_name}`.trim() : "";
     loadRegistration();
     loadRoster();
-    loadTeamCode();
     loadTeams();
     loadSchedule();
   }
@@ -615,9 +631,9 @@
       if (!r) throw new Error("No team found for this coach account.");
       $("teamName").textContent = r.team_name;
       document.title = `${r.team_name} · Aggie Points Coach`;
-      const signed = Number(r.signed_up), verified = Number(r.verified), size = r.roster_size;
-      facts.registration = { signed, verified, size };
-      renderDonut(signed, verified, size);
+      const signed = Number(r.signed_up), size = r.roster_size;
+      facts.registration = { signed, size };
+      renderDonut(signed, size);
       renderTips();
     } catch (err) {
       $("regLegend").replaceChildren(el("div", "", "Couldn't load registration."));
@@ -625,14 +641,13 @@
     }
   }
 
-  // Donut: verified / signed up but not verified / not signed up yet, out
-  // of the admin-entered roster size (or out of sign-ups if it's unset).
-  function renderDonut(signed, verified, size) {
-    const GOLD = "#FFC107", GOLD_SOFT = "rgba(255, 193, 7, 0.45)", TRACK = "rgba(255, 255, 255, 0.18)";
+  // Donut: signed up / not signed up yet, out of the admin-entered roster
+  // size (or out of sign-ups if it's unset).
+  function renderDonut(signed, size) {
+    const GOLD = "#FFC107", TRACK = "rgba(255, 255, 255, 0.18)";
     const total = size > 0 ? Math.max(size, signed) : signed;
     const segs = [
-      { label: "Verified", value: verified, color: GOLD },
-      { label: "Signed up, not verified", value: Math.max(0, signed - verified), color: GOLD_SOFT },
+      { label: "Signed up", value: signed, color: GOLD },
     ];
     if (size > 0) segs.push({ label: "Not signed up yet", value: Math.max(0, size - signed), color: TRACK });
 
@@ -672,12 +687,11 @@
     t2.textContent = "signed up";
     svg.append(t1, t2);
     svg.setAttribute("aria-label", size > 0
-      ? `${signed} of ${size} signed up, ${verified} verified`
-      : `${signed} signed up, ${verified} verified`);
+      ? `${signed} of ${size} signed up`
+      : `${signed} signed up`);
 
     const rows = [
-      { swatch: GOLD, big: `${verified}`, small: "verified with your code" },
-      { swatch: GOLD_SOFT, big: `${signed - verified}`, small: "signed up, not verified" },
+      { swatch: GOLD, big: `${signed}`, small: "signed up" },
     ];
     if (size > 0) rows.push({ swatch: TRACK, big: `${Math.max(0, size - signed)}`, small: "not signed up yet" });
     $("regLegend").replaceChildren(...rows.map((row) => {
@@ -697,7 +711,7 @@
       const [rows, everyone] = DEMO
         ? [demo.roster, demo.everyone]
         : await Promise.all([rpc("get_coach_roster"), loadEveryonePoints()]);
-      if (!rows.length) { stateMsg(box, "No athletes on your team have signed up yet. Share your team code to get them started."); return; }
+      if (!rows.length) { stateMsg(box, "No athletes on your team have signed up yet."); return; }
       const sorted = [...rows]
         .map((r) => ({ ...r, total_points: Number(r.total_points) }))
         .sort((a, b) => b.total_points - a.total_points || a.last_name.localeCompare(b.last_name) || a.first_name.localeCompare(b.first_name));
@@ -724,10 +738,6 @@
     btn.type = "button";
     btn.setAttribute("aria-expanded", "false");
     const n = el("span", "n", `${a.first_name} ${a.last_name}`);
-    const tags = el("span", "tags");
-    tags.append(a.is_verified ? el("span", "pill ok", "✓ Verified") : el("span", "pill no", "Not verified"));
-    if (a.is_additional_team) tags.append(el("span", "pill navy", "Second team"));
-    n.append(tags);
     btn.append(el("span", "k", a.rank === null ? "—" : formatRank(a)), n, el("span", "p", `${fmtPts(a.total_points)} pts`), el("span", "chev", "▶"));
     const events = el("div", "events");
     events.hidden = true;
@@ -773,50 +783,6 @@
     return wrap;
   }
 
-  // ----- Team code -----
-  async function loadTeamCode() {
-    try {
-      const code = DEMO ? demo.code : await rpc("get_coach_team_code");
-      $("teamCode").textContent = code || "No code yet";
-    } catch (err) {
-      $("teamCode").textContent = "—";
-      console.error(err);
-    }
-  }
-
-  $("copyBtn").addEventListener("click", async () => {
-    const code = $("teamCode").textContent;
-    try {
-      await navigator.clipboard.writeText(code);
-      toast("Code copied");
-    } catch {
-      const range = document.createRange();
-      range.selectNodeContents($("teamCode"));
-      getSelection().removeAllRanges();
-      getSelection().addRange(range);
-      toast("Press Ctrl+C / ⌘C to copy");
-    }
-  });
-
-  $("regenBtn").addEventListener("click", async () => {
-    const ok = window.confirm(
-      "Generate a new team code?\n\nYour current code will stop working immediately. " +
-      "Athletes who already verified stay verified — only new athletes will need the new code."
-    );
-    if (!ok) return;
-    const btn = $("regenBtn");
-    btn.disabled = true;
-    try {
-      const code = DEMO ? "AGGIE-" + Math.random().toString(36).slice(2, 8).toUpperCase() : await rpc("regenerate_team_code");
-      $("teamCode").textContent = code;
-      toast("New code ready");
-    } catch (err) {
-      alert("Couldn't generate a new code: " + errText(err));
-    } finally {
-      btn.disabled = false;
-    }
-  });
-
   // ----- Team leaderboard -----
   // Same rule as the app's Teams tab: rank by average points per roster
   // spot (ties judged on the average as displayed, 1 decimal); teams with
@@ -847,7 +813,7 @@
       const list = [...ranked, ...unranked];
       if (!list.length) { stateMsg(box, "No teams yet."); return; }
 
-      box.replaceChildren(...list.map((t) => {
+      const nodes = list.map((t) => {
         const r = el("div", "row team-row" + (t.team_id === myTeamId ? " mine" : ""));
         const n = el("span", "n", t.team_name);
         if (t.team_id === myTeamId) { n.append(" "); n.append(el("span", "pill navy", "You")); }
@@ -855,7 +821,28 @@
         p.append(el("small", "", `${fmtPts(t.total_points)} pts total`));
         r.append(el("span", "k", t.rank === null ? "—" : formatRank(t)), n, p);
         return r;
-      }));
+      });
+
+      // Top 5 only (plus anyone tied for 5th), plus the coach's own team if
+      // it's further down — with a "show more" between them that expands to
+      // every team.
+      const TOP = Math.max(5, list.filter((t) => t.rank !== null && t.rank <= 5).length);
+      const mine = list.findIndex((t) => t.team_id === myTeamId);
+      const render = (showAll) => {
+        const toggle = (label) => {
+          const b = el("button", "more-teams", label);
+          b.type = "button";
+          b.addEventListener("click", () => render(!showAll));
+          return b;
+        };
+        if (list.length <= TOP) box.replaceChildren(...nodes);
+        else if (showAll) box.replaceChildren(...nodes, toggle("Show less"));
+        else if (mine >= TOP) {
+          const hidden = list.length - TOP - 1;
+          box.replaceChildren(...nodes.slice(0, TOP), toggle(`Show ${hidden} more ${hidden === 1 ? "team" : "teams"}`), nodes[mine]);
+        } else box.replaceChildren(...nodes.slice(0, TOP), toggle(`Show all ${list.length} teams`));
+      };
+      render(false);
 
       renderGap(ranked, unranked);
     } catch (err) {
@@ -981,11 +968,6 @@
         "Your average is divided by your whole roster, so athletes who aren't in the app still count against you."]);
     }
 
-    if (reg && reg.signed > reg.verified) {
-      tips.push([`Remind ${plural(reg.signed - reg.verified, "athlete")} to enter your team code`,
-        "After the verification deadline, only verified athletes' points count for your team."]);
-    }
-
     const box = $("tips");
     if (!tips.length) tips.push(["Check in at other teams' events", "Every check-in adds that event's points to your team total."]);
     box.replaceChildren(...tips.map(([title, body]) => {
@@ -1033,37 +1015,115 @@
         days[days.length - 1].events.push(e);
       });
 
+      const eventRow = (e) => {
+        const teamName = e.team_id ? teamNames.get(e.team_id) || "Team event" : "General";
+        const mine = e.team_id && e.team_id === myTeamId;
+        const row = el("div", "ev" + (mine ? " mine" : ""));
+        const mid = el("div");
+        mid.append(el("div", "ttl", e.title));
+        const teamLine = el("div", "team", teamName);
+        if (mine) { teamLine.append(" "); teamLine.append(el("span", "pill gold", "Your team")); }
+        mid.append(teamLine);
+        const extra = [e.type && e.type !== teamName ? e.type : null, e.location].filter(Boolean).join(" · ");
+        if (extra) mid.append(el("div", "meta", extra));
+        row.append(el("div", "t", fmtTime(e.start_time)), mid, el("span", "pill gold", `${e.points_value} pts`));
+        return row;
+      };
+
       const INITIAL_DAYS = 7;
-      const render = (showAll) => {
+      const renderList = (showAll) => {
         const out = (showAll ? days : days.slice(0, INITIAL_DAYS)).map((d) => {
           const sec = el("div", "day");
           sec.append(el("h3", "", dayLabel(d.date)));
-          d.events.forEach((e) => {
-            const teamName = e.team_id ? teamNames.get(e.team_id) || "Team event" : "General";
-            const mine = e.team_id && e.team_id === myTeamId;
-            const row = el("div", "ev" + (mine ? " mine" : ""));
-            const mid = el("div");
-            mid.append(el("div", "ttl", e.title));
-            const teamLine = el("div", "team", teamName);
-            if (mine) { teamLine.append(" "); teamLine.append(el("span", "pill gold", "Your team")); }
-            mid.append(teamLine);
-            const extra = [e.type && e.type !== teamName ? e.type : null, e.location].filter(Boolean).join(" · ");
-            if (extra) mid.append(el("div", "meta", extra));
-            row.append(el("div", "t", fmtTime(e.start_time)), mid, el("span", "pill gold", `${e.points_value} pts`));
-            sec.append(row);
-          });
+          d.events.forEach((e) => sec.append(eventRow(e)));
           return sec;
         });
         if (days.length > INITIAL_DAYS) {
           const more = el("button", "btn outline", showAll ? "Show fewer days" : `Show all ${days.length} days`);
           more.type = "button";
           more.style.marginTop = "8px";
-          more.addEventListener("click", () => render(!showAll));
+          more.addEventListener("click", () => renderList(!showAll));
           out.push(more);
         }
         box.replaceChildren(...out);
       };
-      render(false);
+
+      // Month: a grid with a dot on each day that has events (gold if one is
+      // the coach's own team's); tap a day to list it below. Only upcoming
+      // events are loaded, so it runs from this month to the last event's.
+      const byDay = new Map(days.map((d) => [d.key, d]));
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const firstMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+      const lastDate = days[days.length - 1].date;
+      const lastMonth = new Date(lastDate.getFullYear(), lastDate.getMonth(), 1);
+      let month = firstMonth;
+      let selected = today;
+      const renderMonth = () => {
+        const head = el("div", "cal-head");
+        const prev = el("button", "cal-nav", "‹");
+        const next = el("button", "cal-nav", "›");
+        prev.type = next.type = "button";
+        prev.setAttribute("aria-label", "Previous month");
+        next.setAttribute("aria-label", "Next month");
+        prev.disabled = month <= firstMonth;
+        next.disabled = month >= lastMonth;
+        prev.addEventListener("click", () => { month = new Date(month.getFullYear(), month.getMonth() - 1, 1); renderMonth(); });
+        next.addEventListener("click", () => { month = new Date(month.getFullYear(), month.getMonth() + 1, 1); renderMonth(); });
+        head.append(prev, el("b", "", month.toLocaleDateString(undefined, { month: "long", year: "numeric" })), next);
+
+        const grid = el("div", "cal");
+        ["S", "M", "T", "W", "T", "F", "S"].forEach((w) => grid.append(el("div", "dow", w)));
+        for (let i = 0; i < month.getDay(); i++) grid.append(el("div"));
+        const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
+        for (let n = 1; n <= daysInMonth; n++) {
+          const date = new Date(month.getFullYear(), month.getMonth(), n);
+          const day = byDay.get(date.toDateString());
+          const cls = ["d"];
+          if (date < today) cls.push("past");
+          if (date.getTime() === today.getTime()) cls.push("today");
+          if (date.getTime() === selected.getTime()) cls.push("sel");
+          const b = el("button", cls.join(" "));
+          b.type = "button";
+          const mineDay = day && day.events.some((e) => e.team_id && e.team_id === myTeamId);
+          b.append(el("span", "", String(n)), el("i", "dot" + (day ? " on" : "") + (mineDay ? " mine" : "")));
+          b.setAttribute("aria-label", dayLabel(date) + (day ? `, ${day.events.length} ${day.events.length === 1 ? "event" : "events"}` : ""));
+          b.addEventListener("click", () => { selected = date; renderMonth(); });
+          grid.append(b);
+        }
+
+        const list = el("div", "day");
+        list.append(el("h3", "", dayLabel(selected)));
+        const sel = byDay.get(selected.toDateString());
+        if (sel) sel.events.forEach((e) => list.append(eventRow(e)));
+        else {
+          list.append(el("div", "cal-empty", "No events this day."));
+          const upcoming = days.find((d) => d.date >= selected);
+          if (upcoming) {
+            const jump = el("button", "cal-jump", `Next one: ${dayLabel(upcoming.date)} →`);
+            jump.type = "button";
+            jump.addEventListener("click", () => {
+              selected = new Date(upcoming.date); selected.setHours(0, 0, 0, 0);
+              month = new Date(selected.getFullYear(), selected.getMonth(), 1);
+              renderMonth();
+            });
+            list.append(jump);
+          }
+        }
+        box.replaceChildren(head, grid, list);
+      };
+
+      // Remembered per browser, like the app remembers it per device.
+      const VIEW_KEY = "aggiepoints.coach.eventsView";
+      let view = "list";
+      try { if (localStorage.getItem(VIEW_KEY) === "month") view = "month"; } catch {}
+      const toggleBtns = document.querySelectorAll(".view-toggle button");
+      const show = (v) => {
+        toggleBtns.forEach((b) => b.classList.toggle("on", b.dataset.view === v));
+        try { localStorage.setItem(VIEW_KEY, v); } catch {}
+        if (v === "month") renderMonth(); else renderList(false);
+      };
+      toggleBtns.forEach((b) => { b.onclick = () => show(b.dataset.view); });
+      show(view);
     } catch (err) {
       stateMsg(box, "Couldn't load events: " + errText(err), true);
     }
@@ -1309,7 +1369,7 @@
     ].sort((a, b) => a.start_time.localeCompare(b.start_time)).map((e, i) => ({ id: "e" + i, ...e }));
     return {
       registration: [{ team_id: "t0", team_name: "Women's Soccer", roster_size: 28, signed_up: roster.length, verified: roster.filter((r) => r.is_verified).length }],
-      roster, everyone, teams, events, code: "AGGIE-7K2P9X",
+      roster, everyone, teams, events,
       coaches: [
         { id: "c1", first_name: "Dana", last_name: "Reyes", email: "dreyes@ucdavis.edu", team_id: "t0" },
         { id: "c2", first_name: "Sam", last_name: "Okafor", email: "sokafor@ucdavis.edu", team_id: "t1" },

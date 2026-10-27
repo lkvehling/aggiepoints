@@ -215,6 +215,8 @@
   .cal .d.sel .dot.on { background: #fff; }
   .cal .d.sel .dot.mine { background: var(--gold); }
   .cal-empty { color: var(--muted); padding: 10px 0 4px; border-top: 1px solid #E1E8F5; }
+  /* Clicking a day scrolls its list fully into view, clear of the sticky nav. */
+  .cal-list { scroll-margin: 72px 0 24px; }
   .cal-jump { border: 0; background: transparent; padding: 6px 0; font: inherit; font-weight: 700; color: var(--navy); cursor: pointer; }
 
   /* ---- Ways to move up ---- */
@@ -1058,7 +1060,7 @@
       const lastMonth = new Date(lastDate.getFullYear(), lastDate.getMonth(), 1);
       let month = firstMonth;
       let selected = today;
-      const renderMonth = () => {
+      const renderMonth = (revealList = false) => {
         const head = el("div", "cal-head");
         const prev = el("button", "cal-nav", "‹");
         const next = el("button", "cal-nav", "›");
@@ -1087,11 +1089,11 @@
           const mineDay = day && day.events.some((e) => e.team_id && e.team_id === myTeamId);
           b.append(el("span", "", String(n)), el("i", "dot" + (day ? " on" : "") + (mineDay ? " mine" : "")));
           b.setAttribute("aria-label", dayLabel(date) + (day ? `, ${day.events.length} ${day.events.length === 1 ? "event" : "events"}` : ""));
-          b.addEventListener("click", () => { selected = date; renderMonth(); });
+          b.addEventListener("click", () => { selected = date; renderMonth(true); });
           grid.append(b);
         }
 
-        const list = el("div", "day");
+        const list = el("div", "day cal-list");
         list.append(el("h3", "", dayLabel(selected)));
         const sel = byDay.get(selected.toDateString());
         if (sel) sel.events.forEach((e) => list.append(eventRow(e)));
@@ -1104,12 +1106,13 @@
             jump.addEventListener("click", () => {
               selected = new Date(upcoming.date); selected.setHours(0, 0, 0, 0);
               month = new Date(selected.getFullYear(), selected.getMonth(), 1);
-              renderMonth();
+              renderMonth(true);
             });
             list.append(jump);
           }
         }
         box.replaceChildren(head, grid, list);
+        if (revealList) list.scrollIntoView({ behavior: "smooth", block: "nearest" });
       };
 
       // Remembered per browser, like the app remembers it per device.

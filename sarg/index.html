@@ -159,6 +159,23 @@
   .leader .n { font-weight: 700; }
   .leader .meta { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
 
+
+  /* ---- Sign-ups ---- */
+  .signup-opts { display: grid; gap: 12px; padding: 12px; border-radius: 12px; background: var(--page-bg); }
+  .check { display: flex; align-items: flex-start; gap: 10px; font-weight: 700; font-size: 15px; }
+  .check input { width: 18px; height: 18px; margin: 3px 0 0; flex: none; }
+  .check small { display: block; font-weight: 400; color: var(--muted); font-size: 14px; }
+  .su-event { border: 1px solid var(--border); border-radius: 12px; padding: 14px; display: grid; gap: 10px; }
+  .su-event h3 { margin: 0; font-size: 17px; }
+  .su-bar { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  .su-bar input { width: 84px; }
+  .su-list-title { font-weight: 800; font-size: 14px; margin: 6px 0 0; }
+  .su-person { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 10px 12px; border-radius: 12px; background: var(--page-bg); }
+  .su-person .n { font-weight: 700; }
+  .su-person .meta { color: var(--muted); font-size: 14px; overflow-wrap: anywhere; }
+  .su-person .acts { display: flex; gap: 6px; flex-wrap: wrap; justify-content: flex-end; }
+  @media (max-width: 520px) { .su-person { grid-template-columns: minmax(0, 1fr); } .su-person .acts { justify-content: flex-start; } }
+
   /* ---- Login ---- */
   .login-page { min-height: 100vh; background: var(--navy); color: #fff; display: grid; place-items: center; padding: 24px 16px; }
   .login-box { width: 100%; max-width: 400px; }
@@ -216,6 +233,7 @@
       <p class="hello-sub" id="helloSub"></p>
       <div class="tabs" role="tablist" id="tabs">
         <button type="button" role="tab" data-tab="submit" id="tabSubmit">Submit an event</button>
+        <button type="button" role="tab" data-tab="signups" id="tabSignups">Sign-ups</button>
         <button type="button" role="tab" data-tab="review" id="tabReview">Review queue<span class="count" id="reviewCount" hidden></span></button>
         <button type="button" role="tab" data-tab="leaders" id="tabLeaders">SARG leaders</button>
       </div>
@@ -253,6 +271,19 @@
             <div class="map" id="subMap"></div>
             <p class="geo-note" id="geoNote">The gold circle is the 100 m check-in area. If the pin isn't on the right building, drag it there.</p>
           </div>
+          <div class="signup-opts">
+            <label class="check"><input type="checkbox" id="fSignups"> <span>Needs sign-ups<small>Athletes hold a spot in the app, and you get a contact list. Extras join a waitlist.</small></span></label>
+            <div id="signupFields" class="stack" hidden>
+              <label>Number of spots <input type="number" id="fSpots" min="1" max="1000" step="1" placeholder="e.g. 20"></label>
+              <div>
+                <div style="font-size:14px;font-weight:700;margin-bottom:6px">Who earns points?</div>
+                <div class="seg" role="radiogroup" aria-label="Who earns points">
+                  <label><input type="radio" name="pointsFor" value="everyone" checked><span>Anyone who checks in</span></label>
+                  <label><input type="radio" name="pointsFor" value="volunteers"><span>Volunteers only</span></label>
+                </div>
+              </div>
+            </div>
+          </div>
           <label><span>Details for the admin <span class="opt">(optional)</span></span>
             <textarea id="fDesc" maxlength="1000" placeholder="What it is, who it's for, anything the admin should know."></textarea>
           </label>
@@ -265,6 +296,15 @@
         <h2>Your submissions</h2>
         <p class="hint">Everything submitted for your SARG, newest first. You can withdraw your own while it's pending.</p>
         <div id="mySubs" class="list"><div class="state">Loading…</div></div>
+      </section>
+    </div>
+
+    <!-- ===== Sign-ups ===== -->
+    <div id="panelSignups" class="col" hidden>
+      <section class="card">
+        <h2>Event sign-ups</h2>
+        <p class="hint">Everyone here agreed to share their name and email with you when they signed up. Use them only to contact people about this event.</p>
+        <div id="signupEvents" class="list"><div class="state">Loading…</div></div>
       </section>
     </div>
 
@@ -477,9 +517,11 @@
   function selectTab(tab) {
     document.querySelectorAll("#tabs button").forEach((b) => b.setAttribute("aria-selected", String(b.dataset.tab === tab)));
     $("panelSubmit").hidden = tab !== "submit";
+    $("panelSignups").hidden = tab !== "signups";
     $("panelReview").hidden = tab !== "review";
     $("panelLeaders").hidden = tab !== "leaders";
     if (tab === "submit") { loadMySubs(); if (subMap) setTimeout(() => subMap.map.invalidateSize(), 0); }
+    if (tab === "signups") loadSignupEvents();
     if (tab === "review") loadQueue();
     if (tab === "leaders") loadLeaders();
   }
@@ -503,6 +545,7 @@
       if (pin) { pin = null; $("geoBox").hidden = true; }
     });
     $("subForm").addEventListener("submit", submitEvent);
+    $("fSignups").addEventListener("change", () => { $("signupFields").hidden = !$("fSignups").checked; });
   }
 
   // OpenStreetMap's Nominatim geocoder, biased to (not limited to) Davis.
@@ -575,6 +618,9 @@
     if (start < new Date()) return fail("Pick a start time in the future.");
     if (!address) return fail("Enter the street address.");
     if (!pin) return fail('Press "Find" to put the address on the map first.');
+    const wantsSignups = $("fSignups").checked;
+    const spots = Number($("fSpots").value);
+    if (wantsSignups && (!Number.isInteger(spots) || spots < 1 || spots > 1000)) return fail("Enter the number of spots, from 1 to 1000.");
 
     const args = {
       p_group_name: $("fGroup").value || groups[0],
@@ -587,11 +633,17 @@
       p_latitude: pin.lat,
       p_longitude: pin.lng,
     };
+    // Only sent when used, so plain events don't depend on event_signups.sql.
+    if (wantsSignups) {
+      args.p_signup_capacity = spots;
+      args.p_signup_volunteers_only = document.querySelector('input[name="pointsFor"]:checked').value === "volunteers";
+    }
     $("subBtn").disabled = true;
     msg.className = "formmsg"; msg.textContent = "";
     try {
       if (DEMO) demo.submit(args); else await rpc("submit_sarg_event", args);
       $("subForm").reset();
+      $("signupFields").hidden = true;
       pin = null; $("geoBox").hidden = true;
       msg.className = "formmsg ok";
       msg.textContent = "Submitted! An admin will review it soon.";
@@ -610,7 +662,7 @@
       if (DEMO) rows = demo.subs.filter((s) => groups.includes(s.group_name));
       else {
         const { data, error } = await client.from("sarg_event_submissions")
-          .select(`id, submitted_by, group_name, kind, title, start_time, location_name, address, status, admin_note, created_at, ${SUBMITTER}`)
+          .select(`*, ${SUBMITTER}`)
           .in("group_name", groups)
           .order("created_at", { ascending: false })
           .limit(50);
@@ -629,6 +681,7 @@
         d.append(el("div", "meta", `${s.kind === "meeting" ? "Meeting" : "Event"}${groups.length > 1 ? " · " + s.group_name : ""} · submitted by ${who}`));
         if (s.status === "rejected" && s.admin_note) d.append(el("div", "note", "Admin note: " + s.admin_note));
         if (s.status === "approved") d.append(el("div", "meta", "Live in the app."));
+        if (s.signup_capacity) d.append(el("div", "meta", `Sign-ups: ${s.signup_capacity} spots · ${s.signup_volunteers_only ? "volunteers only earn points" : "anyone who checks in earns points"}`));
         if (s.status === "pending" && s.submitted_by === me.id) {
           const acts = el("div", "acts");
           const w = el("button", "btn danger sm", "Withdraw");
@@ -718,6 +771,7 @@
     row("Submitted by", s.users ? `${fullName(s.users)} (${s.users.email || "no email"})` : "—");
     row("Submitted", fmtWhen(s.created_at));
     row("Details", s.description);
+    if (s.signup_capacity) row("Sign-ups", `${s.signup_capacity} spots · ${s.signup_volunteers_only ? "only volunteers earn points. Athletes on the older app can't sign up, so they'd see an error at check-in." : "anyone who checks in earns points"}`);
     const left = el("div");
     left.append(dl);
     const right = el("div");
@@ -850,6 +904,169 @@
     }
   });
 
+  // ---------- Sign-ups (leaders and admins) ----------
+  async function loadSignupEvents() {
+    const box = $("signupEvents");
+    try {
+      const rows = DEMO ? demo.signupEvents : await rpc("get_my_signup_events");
+      if (!rows.length) { stateMsg(box, "No events with sign-ups yet. Tick \"Needs sign-ups\" when you submit one."); return; }
+      box.replaceChildren(...rows.map(signupEventCard));
+    } catch (err) {
+      stateMsg(box, "Couldn't load sign-ups: " + errText(err), true);
+    }
+  }
+
+  function signupEventCard(ev) {
+    const card = el("div", "su-event");
+    const past = new Date(ev.start_time) < new Date();
+    card.append(el("h3", "", ev.title));
+    card.append(el("div", "meta", `${fmtWhen(ev.start_time)}${ev.group_name ? " · " + ev.group_name : ""}${past ? " · Past event" : ""}`));
+    const counts = el("div", "su-bar");
+    counts.append(el("span", "pill gold", `${ev.confirmed_count} of ${ev.capacity} spots filled`));
+    if (ev.waitlist_count) counts.append(el("span", "pill navy", `${ev.waitlist_count} on the waitlist`));
+    counts.append(el("span", "pill navy", ev.volunteers_only ? "Points: volunteers only" : "Points: everyone who checks in"));
+    card.append(counts);
+
+    const toggle = el("button", "btn navy sm", "Show the list");
+    toggle.type = "button";
+    const body = el("div", "col");
+    body.hidden = true;
+    toggle.addEventListener("click", () => {
+      body.hidden = !body.hidden;
+      toggle.textContent = body.hidden ? "Show the list" : "Hide the list";
+      if (!body.hidden) loadSignupList(ev, body);
+    });
+    const bar = el("div", "su-bar");
+    bar.append(toggle);
+    card.append(bar, body);
+    return card;
+  }
+
+  async function loadSignupList(ev, body) {
+    stateMsg(body, "Loading…");
+    try {
+      const rows = DEMO ? demo.signupList(ev.event_id) : await rpc("get_event_signup_list", { p_event_id: ev.event_id });
+      renderSignupList(ev, rows, body);
+    } catch (err) {
+      stateMsg(body, "Couldn't load the list: " + errText(err), true);
+    }
+  }
+
+  // Quotes a CSV cell, and stops a spreadsheet treating a name like "=1+1"
+  // as a formula.
+  function csvCell(value) {
+    let v = String(value ?? "");
+    if (/^[=+\-@]/.test(v)) v = "'" + v;
+    return `"${v.replace(/"/g, '""')}"`;
+  }
+
+  function renderSignupList(ev, rows, body) {
+    const confirmed = rows.filter((r) => r.status === "confirmed");
+    const waitlisted = rows.filter((r) => r.status === "waitlisted");
+    const reload = () => loadSignupList(ev, body);
+
+    const tools = el("div", "su-bar");
+    const copy = el("button", "btn sm", "Copy all emails");
+    const csv = el("button", "btn navy sm", "Download CSV");
+    copy.type = csv.type = "button";
+    copy.addEventListener("click", async () => {
+      const emails = rows.filter((r) => r.status === "confirmed").map((r) => r.email).filter(Boolean).join(", ");
+      if (!emails) { toast("No confirmed emails yet"); return; }
+      try { await navigator.clipboard.writeText(emails); toast("Confirmed emails copied"); }
+      catch { window.prompt("Copy these emails:", emails); }
+    });
+    csv.addEventListener("click", () => {
+      const lines = [["First name", "Last name", "Email", "Team", "Status", "Checked in"].map(csvCell).join(",")];
+      rows.forEach((r) => lines.push([r.first_name, r.last_name, r.email, r.team_name, r.status, r.checked_in ? "yes" : "no"].map(csvCell).join(",")));
+      const url = URL.createObjectURL(new Blob([lines.join("\r\n")], { type: "text/csv" }));
+      const a = el("a");
+      a.href = url;
+      a.download = `${ev.title.replace(/[^\w-]+/g, "-")}-signups.csv`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+    tools.append(copy, csv);
+
+    const capLabel = el("label", "", "Spots");
+    const capIn = el("input");
+    capIn.type = "number"; capIn.min = "1"; capIn.max = "1000"; capIn.step = "1"; capIn.value = String(ev.capacity);
+    capLabel.append(capIn);
+    const capBtn = el("button", "btn navy sm", "Save spots");
+    capBtn.type = "button";
+    capBtn.addEventListener("click", async () => {
+      const n = Number(capIn.value);
+      if (!Number.isInteger(n) || n < 1 || n > 1000) { alert("Spots must be a whole number from 1 to 1000."); return; }
+      capBtn.disabled = true;
+      try {
+        if (DEMO) demo.setCapacity(ev.event_id, n);
+        else await rpc("set_event_signup_capacity", { p_event_id: ev.event_id, p_capacity: n });
+        toast("Spots updated. Anyone who moved off the waitlist gets an alert.");
+        loadSignupEvents();
+      } catch (err) {
+        capBtn.disabled = false;
+        alert("Couldn't save: " + errText(err));
+      }
+    });
+    const capBar = el("div", "su-bar");
+    capBar.append(capLabel, capBtn);
+
+    const canMark = new Date(ev.start_time).getTime() - 15 * 60 * 1000 <= Date.now();
+    const person = (r, place) => {
+      const d = el("div", "su-person");
+      const info = el("div");
+      info.append(el("div", "n", `${place ? place + ". " : ""}${r.first_name} ${r.last_name}`));
+      info.append(el("div", "meta", [r.email || "No email", r.team_name].filter(Boolean).join(" · ")));
+      if (r.checked_in) info.append(el("div", "meta", "Checked in"));
+      const acts = el("div", "acts");
+      if (r.status === "confirmed" && !r.checked_in && canMark) {
+        const mark = el("button", "btn sm", "Mark attended");
+        mark.type = "button";
+        mark.addEventListener("click", async () => {
+          if (!window.confirm(`Mark ${r.first_name} ${r.last_name} as attended? This gives them the event's points.`)) return;
+          mark.disabled = true;
+          try {
+            if (DEMO) r.checked_in = true;
+            else await rpc("organizer_mark_attended", { p_event_id: ev.event_id, p_user_id: r.user_id });
+            toast("Marked attended");
+            reload();
+          } catch (err) {
+            mark.disabled = false;
+            alert("Couldn't mark attended: " + errText(err));
+          }
+        });
+        acts.append(mark);
+      }
+      const rm = el("button", "btn danger sm", "Remove");
+      rm.type = "button";
+      rm.addEventListener("click", async () => {
+        if (!window.confirm(`Remove ${r.first_name} ${r.last_name} from this event's list? They'll get an alert, and the next person on the waitlist moves up.`)) return;
+        rm.disabled = true;
+        try {
+          if (DEMO) demo.removeSignup(ev.event_id, r.user_id);
+          else await rpc("remove_event_signup", { p_event_id: ev.event_id, p_user_id: r.user_id });
+          toast("Removed");
+          loadSignupEvents();
+        } catch (err) {
+          rm.disabled = false;
+          alert("Couldn't remove: " + errText(err));
+        }
+      });
+      acts.append(rm);
+      d.append(info, acts);
+      return d;
+    };
+
+    const parts = [capBar];
+    if (rows.length) parts.push(tools);
+    parts.push(el("p", "su-list-title", `Confirmed (${confirmed.length})`));
+    parts.push(...(confirmed.length ? confirmed.map((r) => person(r)) : [el("div", "state", "Nobody yet.")]));
+    if (waitlisted.length) {
+      parts.push(el("p", "su-list-title", `Waitlist (${waitlisted.length})`));
+      parts.push(...waitlisted.map((r, i) => person(r, i + 1)));
+    }
+    body.replaceChildren(...parts);
+  }
+
   // ---------- Demo data ----------
   const demo = (() => {
     const at = (dDay, h, m) => { const n = new Date(); return new Date(n.getFullYear(), n.getMonth(), n.getDate() + dDay, h, m).toISOString(); };
@@ -890,6 +1107,35 @@
           location_name: a.p_location_name || null, address: a.p_address, latitude: a.p_latitude, longitude: a.p_longitude,
           status: "pending", created_at: new Date().toISOString() });
       },
+      signupEvents: [
+        { event_id: "e1", title: "Community cleanup at Central Park", start_time: at(9, 10, 0), group_name: "Black Student-Athlete Alliance",
+          capacity: 3, volunteers_only: true, confirmed_count: 3, waitlist_count: 1 },
+        { event_id: "e2", title: "Kickoff social", start_time: at(-3, 17, 0), group_name: "Black Student-Athlete Alliance",
+          capacity: 20, volunteers_only: false, confirmed_count: 2, waitlist_count: 0 },
+      ],
+      signupRows: {
+        e1: [
+          { user_id: "a", first_name: "Sam", last_name: "Lopez", email: "slopez@ucdavis.edu", team_name: "Men's Soccer", status: "confirmed", checked_in: false },
+          { user_id: "b", first_name: "Jordan", last_name: "Kim", email: "jkim@ucdavis.edu", team_name: "Women's Water Polo", status: "confirmed", checked_in: false },
+          { user_id: "c", first_name: "Ava", last_name: "Patel", email: "apatel@ucdavis.edu", team_name: "Softball", status: "confirmed", checked_in: false },
+          { user_id: "d", first_name: "Maya", last_name: "Chen", email: "mchen@ucdavis.edu", team_name: "Women's Basketball", status: "waitlisted", checked_in: false },
+        ],
+        e2: [
+          { user_id: "a", first_name: "Sam", last_name: "Lopez", email: "slopez@ucdavis.edu", team_name: "Men's Soccer", status: "confirmed", checked_in: true },
+          { user_id: "b", first_name: "Jordan", last_name: "Kim", email: "jkim@ucdavis.edu", team_name: "Women's Water Polo", status: "confirmed", checked_in: false },
+        ],
+      },
+      signupList(id) { return state.signupRows[id]; },
+      recount(id) {
+        const ev = state.signupEvents.find((x) => x.event_id === id);
+        const rows = state.signupRows[id];
+        let open = ev.capacity - rows.filter((r) => r.status === "confirmed").length;
+        rows.filter((r) => r.status === "waitlisted").forEach((r) => { if (open-- > 0) r.status = "confirmed"; });
+        ev.confirmed_count = rows.filter((r) => r.status === "confirmed").length;
+        ev.waitlist_count = rows.filter((r) => r.status === "waitlisted").length;
+      },
+      setCapacity(id, n) { state.signupEvents.find((x) => x.event_id === id).capacity = n; state.recount(id); },
+      removeSignup(id, userId) { state.signupRows[id] = state.signupRows[id].filter((r) => r.user_id !== userId); state.recount(id); },
       review(id, status, note, args) {
         const s = state.subs.find((x) => x.id === id);
         s.status = status; s.admin_note = note; s.reviewed_at = new Date().toISOString();
